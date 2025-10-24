@@ -1,0 +1,90 @@
+# Environment variables (contains sensitive bot token!)
+.env
+
+# Log files
+*.log
+bot.log
+
+# Runtime state files
+last_channels.json
+
+# Python cache directories
+.mypy_cache/
+.ruff_cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+jill-env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Windows
+desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Music files
+music/
+*.opus
+*.mp3
+*.wav
+*.flac
+*.aac
+*.ogg
+*.m4a
+*.wma
+*.aiff
+*.au
+*.ra
+*.amr
+*.3gp
+*.mp4
+*.avi
+*.mkv
+*.mov
+*.wmv
+*.flv
+*.webm
+*.m4v
+*.mpg
+*.mpeg
+*.m2v
+*.m4p
+*.m4b
+*.m4r
+*.3g2
+*.asf
+*.rm
+*.rmvb
+*.vob
+*.ts
+*.mts
+*.m2ts
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace

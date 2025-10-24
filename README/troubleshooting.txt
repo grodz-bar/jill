@@ -1,0 +1,136 @@
+================================================================================
+JILL DISCORD MUSIC BOT - TROUBLESHOOTING GUIDE
+================================================================================
+
+Hope this helps.
+
+================================================================================
+BOT ISSUES
+================================================================================
+
+Bot doesn't respond to commands:
+- Ensure MESSAGE CONTENT INTENT is enabled in Discord Developer Portal
+- Verify bot has "Send Messages" and "View Channel" permissions in channel
+- Check bot is online (green dot in member list)
+- Verify bot is invited to the server correctly
+
+Bot can't join voice:
+- Ensure "View", "Connect" AND "Speak" permissions are granted
+- Check voice channel isn't full or restricted
+- Verify bot has proper voice permissions in server settings
+
+"Privileged intent" error:
+- Go back to Discord Developer Portal → Bot
+- Enable MESSAGE CONTENT INTENT
+- Enable SERVER MEMBERS INTENT
+- Restart bot
+
+Bot disconnects frequently:
+- Check internet connection stability
+- Verify Discord API status: https://discordstatus.com
+- Check Windows power settings (prevent sleep)
+- Check logs
+
+================================================================================
+BOT STARTUP ISSUES
+================================================================================
+
+Bot won't start:
+- Check token is correct in .env file
+- Verify Python 3.11+ is installed
+- Ensure venv has all dependencies installed
+- Make sure Windows Defender isn't blocking the bot (Windows)
+- Read the bot.log and service logs (Linux) for error messages
+- Check you used your actual username instead of "YOUR-USERNAME" during setup
+
+Bot can't find music:
+- Verify MUSIC_FOLDER path is correct
+- Check files are .opus format (not .mp3, .flac, etc.)
+- Ensure bot has read permission on music folder
+- Ensure song files are named properly (01 - Track Name.opus)
+
+Bot joins but no sound:
+- Verify Discord voice settings
+- Verify bot has "Connect" and "Speak" permissions in voice channel
+- Verify your .opus files play normally
+- Ensure song files are named properly (01 - Track Name.opus)
+- ... do you have Discord muted? Or maybe the bot volume set too low...?
+
+================================================================================
+AUDIO CONVERSION ISSUES
+================================================================================
+
+"ffmpeg not recognized":
+- Linux: Install with apt (sudo apt install ffmpeg)
+- Windows: Add ffmpeg to PATH (see Converting-To-Opus.txt)
+
+"Could not write header for output file":
+- Check you have write permission in folder
+- Ensure output filename doesn't have illegal characters
+
+Audio sounds weird/distorted:
+- Verify source file plays correctly
+- Verify .opus file plays correctly on a different machine
+- Check conversion had the right output:
+  Use command: ffprobe -hide_banner SONG-NAME.opus
+  Look for: Sample rate 48000 Hz, stereo channels, ~256 kb/s bit rate
+- Bot might have a bad connection to Discord
+- User might have a bad connection to Discord
+- Discord is just weird sometimes
+
+Bot won't play opus files:
+- Make sure files are named according to setup instructions
+- Verify files are in correct folder
+- Check file permissions (bot needs read access)
+- Use ffprobe to verify opus specifications
+
+================================================================================
+AUTO-START ISSUES
+================================================================================
+
+Task Scheduler won't start bot (Windows):
+- Check task is enabled in Task Scheduler
+- Verify batch file path is correct
+- Check task runs with proper permissions
+- View task history for error messages
+
+Service won't start (Linux):
+- Check 'sudo systemctl status jill.service' for errors
+- Verify paths in service file are correct
+- Ensure run_bot.sh is executable (chmod +x)
+- Check service logs: sudo journalctl -u jill.service -f
+
+================================================================================
+LOGGING AND DEBUGGING
+================================================================================
+
+How to view logs:
+
+Windows:
+- Bot logs are displayed in the console window
+- For Task Scheduler logs go to:
+Task Scheduler → "Jill Discord Bot" task → Properties → History tab
+
+Linux:
+- Bot logs: tail -f ~/jill/bot.log
+- Service logs: sudo journalctl -u jill.service -f
+- Check service status: sudo systemctl status jill.service
+
+================================================================================
+COMMON SOLUTIONS
+================================================================================
+
+If nothing else works:
+1. Restart the bot
+2. Check Discord API status: https://discordstatus.com
+3. Verify all permissions are correct
+4. Check file paths and permissions
+5. Ensure Python and dependencies are properly installed
+6. Try running the bot manually first before setting up auto-start
+
+For persistent issues:
+- Check the bot.log file for detailed error messages
+- Verify all setup steps were completed correctly
+- Ensure your system meets the requirements (Python 3.11+, ffmpeg)
+
+================================================================================

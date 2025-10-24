@@ -1,0 +1,354 @@
+================================================================================
+SETUP GUIDE - VA-11 HALL-A MUSIC BOT
+================================================================================
+
+This guide works for:
+- Debian/Ubuntu Linux
+- Raspberry Pi OS (formerly Raspbian)
+
+NOTE: Personally I used a Windows machine SSH'd into the Linux one to set it up.
+
+================================================================================
+STEP 1: SYSTEM REQUIREMENTS
+================================================================================
+
+Install required packages:
+
+1. Update package list:
+    sudo apt update
+2. Install Python and dependencies:
+    sudo apt install -y python3 python3-pip python3-venv ffmpeg git
+
+Verify Python version:
+
+1. Check Python version:
+    python3 --version
+2. You should see "Python 3.11.x" (or similar)
+
+If your version is too old, you may need to install a newer Python version.
+Bot was tested on Python 3.11+.
+
+================================================================================
+STEP 2: GET DISCORD BOT TOKEN
+================================================================================
+
+See 'Getting-Discord-Token.txt' for instructions on creating a Discord bot
+and getting your token. You will need this later.
+
+================================================================================
+STEP 3: PREPARE MUSIC FILES
+================================================================================
+
+This bot requires .opus audio files with specific encoding:
+- 48kHz sample rate
+- Stereo
+- 256kbps VBR
+- 20ms frame duration
+
+Don't worry, it's easy to get those.
+See 'Converting-To-Opus.txt' for the conversion instructions.
+
+FILE NAMING FORMAT (IMPORTANT):
+-------------------------------
+Files MUST start with numbers for proper sorting. The bot expects:
+
+    01 - Track Name.opus
+    02 - Track Name.opus
+    03 - Track Name.opus
+    ...
+    10 - Track Name.opus
+
+Example good names:
+✓ 01 - Hopes and Dreams.opus
+✓ 02 - Every Day Is Night.opus
+✓ 10 - Drive Me Wild.opus
+
+Example bad names:
+✗ Hopes and Dreams.opus (no number - won't sort correctly)
+✗ Track 01.opus (number not at start)
+✗ Song_01.opus (number not at start)
+
+Format rules:
+- Start with digits (01, 02, 03... or 1, 2, 3...)
+- Follow with space, dash, space (recommended but flexible)
+- Then your track name
+- End with .opus extension
+
+The bot will:
+- Sort files numerically (01, 02, 03... 10, 11, not alphabetically)
+- Display song names like this: "Track Name" (not "01 - Track Name")
+- Use track numbers for !play commands (!play 5 plays the 5th track)
+
+NOTE: I used PowerRename (Windows) to rename my stuff faster.
+
+================================================================================
+STEP 4: PLACE SONGS IN A FOLDER
+================================================================================
+
+Create music directory:
+
+1. Create the directory:
+    mkdir -p ~/jill/music
+
+Place your .opus files in ~/jill/music/
+
+IMPORTANT: The music folder should contain ONLY .opus files.
+No other file types (.mp3, .flac, .wav, etc.) should be in this folder.
+
+================================================================================
+STEP 5: DOWNLOAD BOT
+================================================================================
+
+Download the bot to your home directory:
+
+Method 1 - Download Release ZIP:
+1. Download the latest release ZIP from the releases page
+2. Extract the zip file to ~/jill/
+NOTE: Ensure files are in ~/jill/ (not ~/jill/jill/)
+
+Method 2 - Using Git:
+1. Navigate to home directory:
+    cd ~
+2. Clone the repository:
+    git clone https://github.com/a-grodz/jill.git jill
+
+Your directory structure should be:
+
+    ~/jill/
+    ├── bot.py
+    ├── requirements.txt
+    ├── .env (created in Step 7)
+    ├── /config/ (configuration folder)
+    │   ├── __init__.py
+    │   ├── features.py
+    │   ├── messages.py
+    │   ├── timing.py
+    │   ├── paths.py
+    │   └── aliases.py
+    ├── /README/ (documentation folder)
+    │   ├── README.txt
+    │   ├── SETUP-Linux.txt
+    │   ├── SETUP-Windows.txt
+    │   ├── Getting-Discord-Token.txt
+    │   ├── Converting-To-Opus.txt
+    │   ├── troubleshooting.txt
+    │   └── Files.txt
+    └── /music/
+        ├── 01 - Track Name.opus
+        ├── 02 - Track Name.opus
+        └── ...
+
+================================================================================
+STEP 6: CREATE PYTHON VIRTUAL ENVIRONMENT
+================================================================================
+
+Create venv:
+
+1. Create virtual environment:
+    python3 -m venv ~/jill-env
+2. Activate virtual environment:
+    source ~/jill-env/bin/activate
+3. Install dependencies:
+
+1. Navigate to bot directory:
+    cd ~/jill
+2. Install from requirements:
+    pip install -r requirements.txt
+
+4. Deactivate venv (we'll use it via script later):
+    deactivate
+
+================================================================================
+STEP 7: CONFIGURE TO YOUR OWN BOT
+================================================================================
+
+Create a .env file in ~/jill/:
+
+Method 1 - Using nano:
+1. Navigate to bot directory:
+    cd ~/jill
+2. Open nano editor:
+    nano .env
+3. Add these lines (replace with your values):
+
+    DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN
+    MUSIC_FOLDER=/home/YOUR-USERNAME/jill/music/
+
+4. Save and exit (Ctrl+X, Y, Enter in nano)
+
+Method 2 - Copy from template:
+1. Copy the example file:
+    cp .env.example .env
+2. Edit with nano:
+    nano .env
+3. Add your token and music folder path
+4. Save and exit (Ctrl+X, Y, Enter in nano)
+
+Method 3 - Using systemd environment variables:
+1. Skip creating .env file (not needed)
+2. Set environment variables in systemd service file (see Step 9)
+3. Add these lines under [Service] in the service file:
+    Environment="DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN"
+    Environment="MUSIC_FOLDER=/home/YOUR-USERNAME/jill/music/"
+
+================================================================================
+STEP 8: TEST THE BOT
+================================================================================
+
+NOTE: If you used Method 3 in Step 7, skip to Step 9.
+
+Test run the bot manually:
+
+1. Navigate to bot directory:
+    cd ~/jill
+2. Activate virtual environment:
+    source ~/jill-env/bin/activate
+3. Start the bot:
+    python3 bot.py
+
+You should see:
+- "Logged in as YourBot#1234"
+- "Music folder found: /home/YOUR-USERNAME/jill/music"
+- List of loaded tracks
+
+Test in Discord:
+1. Invite bot to your server (see 'Getting-Discord-Token.txt')
+2. Join a voice channel
+3. Type !play
+
+If it works, press Ctrl+C to stop the bot.
+
+================================================================================
+STEP 9: AUTO-START WITH SYSTEMD (OPTIONAL BUT RECOMMENDED)
+================================================================================
+NOTE: Do this so bot will start automatically after a machine boot.
+
+Create a run script:
+
+1. Open nano editor:
+    nano ~/jill/run_bot.sh
+2. Add these lines (REPLACE 'YOUR-USERNAME' with your actual username):
+
+#!/bin/bash
+cd /home/YOUR-USERNAME/jill
+source /home/YOUR-USERNAME/jill-env/bin/activate
+exec python3 bot.py
+
+3. Save and exit (Ctrl+X, Y, Enter in nano)
+4. Make the script executable:
+    chmod +x ~/jill/run_bot.sh
+
+Create systemd service file:
+
+1. Open nano with sudo:
+    sudo nano /etc/systemd/system/jill.service
+2. Add these lines (REPLACE 'YOUR-USERNAME' with your actual username):
+
+[Unit]
+Description=jill Music Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=YOUR-USERNAME
+WorkingDirectory=/home/YOUR-USERNAME/jill/
+ExecStart=/home/YOUR-USERNAME/jill/run_bot.sh
+StandardOutput=append:/home/YOUR-USERNAME/jill/bot.log
+StandardError=append:/home/YOUR-USERNAME/jill/bot.log
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+
+NOTE: If you used Method 3 in Step 7, also add these lines under [Service]:
+Environment="DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN"
+Environment="MUSIC_FOLDER=/home/YOUR-USERNAME/jill/music/"
+
+3. Save and exit (Ctrl+X, Y, Enter in nano)
+
+Enable and start the service:
+
+1. Reload systemd configuration:
+    sudo systemctl daemon-reload
+2. Enable the service to start on boot:
+    sudo systemctl enable jill.service
+3. Start the service:
+    sudo systemctl start jill.service
+4. Check service status:
+    sudo systemctl status jill.service
+
+================================================================================
+CUSTOMIZATION
+================================================================================
+
+HOW TO EDIT CONFIG FILES:
+-------------------------
+Config files are just text files - edit them with nano
+Example:
+
+1. cd ~/jill/config
+2. ls
+3. nano features.py
+4. Make changes and save (Ctrl+X, Y, Enter)
+
+Files in the /config/ folder to customize:
+- config/aliases.py   - Command aliases
+- config/features.py  - Turn features on/off
+- config/messages.py  - Bot text responses
+- config/timing.py    - Timing and cooldown settings
+- config/paths.py     - File paths
+
+Make sure to restart bot after changes:
+
+    sudo systemctl restart jill.service
+
+For bot profile picture/banner/etc, just change it on the developer portal:
+https://discord.com/developers/applications
+
+================================================================================
+UPDATING THE BOT
+================================================================================
+
+To update to a new version:
+
+    cd ~/jill
+    git pull
+
+    # Restart the service
+    sudo systemctl restart jill.service
+
+    # Check logs to ensure it started correctly
+    tail -f ~/jill/bot.log
+
+================================================================================
+RASPBERRY PI SPECIFIC NOTES
+================================================================================
+
+PERFORMANCE:
+- Tested on a Raspberry Pi 4, barely uses RAM and CPU.
+
+AUDIO QUALITY:
+- Using pre-encoded .opus files means less CPU usage, plus Discord seems
+to like it better, this is why the format requirements are strict.
+
+POWER:
+- Use official Raspberry Pi power supply for your Pi.
+
+STORAGE:
+- SD card should be Class 10 or better (U1/U3 recommended)
+- Huge libraries might benefit from a USB SSD
+
+NETWORKING:
+- Wired ethernet is more stable than WiFi
+- If using WiFi, ensure strong signal to router
+- Discord voice uses ~96kbps upstream (opus 256kbps gets compressed)
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+For troubleshooting, see troubleshooting.txt
+
+================================================================================

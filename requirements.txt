@@ -1,0 +1,11 @@
+# Discord Music Bot Requirements
+# Install with: pip install -r requirements.txt
+
+# Discord API library with voice support
+disnake[voice]>=2.9.0
+
+# Opus audio codec for voice (required for voice chat)
+PyNaCl>=1.5.0
+
+# Environment variable loading from .env file
+python-dotenv>=1.0.0

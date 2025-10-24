@@ -1,0 +1,249 @@
+================================================================================
+JILL DISCORD MUSIC BOT - WINDOWS SETUP GUIDE
+================================================================================
+
+This guide will help you set up Jill on Windows 10/11.
+The bot requires Python 3.11+ and ffmpeg.
+
+================================================================================
+STEP 1: INSTALL PYTHON
+================================================================================
+
+Download Python 3.11+ from: https://www.python.org/downloads/
+
+IMPORTANT: During installation, check "Add Python to PATH"
+
+Verify installation:
+1. Press Windows key + R
+2. Type "cmd" and press Enter
+3. Type "python --version" and press Enter
+4. You should see "Python 3.11.x" (or similar)
+5. Type "pip --version" and press Enter
+6. You should see "pip" with a version number
+7. Close the Command Prompt window
+
+================================================================================
+STEP 2: GET DISCORD BOT TOKEN
+================================================================================
+
+See 'Getting-Discord-Token.txt' for instructions on creating a Discord bot
+and getting your token. You will need this later.
+
+================================================================================
+STEP 3: PREPARE MUSIC FILES
+================================================================================
+
+See 'Converting-To-Opus.txt' for the conversion instructions.
+
+================================================================================
+STEP 4: PLACE SONGS IN A FOLDER
+================================================================================
+
+Create music directory:
+
+1. Open File Explorer
+2. Navigate to C:\
+3. Create a new folder named "jill"
+4. Open the jill folder
+5. Create a new folder named "music"
+
+Place your .opus files in C:\jill\music\
+
+IMPORTANT: The music folder should contain ONLY .opus files.
+No other file types (.mp3, .flac, .wav, etc.) should be in this folder.
+
+================================================================================
+STEP 5: DOWNLOAD BOT
+================================================================================
+
+Download the bot to your system:
+
+Method 1 - Download Release ZIP:
+1. Go to the project's releases page
+2. Download the latest release ZIP file
+3. Extract the zip file to C:\jill\
+NOTE: Ensure files are in C:\jill\ (not C:\jill\jill\)
+
+Method 2 - Using Git:
+1. Open Command Prompt
+2. Navigate to C:\:
+    cd C:\
+3. Clone the repository:
+    git clone https://github.com/a-grodz/jill.git jill
+
+Your directory structure should be:
+
+    C:\jill\
+    ├── bot.py
+    ├── requirements.txt
+    ├── .env (created in Step 7)
+    ├── /config/ (configuration folder)
+    │   ├── __init__.py
+    │   ├── features.py
+    │   ├── messages.py
+    │   ├── timing.py
+    │   ├── paths.py
+    │   └── aliases.py
+    ├── /README/ (documentation folder)
+    │   ├── README.txt
+    │   ├── SETUP-Linux.txt
+    │   ├── SETUP-Windows.txt
+    │   ├── Getting-Discord-Token.txt
+    │   ├── Converting-To-Opus.txt
+    │   ├── troubleshooting.txt
+    │   └── Files.txt
+    └── /music/
+        ├── 01 - Track Name.opus
+        ├── 02 - Track Name.opus
+        └── ...
+
+================================================================================
+STEP 6: CREATE PYTHON VIRTUAL ENVIRONMENT
+================================================================================
+
+Create venv:
+
+1. Open Command Prompt
+2. Navigate to bot directory:
+    cd C:\jill
+3. Create virtual environment:
+    python -m venv C:\jill\venv
+4. Activate virtual environment:
+    C:\jill\venv\Scripts\activate
+5. Install dependencies:
+    pip install -r requirements.txt
+
+================================================================================
+STEP 7: CONFIGURE TO YOUR OWN BOT
+================================================================================
+
+Create a .env file in C:\jill\:
+
+1. Navigate to C:\jill\ in File Explorer
+2. Create a new file named ".env" (including the dot)
+3. Open with Notepad and add:
+
+    DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN
+    MUSIC_FOLDER=C:\jill\music\
+
+4. Save and close
+
+================================================================================
+STEP 8: TEST THE BOT
+================================================================================
+
+Run the bot:
+
+1. Open Command Prompt
+2. Navigate to bot directory:
+    cd C:\jill
+3. Activate virtual environment:
+    C:\jill\venv\Scripts\activate
+4. Start the bot:
+    python bot.py
+
+You should see:
+- "Logged in as YourBot#1234"
+- "Music folder found: C:\jill\music"
+- List of loaded tracks
+
+Test in Discord:
+1. Invite bot to your server (see 'Getting-Discord-Token.txt')
+2. Join a voice channel
+3. Type !play to start music
+
+================================================================================
+STEP 9: AUTO-START ON BOOT (OPTIONAL)
+================================================================================
+
+NOTE: Do this so bot will start automatically after a machine boot.
+
+Create a batch file:
+
+1. Navigate to C:\jill\ in File Explorer
+2. Create a new file named "run_bot.bat"
+3. Open with Notepad and add:
+
+    @echo off
+    cd /d C:\jill
+    call C:\jill\venv\Scripts\activate
+    python bot.py
+    pause
+
+4. Save and close
+
+Create a Windows Task Scheduler task:
+
+1. Open Task Scheduler (search "Task Scheduler" in Start menu)
+2. Click "Create Basic Task"
+3. Name: "Jill Discord Bot"
+4. Trigger: "When the computer starts"
+5. Action: "Start a program"
+6. Program: C:\jill\run_bot.bat
+7. Finish
+
+================================================================================
+UPDATING THE BOT
+================================================================================
+
+To update the bot:
+
+1. Stop the bot (Ctrl+C if running manually, or disable Task Scheduler task)
+2. Download new version
+3. Replace files (keep your .env file)
+4. Restart the bot
+
+To update dependencies:
+
+1. Open Command Prompt
+2. Navigate to bot directory:
+    cd C:\jill
+3. Activate virtual environment:
+    C:\jill\venv\Scripts\activate
+4. Update packages:
+    pip install -r requirements.txt --upgrade
+
+================================================================================
+CUSTOMIZATION
+================================================================================
+
+HOW TO EDIT CONFIG FILES:
+-------------------------
+Config files are just text files - edit them with Notepad:
+1. Right-click any .py file in C:\jill\config\
+2. Select "Open with" → "Notepad"
+3. Make changes and save (Ctrl+S)
+
+Edit files in the config/ folder to customize:
+- config/aliases.py - Command aliases
+- config/messages.py - Bot text responses
+- config/features.py - Turn features on/off
+- config/timing.py - Timing and cooldown settings (advanced)
+- config/paths.py - File paths (advanced)
+
+Make sure to restart bot after changes.
+
+For bot profile picture/banner/etc, just change it on the developer portal:
+https://discord.com/developers/applications
+
+================================================================================
+LOG FILES
+================================================================================
+
+Bot logs are displayed in the console window.
+
+For Task Scheduler logs:
+1. Open Task Scheduler
+2. Find "Jill Discord Bot" task
+3. Right-click → Properties → History tab
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+For troubleshooting, see troubleshooting.txt
+
+================================================================================
+
+
+

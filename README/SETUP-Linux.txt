@@ -161,6 +161,7 @@ Create venv:
 ================================================================================
 STEP 7: CONFIGURE TO YOUR OWN BOT
 ================================================================================
+NOTE: MUSIC_FOLDER is optional. If you don't set it, the bot uses ~/jill/music/
 
 Create a .env file in ~/jill/:
 

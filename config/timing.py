@@ -126,10 +126,11 @@ LIBRARY_DEBOUNCE_WINDOW = 1.5      # Wait time for spam to stop (seconds)
 LIBRARY_COOLDOWN = 0.5             # Cooldown after execution (seconds)
 LIBRARY_SPAM_THRESHOLD = 5         # Times user can spam before warning
 
-# Play command debouncing
-PLAY_DEBOUNCE_WINDOW = 1.0         # Wait time for spam to stop (seconds)
-PLAY_COOLDOWN = 1.0                # Cooldown after execution (seconds)
-PLAY_SPAM_THRESHOLD = 5            # Times user can spam before warning
+# Play jump command debouncing (!play [number])
+# Note: Normal !play (join/resume) doesn't use debouncing - only track jumping does
+PLAY_JUMP_DEBOUNCE_WINDOW = 1.0    # Wait time for spam to stop (seconds)
+PLAY_JUMP_COOLDOWN = 1.0           # Cooldown after execution (seconds)
+PLAY_JUMP_SPAM_THRESHOLD = 5       # Times user can spam before warning
 
 # Pause command debouncing
 PAUSE_DEBOUNCE_WINDOW = 2.0        # Wait time for spam to stop (seconds)

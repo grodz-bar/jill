@@ -51,18 +51,19 @@ def validate_command_aliases() -> None:
         
     Called on bot startup to catch configuration errors early.
     """
-    # Track which command each alias belongs to
+    # Track which command each alias belongs to (case-insensitive)
     alias_to_command = {}
     duplicates = []
     
     for command, aliases in COMMAND_ALIASES.items():
         for alias in aliases:
-            if alias in alias_to_command:
+            alias_lower = alias.lower()
+            if alias_lower in alias_to_command:
                 duplicates.append(
-                    f"Alias '{alias}' is used by both '{alias_to_command[alias]}' and '{command}'"
+                    f"Alias '{alias}' is used by both '{alias_to_command[alias_lower]}' and '{command}'"
                 )
             else:
-                alias_to_command[alias] = command
+                alias_to_command[alias_lower] = command
     
     if duplicates:
         error_msg = "COMMAND ALIAS CONFIGURATION ERROR:\n" + "\n".join(duplicates)

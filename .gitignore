@@ -88,3 +88,8 @@ music/
 .idea/
 *.sublime-project
 *.sublime-workspace
+
+# Git
+.git_backup/
+commit.txt
+push.bat

@@ -1,7 +1,7 @@
 """
 VA-11 Hall-A Discord Music Bot
 ================================
-VERSION: 2.5.1 - Stability, concurrency, and performance improvements
+VERSION: 0.9.x - Pre-release development version
 ================================
 
 ARCHITECTURE OVERVIEW:
@@ -150,8 +150,6 @@ from pathlib import Path
 from typing import Optional, List, Callable, Awaitable, Dict
 from collections import deque
 from enum import Enum
-from threading import Lock
-import asyncio
 import itertools
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -219,6 +217,14 @@ bot = commands.Bot(
     intents=intents,
     help_command=None  # We provide custom !help command
 )
+
+# Watchdog task references (for clean cancellation on shutdown)
+_playback_watchdog_task: Optional[asyncio.Task] = None
+_alone_watchdog_task: Optional[asyncio.Task] = None
+
+# Global presence state (bot-wide, not per-guild)
+_last_presence_update: float = 0
+_current_presence_text: Optional[str] = None
 
 # =============================================================================
 # HELPER FUNCTIONS (Discord API wrappers with error handling)
@@ -299,6 +305,8 @@ async def update_presence(status_text: Optional[str]) -> bool:
     """
     Update bot's Discord presence (status shown under bot name).
     
+    Global throttling and deduplication to avoid spammy API calls.
+    
     Args:
         status_text: Status to display (None = clear status)
         
@@ -308,6 +316,14 @@ async def update_presence(status_text: Optional[str]) -> bool:
     Example:
         update_presence("Hopes and Dreams")  # Shows "Listening to Hopes and Dreams"
     """
+    global _last_presence_update, _current_presence_text
+    
+    current_time = time.time()
+    
+    # Skip if same text and within throttle window
+    if status_text == _current_presence_text and current_time - _last_presence_update < 10:
+        return True
+    
     try:
         if status_text:
             await bot.change_presence(activity=disnake.Activity(
@@ -316,6 +332,9 @@ async def update_presence(status_text: Optional[str]) -> bool:
             ))
         else:
             await bot.change_presence(activity=None)
+        
+        _last_presence_update = current_time
+        _current_presence_text = status_text
         return True
     except Exception as e:
         logger.debug("Presence update failed (non-critical): %s", e)
@@ -337,6 +356,8 @@ def can_connect_to_channel(channel: disnake.VoiceChannel) -> bool:
     """
     if not channel:
         return False
+    if not channel.guild.me:
+        return False  # Rare startup race - guild not fully ready
     perms = channel.permissions_for(channel.guild.me)
     return bool(perms and perms.connect and perms.speak)
 
@@ -348,30 +369,31 @@ async def safe_delete_message(message: Optional[disnake.Message]) -> bool:
         message: Message to delete (None is safe)
         
     Returns:
-        bool: True if deleted successfully, False otherwise
+        bool: True if deleted successfully or already deleted, False on permission/API errors
         
     Note:
         Catches common errors:
-        - NotFound: Message already deleted
-        - Forbidden: Bot lacks permissions
-        - HTTPException: Rate limited or other API error
+        - NotFound: Message already deleted (returns True - idempotent success)
+        - Forbidden: Bot lacks permissions (returns False)
+        - HTTPException: Rate limited or other API error (returns False)
     """
     if not message:
         return False
     try:
         await message.delete()
         return True
-    except (disnake.NotFound, disnake.Forbidden, disnake.HTTPException) as e:
+    except disnake.NotFound:
+        return True  # Already deleted = success (idempotent)
+    except (disnake.Forbidden, disnake.HTTPException) as e:
         logger.debug("Could not delete message: %s", e)
         return False
 
-@lru_cache(maxsize=10)
 def make_audio_source(path: str):
     """
-    Create FFmpegOpusAudio source with LRU caching.
+    Create FFmpegOpusAudio source for playback.
     
-    Caches frequently replayed tracks to avoid repeated FFmpeg object construction.
-    Small cache size (10) balances memory usage with performance.
+    Creates a fresh audio source for each playback - audio sources are
+    single-use and cannot be reused after consumption.
     
     Args:
         path: Path to opus audio file
@@ -471,12 +493,16 @@ async def _flush_channel_saves():
     await asyncio.sleep(10)
     if not _pending_saves:
         return
+    
+    # Snapshot and clear to avoid RuntimeError from concurrent modifications
+    to_save = list(_pending_saves)
+    _pending_saves.clear()
+    
     data = load_last_channels()
-    for gid in _pending_saves:
+    for gid in to_save:
         data[gid] = _channel_cache[gid]
     with open(CHANNEL_STORAGE_FILE, 'w') as f:
         json.dump(data, f, indent=2)
-    _pending_saves.clear()
 
 # =============================================================================
 # TRACK CLASS
@@ -522,14 +548,13 @@ class Track:
         
         Removes:
             - Leading numbers and dash ("01 - ")
-            - File extension (".opus")
+            - File extension (case-insensitive)
             
         Example:
             "01 - Hopes and Dreams.opus" → "Hopes and Dreams"
         """
-        name = self.opus_path.name
+        name = self.opus_path.stem  # Filename without extension (case-insensitive)
         name = Track._prefix_re.sub('', name)  # Remove "01 - " using precompiled regex
-        name = name.replace('.opus', '')         # Remove extension
         return name
     
     def __eq__(self, other) -> bool:
@@ -631,7 +656,7 @@ class MusicPlayer:
         self.voice_client: Optional[disnake.VoiceClient] = None  # Discord voice connection
         self.text_channel: Optional[disnake.TextChannel] = None  # Where to send messages
         
-        # Channel loading is now done asynchronously after bot is ready
+        # Channel loading is done asynchronously after bot is ready
         # to prevent race conditions during startup
         
         # =====================================================================
@@ -703,7 +728,7 @@ class MusicPlayer:
         self._last_now_playing_msg: Optional[disnake.Message] = None  # Track to delete early
         self._last_history_cleanup: float = 0  # Last time we did full history cleanup
         self._last_spam_warning_time: float = 0  # Last time we sent a spam warning message
-        self._last_presence_update: float = 0  # Presence update cooldown tracking
+        # Note: Presence update throttling is global (see update_presence function)
         
     # =========================================================================
     # COMMAND QUEUE PROCESSOR
@@ -736,8 +761,10 @@ class MusicPlayer:
         while True:
             try:
                 cmd = await self._command_queue.get()
-                await cmd()  # Execute the command
-                self._command_queue.task_done()
+                try:
+                    await cmd()  # Execute the command
+                finally:
+                    self._command_queue.task_done()
             except Exception as e:
                 logger.error(f"Guild {self.guild_id}: Command processor error: {e}", exc_info=True)
     
@@ -785,7 +812,7 @@ class MusicPlayer:
         Prevents a single user from flooding the bot with any commands,
         which would spam error messages and waste resources.
         
-        Now with sass! Shows warning message after multiple spam attempts.
+        Shows warning message after multiple spam attempts.
         
         Args:
             user_id: Discord user ID
@@ -797,7 +824,7 @@ class MusicPlayer:
             
         Threshold:
             0.7 seconds between ANY commands from the same user
-            3+ spam attempts = you get the sass (ONCE, then stays quiet)
+            3+ spam attempts = you get a warning (ONCE, then stays quiet)
         """
         current_time = time.time()
         last_time = self._user_last_command.get(user_id, 0)
@@ -807,8 +834,8 @@ class MusicPlayer:
             self._user_spam_count[user_id] = self._user_spam_count.get(user_id, 0) + 1
             
             # Show spam warning message after exactly USER_SPAM_WARNING_THRESHOLD rapid fire attempts (but only ONCE until cooldown expires)
-            if self._user_spam_count[user_id] == USER_SPAM_WARNING_THRESHOLD:  # Changed from >= to == so it only fires ONCE
-                # Send command-specific sass if we have a message for it
+            if self._user_spam_count[user_id] == USER_SPAM_WARNING_THRESHOLD:  # Uses == so it only fires ONCE
+                # Send command-specific warning if we have a message for it
                 if SPAM_WARNING_ENABLED:
                     spam_key = f'spam_{command_name}'
                     if spam_key in MESSAGES and MESSAGES[spam_key]:
@@ -1011,8 +1038,11 @@ class MusicPlayer:
         while True:
             try:
                 # Event-driven wake optimization: wait for new messages or timeout
-                await asyncio.wait_for(self._cleanup_event.wait(), timeout=TTL_CHECK_INTERVAL)
-                self._cleanup_event.clear()
+                try:
+                    await asyncio.wait_for(self._cleanup_event.wait(), timeout=TTL_CHECK_INTERVAL)
+                    self._cleanup_event.clear()
+                except asyncio.TimeoutError:
+                    pass  # Normal tick - no new messages, proceed with routine cleanup
                 
                 current_time = time.time()
                 
@@ -1034,20 +1064,19 @@ class MusicPlayer:
                     messages_to_delete = []
                     remaining_messages = []
                     
-                    # OPTIMIZATION: Since queue is sorted by delete_time, we can stop early
-                    # when we find the first non-expired message
-                    for i, (msg, delete_time) in enumerate(self._message_cleanup_queue):
+                    # Process all messages: delete expired (unless protected), keep the rest
+                    for msg, delete_time in self._message_cleanup_queue:
                         if current_time >= delete_time:
                             # CRITICAL: Don't delete current "now serving" message if music is playing
                             if msg == self._last_now_playing_msg and self.voice_client and self.voice_client.is_playing():
-                                continue  # Skip deletion - music is still playing
+                                remaining_messages.append((msg, delete_time))  # Keep protected message in queue
+                                continue
                             messages_to_delete.append(msg)
                         else:
-                            # Since queue is sorted, all remaining messages are not expired
-                            remaining_messages = self._message_cleanup_queue[i:]
-                            break
+                            # Not expired yet, keep in queue
+                            remaining_messages.append((msg, delete_time))
                     
-                    # Update queue (remove expired)
+                    # Update queue (remove deleted messages, keep skipped + non-expired)
                     self._message_cleanup_queue = remaining_messages
                     
                     # Delete expired messages in bulk batches to avoid rate limits
@@ -1067,9 +1096,10 @@ class MusicPlayer:
                                 for msg in batch:
                                     await safe_delete_message(msg)
                         else:
-                            # Batch delete disabled or single message - use individual delete
+                            # Batch delete disabled or single message - use sequential individual delete
                             for msg in batch:
                                 await safe_delete_message(msg)
+                                await asyncio.sleep(0.2)  # Rate limit protection: ~5 deletes/sec
                         
                         # Wait between batches (except for the last batch)
                         if i + batch_size < len(messages_to_delete):
@@ -1236,40 +1266,34 @@ class MusicPlayer:
             current_time = time.time()
             safe_age_threshold = CLEANUP_SAFE_AGE_THRESHOLD  # Configurable safe age threshold
             
-            # Use server-side filtering to reduce API work
+            # Use server-side filter to only fetch old messages
             cutoff_dt = datetime.utcnow() - timedelta(seconds=safe_age_threshold)
             
             # Track the most recent message from other bots (keep one visible)
             other_bot_messages = []
             
-            async for message in self.text_channel.history(limit=CLEANUP_HISTORY_LIMIT, after=cutoff_dt, oldest_first=False):
+            async for message in self.text_channel.history(limit=CLEANUP_HISTORY_LIMIT, before=cutoff_dt, oldest_first=False):
                 # Skip the current "now serving" message (keep it visible)
                 if message == self._last_now_playing_msg:
                     continue
                 
+                # All messages here are guaranteed old (fetched with before filter)
+                # Handle our bot's messages (use ID comparison for reliability)
+                if message.author and message.author.id == bot.user.id:
+                    messages_to_delete.append(message)
                 
-                message_age = current_time - message.created_at.timestamp()
+                # Handle other bots' messages
+                elif DELETE_OTHER_BOTS and message.author.bot:
+                    other_bot_messages.append(message)
                 
-                # Only delete messages older than safe threshold
-                if message_age > safe_age_threshold:
-                    # Handle our bot's messages (use ID comparison for reliability)
-                    if message.author and message.author.id == bot.user.id:
-                        messages_to_delete.append(message)
-                    
-                    # Handle other bots' messages
-                    elif DELETE_OTHER_BOTS and message.author.bot:
-                        other_bot_messages.append((message, message_age))
-                    
-                    # Handle user commands
-                    elif message.content.startswith('!') and len(message.content) <= USER_COMMAND_MAX_LENGTH:
-                        messages_to_delete.append(message)
+                # Handle user commands
+                elif message.content.startswith('!') and len(message.content) <= USER_COMMAND_MAX_LENGTH:
+                    messages_to_delete.append(message)
             
             # For other bots: keep the most recent message, delete older ones
             if other_bot_messages:
-                # Sort by age (newest first)
-                other_bot_messages.sort(key=lambda x: x[1])
-                # Keep the newest, delete the rest
-                for message, age in other_bot_messages[1:]:
+                # Keep the first message (newest due to oldest_first=False), delete the rest
+                for message in other_bot_messages[1:]:
                     messages_to_delete.append(message)
             
             # Delete them in bulk batches to avoid rate limits
@@ -1287,13 +1311,17 @@ class MusicPlayer:
                         deleted_count += len(batch)
                     except Exception as e:
                         logger.debug("Guild %s: Bulk delete failed, falling back to individual: %s", self.guild_id, e)
-                        # Fallback to parallel individual deletes
-                        results = await asyncio.gather(*(safe_delete_message(msg) for msg in batch), return_exceptions=True)
-                        deleted_count += sum(1 for result in results if result is True)
+                        # Fallback to sequential individual deletes
+                        for msg in batch:
+                            if await safe_delete_message(msg):
+                                deleted_count += 1
+                            await asyncio.sleep(0.2)  # Rate limit protection: ~5 deletes/sec
                 else:
-                    # Batch delete disabled or single message - use parallel individual delete
-                    results = await asyncio.gather(*(safe_delete_message(msg) for msg in batch), return_exceptions=True)
-                    deleted_count += sum(1 for result in results if result is True)
+                    # Batch delete disabled or single message - use sequential individual delete
+                    for msg in batch:
+                        if await safe_delete_message(msg):
+                            deleted_count += 1
+                        await asyncio.sleep(0.2)  # Rate limit protection: ~5 deletes/sec
                 
                 # Wait between batches (except for the last batch)
                 if i + batch_size < len(messages_to_delete):
@@ -1493,7 +1521,7 @@ class MusicPlayer:
             logger.warning(f"Music folder not found: {MUSIC_FOLDER}")
             return []
         
-        files = [f for f in music_path.glob("*.opus") if f.is_file()]
+        files = [f for f in music_path.glob("*") if f.is_file() and f.suffix.lower() == '.opus']
         if not files:
             logger.warning(f"No .opus files found in {MUSIC_FOLDER}")
             return []
@@ -1502,7 +1530,12 @@ class MusicPlayer:
             """Extract leading number from filename for sorting."""
             filename = filepath.name
             match = re.match(r'^(\d+)', filename)
-            return int(match.group(1)) if match else 0
+            if match:
+                return int(match.group(1))
+            else:
+                # Unnumbered files sort to end and trigger warning
+                logger.warning(f"Guild {self.guild_id}: File missing numeric prefix (will sort last): {filename}")
+                return 999999
         
         sorted_files = sorted(files, key=get_sort_key)
         self.library = [Track(filepath, idx) for idx, filepath in enumerate(sorted_files)]
@@ -1814,13 +1847,21 @@ async def get_player(guild_id: int) -> MusicPlayer:
         if guild_id in players:
             return players[guild_id]
         
-        players[guild_id] = MusicPlayer(guild_id)
-        players[guild_id].load_library()
-        players[guild_id].start_processor()
-        players[guild_id].start_cleanup_worker()
-        
-        # Start async channel loading after bot is ready
-        asyncio.create_task(players[guild_id]._load_last_channel_async())
+        # Build and initialize player atomically before adding to dict
+        try:
+            player = MusicPlayer(guild_id)
+            player.load_library()
+            player.start_processor()
+            player.start_cleanup_worker()
+            
+            # Only add to dict after successful initialization
+            players[guild_id] = player
+            
+            # Start async channel loading after bot is ready
+            asyncio.create_task(player._load_last_channel_async())
+        except Exception as e:
+            logger.error(f"Failed to initialize player for guild {guild_id}: {e}", exc_info=True)
+            raise  # Re-raise so caller knows init failed
         
     return players[guild_id]
 
@@ -1903,7 +1944,8 @@ async def _play_current(guild_id: int) -> None:
         wait_increment = VOICE_CONNECTION_CHECK_INTERVAL  # Check voice connection every VOICE_CONNECTION_CHECK_INTERVAL seconds
         waited = 0
         while waited < max_wait:
-            await asyncio.sleep(wait_increment)
+            remaining = max_wait - waited
+            await asyncio.sleep(min(wait_increment, remaining))
             waited += wait_increment
             try:
                 vc = player.voice_client
@@ -2049,10 +2091,8 @@ async def _play_current(guild_id: int) -> None:
             )
             player._last_now_playing_msg = msg
         
-        # Update bot presence status with cooldown
-        if time.time() - player._last_presence_update > 10:
-            await update_presence(track.display_name)
-            player._last_presence_update = time.time()
+        # Update bot presence status (global throttling handled in update_presence)
+        await update_presence(track.display_name)
         
     except Exception as e:
         logger.error(f'Guild {guild_id} error in _play_current: {e}', exc_info=True)
@@ -2433,22 +2473,32 @@ async def on_ready():
     - Starts alone watchdog (auto-pause feature)
     - Libraries are loaded on-demand when guilds use the bot
     """
+    global _playback_watchdog_task, _alone_watchdog_task
     logger.info(f'Bot connected as {bot.user}')
-    bot.loop.create_task(playback_watchdog())
-    bot.loop.create_task(alone_watchdog())
+    _playback_watchdog_task = bot.loop.create_task(playback_watchdog())
+    _alone_watchdog_task = bot.loop.create_task(alone_watchdog())
 
 @bot.event
 async def on_disconnect():
     """
     Called when bot disconnects from Discord (shutdown or network loss).
     
-    Clean up all voice connections gracefully.
+    Clean up all voice connections and background tasks gracefully.
     
     Side effects:
+    - Cancels watchdog tasks
     - Disconnects from all voice channels
     - Clears bot presence
     """
+    global _playback_watchdog_task, _alone_watchdog_task
     logger.info("Bot disconnecting, cleaning up")
+    
+    # Cancel watchdog tasks
+    if _playback_watchdog_task and not _playback_watchdog_task.done():
+        _playback_watchdog_task.cancel()
+    if _alone_watchdog_task and not _alone_watchdog_task.done():
+        _alone_watchdog_task.cancel()
+    
     # Use snapshot iteration to prevent crashes during concurrent modifications
     for player in list(players.values()):
         if player.voice_client:
@@ -2527,6 +2577,7 @@ async def on_guild_remove(guild: disnake.Guild):
                 handle.cancel()
             elif hasattr(handle, 'cancel'):
                 handle.cancel()
+        player._debounce_tasks.clear()
         
         # Remove player from dict to free memory (thread-safe)
         async with players_lock:
@@ -2615,7 +2666,7 @@ async def _execute_queue(ctx: commands.Context) -> None:
     player = await get_player(ctx.guild.id)
     
     if not player.now_playing:
-        await player.send_with_ttl(player.text_channel, MESSAGES['nothing_playing'], 'error', ctx.message)
+        await player.send_with_ttl(player.text_channel or ctx.channel, MESSAGES['nothing_playing'], 'error', ctx.message)
         return
     
     # Build queue display
@@ -2637,7 +2688,7 @@ async def _execute_queue(ctx: commands.Context) -> None:
     if not upcoming_list:
         lines.append(MESSAGES['queue_will_loop'])
     
-    await player.send_with_ttl(player.text_channel, "\n".join(lines), 'queue', ctx.message)
+    await player.send_with_ttl(player.text_channel or ctx.channel, "\n".join(lines), 'queue', ctx.message)
 
 @commands.guild_only()
 @bot.command(aliases=COMMAND_ALIASES['library'])
@@ -2692,7 +2743,7 @@ async def _execute_library(ctx: commands.Context, page: int) -> None:
     player = await get_player(ctx.guild.id)
     
     if not player.library:
-        await player.send_with_ttl(player.text_channel, MESSAGES['error_no_tracks'], 'error', ctx.message)
+        await player.send_with_ttl(player.text_channel or ctx.channel, MESSAGES['error_no_tracks'], 'error', ctx.message)
         return
     
     # Pagination (uses LIBRARY_PAGE_SIZE from config/features.py)
@@ -2733,7 +2784,7 @@ async def _execute_library(ctx: commands.Context, page: int) -> None:
     else:
         lines.append(MESSAGES['library_normal_help'])
     
-    await player.send_with_ttl(player.text_channel, "\n".join(lines), 'library', ctx.message)
+    await player.send_with_ttl(player.text_channel or ctx.channel, "\n".join(lines), 'library', ctx.message)
 
 @commands.guild_only()
 @bot.command(aliases=COMMAND_ALIASES['play'])
@@ -2780,10 +2831,10 @@ async def play(ctx: commands.Context, track_number: Optional[int] = None):
             command_name="play_jump",
             ctx=ctx,
             execute_func=lambda: _execute_play_jump(ctx, track_number),
-            debounce_window=PAUSE_DEBOUNCE_WINDOW,
-            cooldown=PAUSE_COOLDOWN,
-            spam_threshold=PAUSE_SPAM_THRESHOLD,
-            spam_message=None  # Layer 0 now shows the sass
+            debounce_window=PLAY_JUMP_DEBOUNCE_WINDOW,
+            cooldown=PLAY_JUMP_COOLDOWN,
+            spam_threshold=PLAY_JUMP_SPAM_THRESHOLD,
+            spam_message=None  # Layer 0 shows the warning
         )
         return
     
@@ -3042,7 +3093,7 @@ async def _execute_play_jump(ctx: commands.Context, track_number: int) -> None:
             return
     
     # Clear played history - jumping breaks the history chain
-    player.played = []
+    player.played.clear()
     
     # Set target as now_playing
     player.now_playing = target_track
@@ -3108,7 +3159,7 @@ async def pause(ctx: commands.Context):
         debounce_window=PAUSE_DEBOUNCE_WINDOW,
         cooldown=PAUSE_COOLDOWN,
         spam_threshold=PAUSE_SPAM_THRESHOLD,
-        spam_message=None  # Layer 0 now shows the sass
+        spam_message=None  # Layer 0 shows the warning
     )
 
 @commands.guild_only()
@@ -3131,7 +3182,7 @@ async def skip(ctx: commands.Context):
     """
     player = await get_player(ctx.guild.id)
     
-    # LAYER 0: User spam check (now with sass!)
+    # LAYER 0: User spam check (with warnings!)
     if await player.check_user_spam(ctx.author.id, "skip", ctx):
         return
     
@@ -3168,7 +3219,7 @@ async def skip(ctx: commands.Context):
         debounce_window=SKIP_DEBOUNCE_WINDOW,  # 2.5s to catch Discord's slow rate-limited spam
         cooldown=SKIP_COOLDOWN,
         spam_threshold=SKIP_SPAM_THRESHOLD,
-        spam_message=None  # Layer 0 now shows the sass, no need to show it twice
+        spam_message=None  # Layer 0 shows the warning, no need to show it twice
     )
 
 @commands.guild_only()
@@ -3216,7 +3267,7 @@ async def stop(ctx: commands.Context):
         debounce_window=STOP_DEBOUNCE_WINDOW,
         cooldown=STOP_COOLDOWN,
         spam_threshold=STOP_SPAM_THRESHOLD,
-        spam_message=None  # Layer 0 now shows the sass
+        spam_message=None  # Layer 0 shows the warning
     )
 
 @commands.guild_only()
@@ -3262,7 +3313,7 @@ async def previous(ctx: commands.Context):
         debounce_window=PREVIOUS_DEBOUNCE_WINDOW,  # Matches !skip - catches Discord's slow rate-limited spam perfectly
         cooldown=PREVIOUS_COOLDOWN,
         spam_threshold=PREVIOUS_SPAM_THRESHOLD,
-        spam_message=None  # Layer 0 now shows the sass
+        spam_message=None  # Layer 0 shows the warning
     )
 
 @commands.guild_only()
@@ -3309,7 +3360,7 @@ async def shuffle(ctx: commands.Context):
         debounce_window=SHUFFLE_DEBOUNCE_WINDOW,  # Increased from 2.0s to catch Discord's slow rate-limited spam
         cooldown=SHUFFLE_COOLDOWN,
         spam_threshold=SHUFFLE_SPAM_THRESHOLD,
-        spam_message=None  # Layer 0 now shows the sass
+        spam_message=None  # Layer 0 shows the warning
     )
 
 @commands.guild_only()
@@ -3353,7 +3404,7 @@ async def unshuffle(ctx: commands.Context):
         debounce_window=UNSHUFFLE_DEBOUNCE_WINDOW,  # Increased from 2.0s to match !shuffle
         cooldown=UNSHUFFLE_COOLDOWN,
         spam_threshold=UNSHUFFLE_SPAM_THRESHOLD,
-        spam_message=None  # Layer 0 now shows the sass
+        spam_message=None  # Layer 0 shows the warning
     )
 
 def generate_help_text() -> str:
@@ -3449,7 +3500,7 @@ async def _execute_help(ctx: commands.Context) -> None:
     """Internal: Execute help display (called after debounce completes)."""
     player = await get_player(ctx.guild.id)
     help_text = generate_help_text()
-    await player.send_with_ttl(player.text_channel, help_text, 'help', ctx.message)
+    await player.send_with_ttl(player.text_channel or ctx.channel, help_text, 'help', ctx.message)
 
 # =============================================================================
 # RUN BOT

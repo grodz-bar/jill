@@ -24,8 +24,36 @@ Core music playback functionality including track playing, callbacks, and queue 
 import asyncio
 import time
 import logging
+from dataclasses import dataclass, field
+from itertools import count
+from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+
+_SESSION_IDS = count(1)
+
+
+@dataclass(slots=True)
+class PlaybackSession:
+    """Immutable-style token that scopes callbacks to a specific play attempt.
+
+    Each playback session receives a unique ``id`` so asynchronous callbacks can
+    verify that they are still acting on the most recent request. The
+    ``track_id`` is stored for logging and sanity checks, while ``started_at``
+    captures diagnostic timing data for watchdog tooling. The ``cancelled``
+    flag is toggled when a newer session supersedes the current one, allowing
+    in-flight callbacks to bail out early without mutating shared state.
+    """
+
+    id: int = field(default_factory=lambda: next(_SESSION_IDS))
+    track_id: Optional[int] = None
+    started_at: float = field(default_factory=time.time)
+    cancelled: bool = False
+
+    def cancel(self) -> None:
+        """Mark the session as cancelled so callbacks know to exit early."""
+        self.cancelled = True
 
 # Import from config
 from config.timing import (
@@ -34,7 +62,6 @@ from config.timing import (
     CALLBACK_MIN_INTERVAL,
     VOICE_CONNECTION_MAX_WAIT,
     VOICE_CONNECTION_CHECK_INTERVAL,
-    MESSAGE_TTL,
 )
 from config.features import (
     SMART_MESSAGE_MANAGEMENT,
@@ -71,6 +98,9 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
     from core.player import get_player  # Import here to avoid circular
     player = await get_player(guild_id, bot, bot.user.id)
 
+    # Cancel any prior playback attempt before starting a new one
+    player.cancel_active_session()
+
     # Validate voice client
     if not player.voice_client or not player.voice_client.is_connected():
         logger.warning(f"Guild {guild_id}: _play_current called but not connected")
@@ -98,6 +128,10 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
         # Skip to next track
         await player.spam_protector.queue_command(lambda: _play_next(guild_id, bot, players))
         return
+
+    # Create a playback session token so stale callbacks can be ignored safely.
+    session = PlaybackSession(track_id=track.track_id)
+    player._playback_session = session
 
     # Stop current playback if any (suppress callback to prevent race condition)
     try:
@@ -174,6 +208,13 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
                 logger.debug(f"Guild {guild_id}: Skipping callback (suppressed)")
                 return
 
+            # Ignore callbacks from superseded sessions
+            if session.cancelled or player._playback_session is not session:
+                logger.debug(
+                    f"Guild {guild_id}: Ignoring callback from superseded playback session"
+                )
+                return
+
             # Only advance if this callback's track is still current
             if not player.now_playing or player.now_playing.track_id != callback_track_id:
                 logger.debug(f"Guild {guild_id}: Ignoring callback from old track")
@@ -192,6 +233,10 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
                 player.spam_protector.queue_command(lambda: _play_next(guild_id, bot, players)),
                 bot.loop
             )
+
+            if player._playback_session is session:
+                session.cancel()
+                player._playback_session = None
 
         # Start playback with callback
         player.voice_client.play(audio_source, after=after_track)
@@ -224,6 +269,8 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
         vc = player.voice_client
         if "Bad file descriptor" in str(e) or not (vc and vc.is_connected()):
             player.voice_client = None
+        if player._playback_session is session:
+            player.cancel_active_session()
     finally:
         player._suppress_callback = False
 

@@ -119,6 +119,8 @@ class MusicPlayer:
         # =====================================================================
         self._is_reconnecting: bool = False
         self._suppress_callback: bool = False
+        # Session token used by playback.py to discard superseded callbacks.
+        self._playback_session = None
 
         # Discover playlists and load library
         self._initialize_playlists()
@@ -306,9 +308,24 @@ class MusicPlayer:
 
     def reset_state(self):
         """Reset all playback state (called on disconnect)."""
+        self.cancel_active_session()
         self.state = PlaybackState.IDLE
         self.voice_client = None
         self.voice_manager.reset_alone_state()
+
+    def cancel_active_session(self):
+        """Invalidate the current playback session token.
+
+        Playback sessions are created by :func:`core.playback._play_current` and
+        attached to the player before audio starts streaming. Any manual stop,
+        disconnect, or playlist switch must cancel that session so that
+        lingering callbacks from the old stream safely exit without mutating
+        queue state.
+        """
+        session = getattr(self, "_playback_session", None)
+        if session and hasattr(session, "cancel"):
+            session.cancel()
+        self._playback_session = None
 
     def set_text_channel(self, channel: disnake.TextChannel):
         """
@@ -459,6 +476,7 @@ class MusicPlayer:
         if voice_client and voice_client.is_connected():
             try:
                 if voice_client.is_playing() or voice_client.is_paused():
+                    self.cancel_active_session()
                     voice_client.stop()
             except Exception as e:
                 logger.debug(f"Guild {self.guild_id}: Could not stop playback during playlist switch: {e}")

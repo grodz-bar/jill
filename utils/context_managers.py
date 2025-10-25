@@ -37,10 +37,16 @@ def suppress_callbacks(player: Any):
 
     This prevents race conditions when manually changing tracks. The callback
     will be blocked from triggering play_next(), preventing double-playback.
+    The context manager also invalidates the active playback session so that
+    any in-flight callbacks for the previous stream exit early.
 
     Args:
         player: MusicPlayer instance with _suppress_callback attribute
     """
+    cancel_session = getattr(player, "cancel_active_session", None)
+    if callable(cancel_session):
+        cancel_session()
+
     player._suppress_callback = True
     try:
         yield

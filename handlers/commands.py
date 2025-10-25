@@ -65,6 +65,7 @@ from config.features import (
 from config.messages import MESSAGES, HELP_TEXT
 from utils.discord_helpers import can_connect_to_channel, safe_disconnect, update_presence
 from systems.voice_manager import PlaybackState
+from utils.context_managers import suppress_callbacks
 
 
 def setup(bot):
@@ -337,7 +338,11 @@ def setup(bot):
             if state == PlaybackState.PLAYING:
                 player.voice_client.pause()
                 await asyncio.sleep(0.02)
-            player.voice_client.stop()
+            with suppress_callbacks(player):
+                player.voice_client.stop()
+            await player.spam_protector.queue_command(
+                lambda: _play_next(ctx.guild.id, bot, players)
+            )
             await player.cleanup_manager.schedule_message_deletion(ctx.message, USER_COMMAND_TTL)
 
     @bot.command(name='stop', aliases=COMMAND_ALIASES['stop'])

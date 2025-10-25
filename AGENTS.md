@@ -25,6 +25,27 @@ Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.1
 - `utils/persistence.py` — channel storage, playlist persistence
 - `utils/context_managers.py` — suppress_callbacks, reconnecting_state
 
+## Command Structure
+
+**Context-Aware Commands** (do different things based on arguments):
+- `!tracks` → show tracks in current playlist
+- `!tracks [name/number]` → switch to different playlist
+- `!play` → start/resume playback
+- `!play [number/name]` → jump to specific track
+- `!shuffle` → toggle shuffle mode on/off
+
+**View Commands:**
+- `!queue` → show now playing + upcoming tracks
+- `!playlists` → show all available playlists
+
+**Control Commands:**
+- `!pause`, `!skip`, `!stop`, `!previous` → playback controls
+
+**Aliases:**
+- All base commands have aliases in `config/aliases.py`
+- Example: `!playlist`, `!library`, `!album` all map to `!tracks`
+- Users can customize aliases without touching command implementations
+
 ## Critical Rules (DO NOT BREAK)
 
 **Never merge/disable dual cleanup systems:**

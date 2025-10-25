@@ -1,3 +1,6 @@
+# Part of Jill - Licensed under GPL 3.0
+# See LICENSE.md for details
+
 """
 File Paths and Directory Settings
 

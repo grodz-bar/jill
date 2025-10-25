@@ -1,3 +1,20 @@
+# Copyright (C) 2025 grodz-bar
+#
+# This file is part of Jill.
+#
+# Jill is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 """
 Discord API Helper Functions
 
@@ -12,9 +29,34 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+# Import config
+from config.features import BOT_STATUS
+
 # Global presence state (bot-wide, not per-guild)
 _last_presence_update: float = 0
 _current_presence_text: Optional[str] = None
+
+
+def _get_status_enum() -> disnake.Status:
+    """
+    Convert BOT_STATUS config string to disnake.Status enum.
+
+    Returns:
+        disnake.Status: Status enum, defaults to DND if invalid
+    """
+    status_map = {
+        'online': disnake.Status.online,
+        'dnd': disnake.Status.dnd,
+        'idle': disnake.Status.idle,
+        'invisible': disnake.Status.invisible,
+    }
+
+    status = status_map.get(BOT_STATUS.lower(), disnake.Status.dnd)
+
+    if BOT_STATUS.lower() not in status_map:
+        logger.warning(f"Invalid BOT_STATUS '{BOT_STATUS}', defaulting to 'dnd'")
+
+    return status
 
 
 async def safe_disconnect(voice_client: Optional[disnake.VoiceClient], force: bool = True) -> bool:
@@ -96,6 +138,7 @@ async def update_presence(bot, status_text: Optional[str]) -> bool:
     Update bot's Discord presence (status shown under bot name).
 
     Global throttling and deduplication to avoid spammy API calls.
+    Uses BOT_STATUS from config/features.py for status indicator color.
 
     Args:
         bot: Discord bot instance
@@ -116,13 +159,19 @@ async def update_presence(bot, status_text: Optional[str]) -> bool:
         return True
 
     try:
+        # Get configured status (online/dnd/idle/invisible)
+        status = _get_status_enum()
+
         if status_text:
-            await bot.change_presence(activity=disnake.Activity(
-                type=disnake.ActivityType.listening,
-                name=status_text
-            ))
+            await bot.change_presence(
+                activity=disnake.Activity(
+                    type=disnake.ActivityType.listening,
+                    name=status_text
+                ),
+                status=status
+            )
         else:
-            await bot.change_presence(activity=None)
+            await bot.change_presence(activity=None, status=status)
 
         _last_presence_update = current_time
         _current_presence_text = status_text

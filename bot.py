@@ -1,7 +1,24 @@
+# Copyright (C) 2025 grodz-bar
+#
+# This file is part of Jill.
+#
+# Jill is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 """
-VA-11 Hall-A Discord Music Bot - Refactored Architecture
+jill Discord Music Bot
 ========================================================
-VERSION: 1.0.0 - Modular architecture with composition pattern
+VERSION: 1.0.1
 ========================================================
 
 A Discord music bot built with clean, modular architecture.
@@ -53,6 +70,7 @@ bot = commands.Bot(
 from core.player import get_player, players
 from systems.watchdog import playback_watchdog, alone_watchdog
 from utils.discord_helpers import safe_disconnect, update_presence
+from utils.persistence import load_last_channels
 
 # Global watchdog tasks
 _playback_watchdog_task = None
@@ -68,6 +86,35 @@ async def on_ready():
     global _playback_watchdog_task, _alone_watchdog_task
 
     logger.info(f'Bot connected as {bot.user}')
+    logger.info('Jill v1.0.0 - Copyright (C) 2025 grodz-bar')
+    logger.info('Licensed under GPL 3.0 - See LICENSE.md for details')
+
+    # Restore players for guilds with saved channels
+    # This ensures cleanup workers resume automatically on restart
+    saved_channels = load_last_channels()
+    for guild_id, channel_id in saved_channels.items():
+        try:
+            # Get the guild
+            guild = bot.get_guild(guild_id)
+            if not guild:
+                logger.debug(f"Guild {guild_id} not found (bot may have been removed)")
+                continue
+
+            # Get the text channel
+            text_channel = guild.get_channel(channel_id)
+            if not text_channel:
+                logger.debug(f"Guild {guild_id}: Saved channel {channel_id} no longer exists")
+                continue
+
+            # Create/restore player (this starts cleanup workers automatically)
+            player = await get_player(guild_id, bot, bot.user.id)
+            player.text_channel = text_channel
+            player.cleanup_manager.text_channel = text_channel
+
+            logger.info(f"Guild {guild_id}: Restored cleanup on channel #{text_channel.name}")
+
+        except Exception as e:
+            logger.warning(f"Guild {guild_id}: Failed to restore player: {e}")
 
     # Start watchdogs
     _playback_watchdog_task = bot.loop.create_task(playback_watchdog(bot, players))

@@ -1,3 +1,6 @@
+# Part of Jill - Licensed under GPL 3.0
+# See LICENSE.md for details
+
 """
 =========================================================================================================================
 Bot Messages - All text responses
@@ -63,10 +66,10 @@ MESSAGES = {
     'error_not_playing': "😒 I'm not even playing anything.",
     'error_already_playing': "🙄 It's already playing?",
     'error_no_tracks': "🎵 No tracks in the jukebox!",
-    'error_fight_me': "😤 Fight me.",
+    'error_fight_me': "👺 Fight me.",
     'error_cant_connect': "❌ Can't join that channel: {error}",
     'error_invalid_track': "❌ Track #{number} doesn't exist. Library has {total} tracks.",
-    'error_track_not_found': "❌ Couldn't find a track matching '{query}'. Try !library to see all tracks.",
+    'error_track_not_found': "❌ Couldn't find a track matching '{query}'. Try !tracks to see all tracks.",
     
     # ===================================================================================================================
     # FEATURE DISABLED - Messages for disabled features
@@ -74,7 +77,8 @@ MESSAGES = {
     'feature_shuffle_disabled': "🔒 Shuffle is currently disabled.",
     'feature_queue_disabled': "🔒 Queue display is currently disabled.",
     'feature_library_disabled': "🔒 Library display is currently disabled.",
-    
+    'feature_playlists_disabled': "🔒 Playlist switching is currently disabled.",
+
     # ===================================================================================================================
     # PLAYBACK - Music playback and control messages
     # ===================================================================================================================
@@ -111,31 +115,36 @@ MESSAGES = {
     'spam_pause': '😑 Alright, alright, I\'ll pause. Chill.',
     'spam_stop': '😑 Yeah yeah, I\'m leaving. Give me a second.',
     'spam_previous': '😑 Going back, going back...',
-    'spam_shuffle': '😵‍💫 Shuffle, unshuffle, make up your mind!',
-    'spam_unshuffle': '😑 Okay, okay, organizing...',
+    'spam_shuffle': '😵‍💫 Shuffle on, shuffle off, make up your mind!',
     'spam_play_jump': '😵‍💫 Hold on, let me find that track...',
+    'spam_tracks': '😑 Alright, alright, here it is...',
     
     # ===================================================================================================================
-    # LIBRARY - Music library and playlist messages
+    # TRACKS - Track list and playlist management messages
     # ===================================================================================================================
-    'library_header': '**🎵 Library (Page {page}/{total_pages})**\n',
-    'library_next_page': '\nUse `!list {next_page}` for next page.',
+    'tracks_header': '**🎵 Tracks (Page {page}/{total_pages})**\n',
+    'tracks_next_page': '\nUse `!tracks {next_page}` for next page.',
+    'tracks_shuffle_note': '\n🔀 **Shuffle is ON** - The list above shows unshuffled order.',
+    'tracks_shuffle_help': 'Use `!play [number or name]` to jump to a track | Use `!queue` to see shuffled playback order.',
+    'tracks_normal_help': 'Use `!play [number or name]` to jump to a track.',
+    # Backwards compatibility aliases
+    'library_header': '**🎵 Tracks (Page {page}/{total_pages})**\n',
+    'library_next_page': '\nUse `!tracks {next_page}` for next page.',
     'library_shuffle_note': '\n🔀 **Shuffle is ON** - The list above shows unshuffled order.',
-    'library_shuffle_help': 'Use `!play [number]` to jump to a track | Use `!queue` to see shuffled playback order.',
-    'library_normal_help': 'Use `!play [number]` to jump to a track.',
+    'library_shuffle_help': 'Use `!play [number or name]` to jump to a track | Use `!queue` to see shuffled playback order.',
+    'library_normal_help': 'Use `!play [number or name]` to jump to a track.',
 
     # ===================================================================================================================
     # PLAYLISTS - Playlist browsing and switching messages
     # ===================================================================================================================
     'playlists_header': '**🎵 Playlists (Page {page}/{total_pages})**\n',
     'playlists_next_page': '\nUse `!playlists {next_page}` for next page.',
-    'playlists_help': '\nUse `!playlist [number or name]` to switch playlists.',
+    'playlists_help': '\nUse `!tracks [number or name]` to switch playlists.',
     'playlist_switched': '✅ {message}',
     'error_playlist_not_found': '❌ Couldn\'t find playlist \'{query}\'. Try `!playlists` to see all available.',
     'error_playlist_already_active': '😑 Already using that playlist.',
     'error_no_playlists': '❌ No playlists found. Music must be in subfolders.',
     'spam_playlists': '😑 Yeah, yeah, here\'s the list again...',
-    'spam_switch_playlist': '😵‍💫 Hold on, let me switch playlists...',
         }
 
 # =======================================================================================================================
@@ -171,21 +180,20 @@ HELP_TEXT = {
         '`!queue` / `!q` / `!song` / `!name` / `!playing` - Show song queue'
     ],
     
-    # Library section (only shows if LIBRARY_DISPLAY_ENABLED = True)
-    'library_commands': [
-        '`!list [page]` / `!all [page]` - Show entire song list'
+    # Tracks section (only shows if LIBRARY_DISPLAY_ENABLED = True)
+    'tracks_commands': [
+        '`!tracks` / `!playlist` / `!library` - Show tracks in current playlist',
+        '`!tracks [name/number]` / `!playlist [name/number]` - Switch to different playlist'
     ],
 
-    # Playlist section (only shows if has_playlist_structure() = True)
+    # Playlists section (only shows if has_playlist_structure() = True)
     'playlist_commands': [
-        '`!playlists [page]` / `!albums [page]` - Show all playlists',
-        '`!playlist [name/number]` / `!album [name/number]` - Switch playlist'
+        '`!playlists` / `!albums` - Show all available playlists'
     ],
 
     # Shuffle section (only shows if SHUFFLE_MODE_ENABLED = True)
     'shuffle_commands': [
-        '`!shuffle` / `!mess` / `!scramble` - Toggle shuffle on/off',
-        '`!unshuffle` / `!fix` / `!organize` - Turn shuffle off'
+        '`!shuffle` / `!mess` - Toggle shuffle on/off'
     ],
     
     # Info section (always shown)

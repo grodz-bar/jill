@@ -1,3 +1,6 @@
+# Part of Jill - Licensed under GPL 3.0
+# See LICENSE.md for details
+
 """
 Feature Toggles
 
@@ -22,14 +25,15 @@ QUICK GUIDE:
 # SCHEDULED CLEANUP (TTL-based): Messages get "expiration dates" and are deleted when time is up
 # CHANNEL SWEEP (History scan): Scans channel history periodically + when spam detected and smartly
 # cleans up left over bot messages and left over user commands (!play, !queue, etc)
-# 
+#
 # Why both? SCHEDULED CLEANUP is fast for known messages, CHANNEL SWEEP catches missed ones.
 # Together they ensure a clean chat with redundancy.
 #
-# IMPORTANT: Both cleanup systems work in the text channel where you first used !play.
-# Cleanup features activate after the first !play command. The bot automatically remembers 
-# which channel to clean up and restores it after restart. Channel data is stored in 
-# last_channels.json and managed transparently.
+# CHANNEL PERSISTENCE:
+# The bot remembers which text channel to clean up per server. Any command (not just !play)
+# updates the active channel. On bot restart, cleanup workers automatically resume on the
+# saved channels - no command needed! Channel data is stored in last_channels.json and
+# managed transparently.
 
 DELETE_OTHER_BOTS = False          # Delete other bots' messages as well during cleanup
                                    # False = only delete jill's messages (and user !commands)
@@ -79,8 +83,8 @@ AUTO_DISCONNECT_ENABLED = True     # Auto-disconnect when alone too long (defaul
 
 # NOTE: Disabled features won't show up in the !help menu to prevent confusion.
 
-SHUFFLE_MODE_ENABLED = True        # Enable !shuffle and !unshuffle commands
-                                   # False = commands return "feature disabled"
+SHUFFLE_MODE_ENABLED = True        # Enable !shuffle command (toggles shuffle mode)
+                                   # False = command returns "feature disabled"
 
 QUEUE_DISPLAY_ENABLED = True       # Enable !queue command (shows upcoming tracks)
                                    # False = command returns "feature disabled"
@@ -88,11 +92,15 @@ QUEUE_DISPLAY_ENABLED = True       # Enable !queue command (shows upcoming track
 QUEUE_DISPLAY_COUNT = 3            # Number of upcoming tracks to show in !queue
                                    # Higher = more tracks shown (longer messages)
 
-LIBRARY_DISPLAY_ENABLED = True     # Enable !library command (shows all tracks)
+LIBRARY_DISPLAY_ENABLED = True     # Enable !tracks command (shows all tracks in current playlist)
                                    # False = command returns "feature disabled"
 
-LIBRARY_PAGE_SIZE = 20             # Number of tracks per page in !library
+LIBRARY_PAGE_SIZE = 20             # Number of tracks per page in !tracks
                                    # Higher = more tracks per page (longer messages)
+
+PLAYLIST_SWITCHING_ENABLED = True  # Enable !playlists and !tracks [name] commands (multi-playlist mode)
+                                   # False = commands return "feature disabled"
+                                   # Note: Only works if you have playlists (music in subfolders)
 
 PLAYLIST_PAGE_SIZE = 20            # Number of playlists per page in !playlists
                                    # Higher = more playlists per page (longer messages)
@@ -109,6 +117,15 @@ BATCH_DELETE_ENABLED = True        # Delete messages in batches (faster cleanup)
 
 VOICE_RECONNECT_ENABLED = True     # Auto-reconnect on voice errors
                                    # False = manual reconnection required
+
+# =========================================================================================================
+# BOT APPEARANCE
+# =========================================================================================================
+
+# Bot Status (online indicator color)
+# Options: 'online' (green), 'dnd' (red), 'idle' (yellow), 'invisible' (gray/offline)
+# Note: 'invisible' makes bot appear offline but still functional
+BOT_STATUS = 'dnd'                 # Default: 'dnd' (do not disturb - red status)
 
 # =========================================================================================================
 # FUTURE FEATURES (WIP)

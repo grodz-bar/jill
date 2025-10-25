@@ -1,3 +1,6 @@
+# Part of Jill - Licensed under GPL 3.0
+# See LICENSE.md for details
+
 """
 Command Aliases
 
@@ -36,11 +39,9 @@ COMMAND_ALIASES = {
     'skip': ['next', 'ns'],
     'stop': ['leave', 'disconnect', 'dc', 'bye'],
     'previous': ['prev', 'back', 'ps'],
-    'shuffle': ['mess', 'scramble'],
-    'unshuffle': ['fix', 'organize'],
-    'library': ['fullqueue', 'songs', 'list', 'allsongs', 'fq', 'all'],
+    'shuffle': ['mess', 'scramble', 'fix', 'organize'],
+    'tracks': ['playlist', 'album', 'library', 'songs', 'list', 'allsongs', 'fq', 'all', 'fullqueue', 'switch', 'useplaylist'],
     'playlists': ['libraries', 'albums', 'lists', 'collections'],
-    'switchplaylist': ['playlist', 'album', 'switch', 'useplaylist'],
     'help': ['commands', 'jill'],
 }
 

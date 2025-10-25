@@ -1,3 +1,20 @@
+# Copyright (C) 2025 grodz-bar
+#
+# This file is part of Jill.
+#
+# Jill is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 """
 Message Cleanup System
 
@@ -235,6 +252,13 @@ class CleanupManager:
             cutoff_dt = datetime.utcnow() - timedelta(seconds=CLEANUP_SAFE_AGE_THRESHOLD)
             other_bot_messages = []
 
+            # Build set of messages currently tracked by TTL system (with unexpired TTL)
+            current_time = time.time()
+            ttl_tracked_messages = {
+                msg for msg, delete_time in self._message_cleanup_queue
+                if delete_time > current_time  # Only unexpired messages
+            }
+
             # Scan recent history
             async for message in self.text_channel.history(
                 limit=CLEANUP_HISTORY_LIMIT,
@@ -243,6 +267,10 @@ class CleanupManager:
             ):
                 # Skip protected "now serving" message
                 if message == self._last_now_playing_msg:
+                    continue
+
+                # Skip messages with active TTLs (managed by TTL system)
+                if message in ttl_tracked_messages:
                     continue
 
                 # Bot's own messages

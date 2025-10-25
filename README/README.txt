@@ -15,17 +15,17 @@ QUICK START:
 
 
 BASIC COMMANDS:
-!play [track#]    - Start playing or jump to track
+!play             - Start or resume playback
+!play [track]     - Jump to track by number or name (e.g., !play 5 or !play undertale)
 !pause            - Pause playback
-!play             - Resume playback
-!stop             - Stop and reset queue
 !skip             - Skip to next track
 !previous         - Go to previous track
+!stop             - Stop and disconnect
 !queue            - Show current queue
-!list [page]      - Browse available tracks
-!shuffle          - Enable/disable shuffle mode
-!playlists        - Show all playlists (if using them)
-!playlist [name]  - Switch to a different playlist
+!tracks           - Show tracks in current playlist
+!tracks [name]    - Switch to different playlist (e.g., !tracks 02 or !tracks game ost)
+!playlists        - Show all available playlists
+!shuffle          - Toggle shuffle mode on/off
 !help             - Show help message
 
 
@@ -43,7 +43,7 @@ CONFIGURATION:
 All settings are in the /config/ folder. The most important files:
 - config/messages.py - Customize bot responses
 - config/features.py - Turn features on/off
-- config/timing.py   - Adjust cooldowns and timing
+- config/aliases.py  - Change command aliases
 
 
 NOTE: jill uses the amazing disnake API: https://docs.disnake.dev

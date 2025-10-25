@@ -1,3 +1,6 @@
+# Part of Jill - Licensed under GPL 3.0
+# See LICENSE.md for details
+
 """
 Timing Settings - All timing and cooldown configurations
 
@@ -44,7 +47,7 @@ TTL_CHECK_INTERVAL = 1.0           # Seconds between TTL expiry checks
 
 USER_COMMAND_TTL = 8.0             # Seconds before user command messages are deleted
                                    # LOWER = cleaner chat, HIGHER = users can see their commands longer
-                                   # Used for all user commands (!play, !skip, !library, etc.)
+                                   # Used for all user commands (!play, !skip, !tracks, etc.)
 
 MESSAGE_SETTLE_DELAY = 0.5         # Seconds to wait for new messages to settle
                                    # LOWER = faster responses, HIGHER = more stable
@@ -105,10 +108,11 @@ ALONE_DISCONNECT_DELAY = 600       # Seconds alone before auto-disconnect (10 mi
 MESSAGE_TTL = {
     'now_serving': 600,            # Current track info - protected while playing
     'pause': 10,                   # "Paused" message
-    'resume': 10,                  # "Resumed" message  
+    'resume': 10,                  # "Resumed" message
     'stop': 20,                    # "Stopped" message
     'queue': 30,                   # !queue command output
-    'library': 90,                 # !library command output (longer to read)
+    'tracks': 90,                  # !tracks command output (longer to read)
+    'library': 90,                 # Alias for 'tracks' (backwards compatibility)
     'help': 120,                   # !help command output (wall of text)
     'shuffle': 30,                 # Shuffle mode confirmation
     'error_quick': 10,             # Quick error messages
@@ -124,10 +128,11 @@ QUEUE_DEBOUNCE_WINDOW = 2.0        # Wait time for spam to stop (seconds)
 QUEUE_COOLDOWN = 1.0               # Cooldown after execution (seconds)
 QUEUE_SPAM_THRESHOLD = 5           # Times user can spam before warning
 
-# Library command debouncing
-LIBRARY_DEBOUNCE_WINDOW = 1.5      # Wait time for spam to stop (seconds)
-LIBRARY_COOLDOWN = 0.5             # Cooldown after execution (seconds)
-LIBRARY_SPAM_THRESHOLD = 5         # Times user can spam before warning
+# Tracks command debouncing (!tracks or !tracks <name> to switch)
+# This handles both showing tracks AND switching playlists
+TRACKS_DEBOUNCE_WINDOW = 2.0       # Wait time for spam to stop (seconds)
+TRACKS_COOLDOWN = 1.0              # Cooldown after execution (seconds)
+TRACKS_SPAM_THRESHOLD = 5          # Times user can spam before warning
 
 # Play jump command debouncing (!play [number])
 # Note: Normal !play (join/resume) doesn't use debouncing - only track jumping does
@@ -160,10 +165,7 @@ SHUFFLE_DEBOUNCE_WINDOW = 2.5      # Wait time for spam to stop (seconds)
 SHUFFLE_COOLDOWN = 2.0             # Cooldown after execution (seconds)
 SHUFFLE_SPAM_THRESHOLD = 5         # Times user can spam before warning
 
-# Unshuffle command debouncing
-UNSHUFFLE_DEBOUNCE_WINDOW = 2.5    # Wait time for spam to stop (seconds)
-UNSHUFFLE_COOLDOWN = 2.0           # Cooldown after execution (seconds)
-UNSHUFFLE_SPAM_THRESHOLD = 5       # Times user can spam before warning
+# Shuffle command now toggles (unshuffle removed)
 
 # Help command debouncing
 HELP_DEBOUNCE_WINDOW = 1.0         # Wait time for spam to stop (seconds)
@@ -175,10 +177,7 @@ PLAYLISTS_DEBOUNCE_WINDOW = 1.0    # Wait time for spam to stop (seconds)
 PLAYLISTS_COOLDOWN = 1.0           # Cooldown after execution (seconds)
 PLAYLISTS_SPAM_THRESHOLD = 4       # Times user can spam before warning
 
-# Switch playlist command debouncing
-SWITCH_PLAYLIST_DEBOUNCE_WINDOW = 2.5  # Wait time for spam to stop (seconds)
-SWITCH_PLAYLIST_COOLDOWN = 2.0     # Cooldown after execution (seconds)
-SWITCH_PLAYLIST_SPAM_THRESHOLD = 5 # Times user can spam before warning
+# Switch playlist command merged into 'tracks' command
 
 # =========================================================================================================
 # ADVANCED TIMING SETTINGS (Don't change unless you know what you're doing)

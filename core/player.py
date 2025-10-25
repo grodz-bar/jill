@@ -1,3 +1,20 @@
+# Copyright (C) 2025 grodz-bar
+#
+# This file is part of Jill.
+#
+# Jill is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 """
 Music Player - Per-Guild State Management
 
@@ -10,6 +27,7 @@ import itertools
 import random
 import logging
 from collections import deque
+from difflib import SequenceMatcher
 from typing import Optional, List, Dict
 import disnake
 
@@ -353,7 +371,7 @@ class MusicPlayer:
 
     def find_playlist_by_identifier(self, identifier: str) -> Optional[Playlist]:
         """
-        Find playlist by number or name (case-insensitive substring match).
+        Find playlist by number or name using fuzzy matching.
 
         Args:
             identifier: Either a number (1-based) or name substring
@@ -361,9 +379,16 @@ class MusicPlayer:
         Returns:
             Matching Playlist or None if not found
 
+        Matching Algorithm:
+            1. Try parsing as number (exact match)
+            2. Find all playlists containing the search term (case-insensitive)
+            3. Score each match by similarity ratio
+            4. Return best match (highest score, then first in list order)
+
         Examples:
             find_playlist_by_identifier("1") → First playlist
-            find_playlist_by_identifier("lofi") → Playlist with "lofi" in name
+            find_playlist_by_identifier("lo") → "Lo-Fi Beats" (best match)
+            find_playlist_by_identifier("game") → "Game OST" (first if multiple matches)
         """
         if not self.available_playlists:
             return None
@@ -376,13 +401,32 @@ class MusicPlayer:
         except ValueError:
             pass
 
-        # Try name matching (case-insensitive substring)
+        # Fuzzy name matching with similarity scoring
         identifier_lower = identifier.lower()
-        for playlist in self.available_playlists:
-            if identifier_lower in playlist.display_name.lower():
-                return playlist
+        matches = []
 
-        return None
+        # Find all playlists that contain the search term
+        for idx, playlist in enumerate(self.available_playlists):
+            playlist_name_lower = playlist.display_name.lower()
+            if identifier_lower in playlist_name_lower:
+                # Calculate similarity ratio (0.0 to 1.0)
+                similarity = SequenceMatcher(None, identifier_lower, playlist_name_lower).ratio()
+                matches.append((similarity, idx, playlist))
+
+        if not matches:
+            return None
+
+        # Sort by: similarity (descending), then list index (ascending)
+        # This ensures: best match first, ties broken by playlist order
+        matches.sort(key=lambda x: (-x[0], x[1]))
+
+        # Return the best match
+        best_match = matches[0]
+        logger.debug(
+            f"Guild {self.guild_id}: Fuzzy playlist match '{identifier}' → '{best_match[2].display_name}' "
+            f"(similarity: {best_match[0]:.2f})"
+        )
+        return best_match[2]
 
     async def switch_playlist(self, identifier: str, voice_client=None) -> Tuple[bool, str]:
         """

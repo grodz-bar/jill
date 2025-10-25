@@ -1,3 +1,20 @@
+# Copyright (C) 2025 grodz-bar
+#
+# This file is part of Jill.
+#
+# Jill is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 """
 All Bot Commands
 
@@ -10,6 +27,9 @@ COMMAND ALIASES, NOT THIS FILE!
 
 import asyncio
 import logging
+import random
+from collections import deque
+from difflib import SequenceMatcher
 from disnake.ext import commands
 
 logger = logging.getLogger(__name__)
@@ -26,11 +46,9 @@ from config.timing import (
     STOP_DEBOUNCE_WINDOW, STOP_COOLDOWN, STOP_SPAM_THRESHOLD,
     PREVIOUS_DEBOUNCE_WINDOW, PREVIOUS_COOLDOWN, PREVIOUS_SPAM_THRESHOLD,
     SHUFFLE_DEBOUNCE_WINDOW, SHUFFLE_COOLDOWN, SHUFFLE_SPAM_THRESHOLD,
-    UNSHUFFLE_DEBOUNCE_WINDOW, UNSHUFFLE_COOLDOWN, UNSHUFFLE_SPAM_THRESHOLD,
     QUEUE_DEBOUNCE_WINDOW, QUEUE_COOLDOWN, QUEUE_SPAM_THRESHOLD,
-    LIBRARY_DEBOUNCE_WINDOW, LIBRARY_COOLDOWN, LIBRARY_SPAM_THRESHOLD,
+    TRACKS_DEBOUNCE_WINDOW, TRACKS_COOLDOWN, TRACKS_SPAM_THRESHOLD,
     PLAYLISTS_DEBOUNCE_WINDOW, PLAYLISTS_COOLDOWN, PLAYLISTS_SPAM_THRESHOLD,
-    SWITCH_PLAYLIST_DEBOUNCE_WINDOW, SWITCH_PLAYLIST_COOLDOWN, SWITCH_PLAYLIST_SPAM_THRESHOLD,
     HELP_DEBOUNCE_WINDOW, HELP_COOLDOWN, HELP_SPAM_THRESHOLD,
     PLAY_JUMP_DEBOUNCE_WINDOW, PLAY_JUMP_COOLDOWN, PLAY_JUMP_SPAM_THRESHOLD,
     VOICE_CONNECT_DELAY, USER_COMMAND_TTL,
@@ -39,6 +57,7 @@ from config.features import (
     SHUFFLE_MODE_ENABLED,
     QUEUE_DISPLAY_ENABLED,
     LIBRARY_DISPLAY_ENABLED,
+    PLAYLIST_SWITCHING_ENABLED,
     QUEUE_DISPLAY_COUNT,
     LIBRARY_PAGE_SIZE,
     PLAYLIST_PAGE_SIZE,
@@ -57,7 +76,7 @@ def setup(bot):
 
     def resolve_track_identifier(player, identifier: str) -> Optional[int]:
         """
-        Resolve track identifier (number or name) to track index.
+        Resolve track identifier (number or name) to track index using fuzzy matching.
 
         Args:
             player: MusicPlayer instance
@@ -66,9 +85,16 @@ def setup(bot):
         Returns:
             Track index (0-based) or None if not found
 
+        Matching Algorithm:
+            1. Try parsing as number (exact match)
+            2. Find all tracks containing the search term (case-insensitive)
+            3. Score each match by similarity ratio
+            4. Return best match (highest score, then first in library order)
+
         Examples:
             resolve_track_identifier(player, "5") → 4 (track #5)
-            resolve_track_identifier(player, "undertale") → index of first match
+            resolve_track_identifier(player, "dawn") → index of "Dawn of" (best match)
+            resolve_track_identifier(player, "dawn of men") → index of "Dawn of Men 1" (first of equal matches)
         """
         # Try parsing as number (1-based index)
         try:
@@ -81,13 +107,32 @@ def setup(bot):
         except ValueError:
             pass
 
-        # Try name matching (case-insensitive substring)
+        # Fuzzy name matching with similarity scoring
         identifier_lower = identifier.lower()
-        for track in player.library:
-            if identifier_lower in track.display_name.lower():
-                return track.library_index
+        matches = []
 
-        return None
+        # Find all tracks that contain the search term
+        for track in player.library:
+            track_name_lower = track.display_name.lower()
+            if identifier_lower in track_name_lower:
+                # Calculate similarity ratio (0.0 to 1.0)
+                similarity = SequenceMatcher(None, identifier_lower, track_name_lower).ratio()
+                matches.append((similarity, track.library_index, track))
+
+        if not matches:
+            return None
+
+        # Sort by: similarity (descending), then library_index (ascending)
+        # This ensures: best match first, ties broken by playlist order
+        matches.sort(key=lambda x: (-x[0], x[1]))
+
+        # Return the best match
+        best_match = matches[0]
+        logger.debug(
+            f"Guild {player.guild_id}: Fuzzy match '{identifier}' → '{best_match[2].display_name}' "
+            f"(similarity: {best_match[0]:.2f})"
+        )
+        return best_match[1]
 
     # =========================================================================
     # PLAYBACK COMMANDS
@@ -402,10 +447,25 @@ def setup(bot):
         )
 
     async def _execute_shuffle(ctx, bot):
-        """Execute shuffle command."""
+        """Execute shuffle command (toggle)."""
         player = await get_player(ctx.guild.id, bot, bot.user.id)
 
+        # Toggle shuffle mode
         player.shuffle_enabled = not player.shuffle_enabled
+
+        # Apply shuffle/unshuffle to current queue immediately
+        if player.shuffle_enabled:
+            # Shuffle the upcoming queue
+            if player.upcoming:
+                upcoming_list = list(player.upcoming)
+                random.shuffle(upcoming_list)
+                player.upcoming = deque(upcoming_list)
+        else:
+            # Un-shuffle: sort upcoming queue back to library order
+            if player.upcoming:
+                upcoming_list = list(player.upcoming)
+                upcoming_list.sort(key=lambda track: track.library_index)
+                player.upcoming = deque(upcoming_list)
 
         msg_key = 'shuffle_on' if player.shuffle_enabled else 'shuffle_off'
         await player.cleanup_manager.send_with_ttl(
@@ -415,59 +475,8 @@ def setup(bot):
             ctx.message
         )
 
-    @bot.command(name='unshuffle', aliases=COMMAND_ALIASES['unshuffle'])
-    @commands.guild_only()
-    async def unshuffle_command(ctx):
-        """Disable shuffle mode."""
-        player = await get_player(ctx.guild.id, bot, bot.user.id)
-
-        if not SHUFFLE_MODE_ENABLED:
-            await player.cleanup_manager.send_with_ttl(
-                player.text_channel or ctx.channel,
-                MESSAGES['feature_shuffle_disabled'],
-                'error',
-                ctx.message
-            )
-            return
-
-        if await player.spam_protector.check_user_spam(ctx.author.id, "unshuffle"):
-            return
-
-        if player.spam_protector.check_global_rate_limit():
-            return
-
-        await player.spam_protector.debounce_command(
-            "unshuffle",
-            lambda: _execute_unshuffle(ctx, bot),
-            UNSHUFFLE_DEBOUNCE_WINDOW,
-            UNSHUFFLE_COOLDOWN,
-            UNSHUFFLE_SPAM_THRESHOLD,
-            MESSAGES.get('spam_unshuffle')
-        )
-
-    async def _execute_unshuffle(ctx, bot):
-        """Execute unshuffle command."""
-        player = await get_player(ctx.guild.id, bot, bot.user.id)
-
-        if not player.shuffle_enabled:
-            await player.cleanup_manager.send_with_ttl(
-                player.text_channel or ctx.channel,
-                MESSAGES['shuffle_already_off'],
-                'shuffle',
-                ctx.message
-            )
-            return
-
-        player.shuffle_enabled = False
-        await player.cleanup_manager.send_with_ttl(
-            player.text_channel or ctx.channel,
-            MESSAGES['unshuffle_organized'],
-            'shuffle',
-            ctx.message
-        )
-
     # =========================================================================
-    # QUEUE & LIBRARY COMMANDS
+    # QUEUE & TRACKS COMMANDS
     # =========================================================================
 
     @bot.command(name='queue', aliases=COMMAND_ALIASES['queue'])
@@ -533,38 +542,58 @@ def setup(bot):
             ctx.message
         )
 
-    @bot.command(name='library', aliases=COMMAND_ALIASES['library'])
+    @bot.command(name='tracks', aliases=COMMAND_ALIASES['tracks'])
     @commands.guild_only()
-    async def library_command(ctx, page: int = 1):
-        """Show library."""
+    async def tracks_command(ctx, *, identifier: str = None):
+        """Show tracks in current playlist OR switch to different playlist."""
         player = await get_player(ctx.guild.id, bot, bot.user.id)
 
-        if not LIBRARY_DISPLAY_ENABLED:
-            await player.cleanup_manager.send_with_ttl(
-                player.text_channel or ctx.channel,
-                MESSAGES['feature_library_disabled'],
-                'error',
-                ctx.message
-            )
-            return
-
-        if await player.spam_protector.check_user_spam(ctx.author.id, "library"):
+        if await player.spam_protector.check_user_spam(ctx.author.id, "tracks"):
             return
 
         if player.spam_protector.check_global_rate_limit():
             return
 
-        await player.spam_protector.debounce_command(
-            "library",
-            lambda: _execute_library(ctx, page, bot),
-            LIBRARY_DEBOUNCE_WINDOW,
-            LIBRARY_COOLDOWN,
-            LIBRARY_SPAM_THRESHOLD,
-            None
-        )
+        # If identifier provided, try to switch playlist (if playlists exist and feature enabled)
+        if identifier and has_playlist_structure() and PLAYLIST_SWITCHING_ENABLED:
+            await player.spam_protector.debounce_command(
+                "tracks",
+                lambda: _execute_tracks_switch(ctx, identifier, bot),
+                TRACKS_DEBOUNCE_WINDOW,
+                TRACKS_COOLDOWN,
+                TRACKS_SPAM_THRESHOLD,
+                MESSAGES.get('spam_tracks')
+            )
+        else:
+            # No identifier OR no playlist structure = show tracks
+            # Try parsing identifier as page number
+            page = 1
+            if identifier:
+                try:
+                    page = int(identifier)
+                except ValueError:
+                    pass  # Not a number, just show page 1
 
-    async def _execute_library(ctx, page: int, bot):
-        """Execute library command."""
+            if not LIBRARY_DISPLAY_ENABLED:
+                await player.cleanup_manager.send_with_ttl(
+                    player.text_channel or ctx.channel,
+                    MESSAGES['feature_library_disabled'],
+                    'error',
+                    ctx.message
+                )
+                return
+
+            await player.spam_protector.debounce_command(
+                "tracks",
+                lambda: _execute_tracks_show(ctx, page, bot),
+                TRACKS_DEBOUNCE_WINDOW,
+                TRACKS_COOLDOWN,
+                TRACKS_SPAM_THRESHOLD,
+                None
+            )
+
+    async def _execute_tracks_show(ctx, page: int, bot):
+        """Execute tracks command - show tracks in current playlist."""
         player = await get_player(ctx.guild.id, bot, bot.user.id)
 
         if not player.library:
@@ -583,25 +612,86 @@ def setup(bot):
         start = (page - 1) * page_size
         end = min(start + page_size, len(player.library))
 
-        msg = MESSAGES['library_header'].format(page=page, total_pages=total_pages)
+        msg = MESSAGES['tracks_header'].format(page=page, total_pages=total_pages)
         for track in player.library[start:end]:
             msg += f"{track.library_index + 1}. {track.display_name}\n"
 
         if page < total_pages:
-            msg += MESSAGES['library_next_page'].format(next_page=page + 1)
+            msg += MESSAGES['tracks_next_page'].format(next_page=page + 1)
 
         if player.shuffle_enabled:
-            msg += MESSAGES['library_shuffle_note']
-            msg += f"\n{MESSAGES['library_shuffle_help']}"
+            msg += MESSAGES['tracks_shuffle_note']
+            msg += f"\n{MESSAGES['tracks_shuffle_help']}"
         else:
-            msg += f"\n{MESSAGES['library_normal_help']}"
+            msg += f"\n{MESSAGES['tracks_normal_help']}"
 
         await player.cleanup_manager.send_with_ttl(
             player.text_channel or ctx.channel,
             msg,
-            'library',
+            'tracks',
             ctx.message
         )
+
+    async def _execute_tracks_switch(ctx, identifier: str, bot):
+        """Execute tracks command - switch to different playlist."""
+        player = await get_player(ctx.guild.id, bot, bot.user.id)
+
+        if not player.available_playlists:
+            await player.cleanup_manager.send_with_ttl(
+                player.text_channel or ctx.channel,
+                MESSAGES['error_no_playlists'],
+                'error',
+                ctx.message
+            )
+            return
+
+        # Check if we were playing music before switch
+        was_playing = False
+        if player.voice_client and player.voice_client.is_connected():
+            try:
+                was_playing = player.voice_client.is_playing() or player.voice_client.is_paused()
+            except Exception:
+                pass
+
+        # Switch playlist
+        success, message = await player.switch_playlist(identifier, player.voice_client)
+
+        if success:
+            await player.cleanup_manager.send_with_ttl(
+                player.text_channel or ctx.channel,
+                MESSAGES['playlist_switched'].format(message=message),
+                'tracks',
+                ctx.message
+            )
+
+            # Auto-play first track if music was playing before switch
+            if was_playing and player.voice_client and player.voice_client.is_connected():
+                await player.spam_protector.queue_command(
+                    lambda: _play_first(ctx.guild.id, bot, players)
+                )
+        else:
+            # Check error type
+            if "not found" in message.lower():
+                await player.cleanup_manager.send_with_ttl(
+                    player.text_channel or ctx.channel,
+                    MESSAGES['error_playlist_not_found'].format(query=identifier),
+                    'error',
+                    ctx.message
+                )
+            elif "already using" in message.lower():
+                await player.cleanup_manager.send_with_ttl(
+                    player.text_channel or ctx.channel,
+                    MESSAGES['error_playlist_already_active'],
+                    'error',
+                    ctx.message
+                )
+            else:
+                await player.cleanup_manager.send_with_ttl(
+                    player.text_channel or ctx.channel,
+                    f"❌ {message}",
+                    'error',
+                    ctx.message
+                )
 
     # =========================================================================
     # PLAYLIST COMMANDS
@@ -616,6 +706,16 @@ def setup(bot):
             return
 
         player = await get_player(ctx.guild.id, bot, bot.user.id)
+
+        # Check if feature is enabled
+        if not PLAYLIST_SWITCHING_ENABLED:
+            await player.cleanup_manager.send_with_ttl(
+                player.text_channel or ctx.channel,
+                MESSAGES['feature_playlists_disabled'],
+                'error',
+                ctx.message
+            )
+            return
 
         if await player.spam_protector.check_user_spam(ctx.author.id, "playlists"):
             return
@@ -670,86 +770,7 @@ def setup(bot):
             ctx.message
         )
 
-    @bot.command(name='switchplaylist', aliases=COMMAND_ALIASES['switchplaylist'])
-    @commands.guild_only()
-    async def switchplaylist_command(ctx, *, identifier: str = None):
-        """Switch to different playlist."""
-        # Only enable if playlist structure exists
-        if not has_playlist_structure():
-            return
-
-        player = await get_player(ctx.guild.id, bot, bot.user.id)
-
-        if await player.spam_protector.check_user_spam(ctx.author.id, "switchplaylist"):
-            return
-
-        if player.spam_protector.check_global_rate_limit():
-            return
-
-        if not identifier:
-            await player.cleanup_manager.send_with_ttl(
-                player.text_channel or ctx.channel,
-                MESSAGES['error_playlist_not_found'].format(query="(no name provided)"),
-                'error',
-                ctx.message
-            )
-            return
-
-        await player.spam_protector.debounce_command(
-            "switchplaylist",
-            lambda: _execute_switchplaylist(ctx, identifier, bot),
-            SWITCH_PLAYLIST_DEBOUNCE_WINDOW,
-            SWITCH_PLAYLIST_COOLDOWN,
-            SWITCH_PLAYLIST_SPAM_THRESHOLD,
-            MESSAGES.get('spam_switch_playlist')
-        )
-
-    async def _execute_switchplaylist(ctx, identifier: str, bot):
-        """Execute switch playlist command."""
-        player = await get_player(ctx.guild.id, bot, bot.user.id)
-
-        if not player.available_playlists:
-            await player.cleanup_manager.send_with_ttl(
-                player.text_channel or ctx.channel,
-                MESSAGES['error_no_playlists'],
-                'error',
-                ctx.message
-            )
-            return
-
-        # Switch playlist
-        success, message = await player.switch_playlist(identifier, player.voice_client)
-
-        if success:
-            await player.cleanup_manager.send_with_ttl(
-                player.text_channel or ctx.channel,
-                MESSAGES['playlist_switched'].format(message=message),
-                'library',
-                ctx.message
-            )
-        else:
-            # Check error type
-            if "not found" in message.lower():
-                await player.cleanup_manager.send_with_ttl(
-                    player.text_channel or ctx.channel,
-                    MESSAGES['error_playlist_not_found'].format(query=identifier),
-                    'error',
-                    ctx.message
-                )
-            elif "already using" in message.lower():
-                await player.cleanup_manager.send_with_ttl(
-                    player.text_channel or ctx.channel,
-                    MESSAGES['error_playlist_already_active'],
-                    'error',
-                    ctx.message
-                )
-            else:
-                await player.cleanup_manager.send_with_ttl(
-                    player.text_channel or ctx.channel,
-                    f"❌ {message}",
-                    'error',
-                    ctx.message
-                )
+    # switchplaylist command merged into tracks command above
 
     # =========================================================================
     # HELP COMMAND
@@ -793,11 +814,11 @@ def setup(bot):
 
         if LIBRARY_DISPLAY_ENABLED:
             help_msg += f"\n{HELP_TEXT['queue_title']}\n"
-            for cmd in HELP_TEXT['library_commands']:
+            for cmd in HELP_TEXT['tracks_commands']:
                 help_msg += f"{cmd}\n"
 
-        # Show playlist commands only if playlist structure exists
-        if has_playlist_structure():
+        # Show playlist commands only if playlist structure exists and feature enabled
+        if has_playlist_structure() and PLAYLIST_SWITCHING_ENABLED:
             help_msg += f"\n{HELP_TEXT['playlist_title']}\n"
             for cmd in HELP_TEXT['playlist_commands']:
                 help_msg += f"{cmd}\n"

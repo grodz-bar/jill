@@ -86,7 +86,7 @@ Create music directory:
 
 Choose ONE of these organization methods:
 
-METHOD A - Single Playlist (Simple):
+METHOD A - Single Playlist:
 Place all .opus files directly in ~/jill/music/
 
 METHOD B - Multiple Playlists:

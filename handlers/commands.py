@@ -30,6 +30,7 @@ import logging
 import random
 from collections import deque
 from difflib import SequenceMatcher
+from typing import Optional
 from disnake.ext import commands
 
 logger = logging.getLogger(__name__)
@@ -515,7 +516,15 @@ def setup(bot):
         )
 
     async def _execute_queue(ctx, bot):
-        """Execute queue command."""
+        """
+        Execute queue command.
+        
+        PARTIAL QUEUE MESSAGE CUSTOMIZATION:
+        - Upcoming tracks indentation: Modify line ~549 below, the f-string with spaces before bullet that looks like this:
+        - msg += f"            • {track.display_name}\n"     <- (Example, real one is below, just look for it)
+        - You can change what's inside the quotes, but don't touch "{track.display_name}\n"
+        - WARNING: BE CAREFUL, changing the wrong thing in here will break things. Maybe backup commands.py before changing anything?
+        """
         player = await get_player(ctx.guild.id, bot, bot.user.id)
 
         if not player.now_playing:
@@ -527,18 +536,23 @@ def setup(bot):
             )
             return
 
-        msg = f"{MESSAGES['queue_now_playing']} {player.now_playing.display_name}"
-
+        msg = f"{MESSAGES['queue_header']}\n"
+        
         if player.played:
-            msg += f"\n{MESSAGES['queue_last_played']} {player.played[-1].display_name}"
+            track = player.played[-1]
+            msg += f"{MESSAGES['queue_last_played']} {track.display_name}\n"
+        
+        msg += f"{MESSAGES['queue_now_playing']} {player.now_playing.display_name}\n"
 
         if player.upcoming:
-            msg += f"\n\n{MESSAGES['queue_up_next']}\n"
-            for i, track in enumerate(list(player.upcoming)[:QUEUE_DISPLAY_COUNT], 1):
-                msg += f"{i}. {track.display_name}\n"
+            msg += f"{MESSAGES['queue_up_next']}\n"
+            for track in list(player.upcoming)[:QUEUE_DISPLAY_COUNT]:
+                msg += f"            • {track.display_name}\n"
 
-            if len(player.upcoming) <= QUEUE_DISPLAY_COUNT:
-                msg += f"\n{MESSAGES['queue_will_loop']}"
+        msg += f"{MESSAGES['queue_footer']}"
+        
+        if player.upcoming and len(player.upcoming) <= QUEUE_DISPLAY_COUNT:
+            msg += f"\n\n{MESSAGES['queue_will_loop']}"
 
         await player.cleanup_manager.send_with_ttl(
             player.text_channel or ctx.channel,
@@ -817,13 +831,8 @@ def setup(bot):
             for cmd in HELP_TEXT['queue_commands']:
                 help_msg += f"{cmd}\n"
 
-        if LIBRARY_DISPLAY_ENABLED:
-            help_msg += f"\n{HELP_TEXT['queue_title']}\n"
-            for cmd in HELP_TEXT['tracks_commands']:
-                help_msg += f"{cmd}\n"
-
-        # Show playlist commands only if playlist structure exists and feature enabled
-        if has_playlist_structure() and PLAYLIST_SWITCHING_ENABLED:
+        # Show playlist commands only if playlist structure exists and features enabled
+        if has_playlist_structure() and PLAYLIST_SWITCHING_ENABLED and LIBRARY_DISPLAY_ENABLED:
             help_msg += f"\n{HELP_TEXT['playlist_title']}\n"
             for cmd in HELP_TEXT['playlist_commands']:
                 help_msg += f"{cmd}\n"

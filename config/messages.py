@@ -92,13 +92,19 @@ MESSAGES = {
     # ===================================================================================================================
     # NAVIGATION - Track navigation and queue messages
     # ===================================================================================================================
+    # NOTE: I use invisible characters to align the text, here's one if you want to use it: "⠀"
+    # NOTE for ADDITINAL QUEUE CUSTOMIZATION:
+    # - To customize "upcoming tracks" indentation/spacing, see /handlers/commands.py line ~542
+
     'previous_at_start': '😑 Already at the beginning!',
     'skip_no_disc': '✖️ No disc in jukebox.',
     'nothing_playing': '✖️ Nothing\'s playing right now.',
-    'queue_will_loop': '_(Queue will loop after this)_',
-    'queue_now_playing': '**Now playing:**',
-    'queue_last_played': '**Last played:**',
-    'queue_up_next': '**Up next:**',
+    'queue_will_loop': ' _(Queue will loop after this)_',
+    'queue_header': '╔════════════════════════════╗',
+    'queue_footer': '╚════════════════════════════╝',
+    'queue_now_playing': '⠀⠀🍸 Now Serving →',
+    'queue_last_played': '⠀⠀🍷 Last Served →',
+    'queue_up_next': '⠀⠀🍹 Coming Up:',
     
     # ===================================================================================================================
     # SHUFFLE - Shuffle mode and organization messages
@@ -154,12 +160,13 @@ MESSAGES = {
 HELP_TEXT = {
     # Always shown
     'header': '🍸 **jill\'s jukebox** 🍸',
-    'volume_note': '***Volume control***: *Use Discord\'s user volume slider (right-click bot)*',
-    'footer': '        Time to mix drinks and change lives. 🍹',
+    'volume_note': '**Volume control**: Use Discord\'s user volume slider (right-click bot)',
+    'footer': 'Time to mix drinks and change lives. 🍹',
     
     # Section titles
     'playback_title': '**Playback:**',
-    'queue_title': '**Queue & Library:**',
+    'queue_title': '**Queue:**',
+    'tracks_title': '**Library:**',
     'playlist_title': '**Playlists:**',
     'shuffle_title': '**Shuffle:**',
     'info_title': '**Info:**',
@@ -167,38 +174,39 @@ HELP_TEXT = {
     # Command lists
     # Note: Each section only shows if the corresponding feature is enabled
     'playback_commands': [
-        '`!play` / `!resume` / `!unpause` / `!start` - Start/resume music',
-        '`!play [number or name]` / `!skipto [number or name]` - Jump to track (e.g., !play 32 or !play undertale)',
-        '`!pause` / `!break` - Pause playback',
-        '`!skip` / `!next` / `!ns` - Skip track',
-        '`!previous` / `!back` / `!ps` - Previous track',
-        '`!stop` / `!leave` / `!dc` / `!bye` - Disconnect'
+        '`!play` - Start/resume music',
+        '`!play [track]` - Jump to track by number or name',
+        '`!pause` - Pause playback',
+        '`!skip` - Next track',
+        '`!previous` - Previous track',
+        '`!stop` - Disconnect'
     ],
     
     # Queue section (only shows if QUEUE_DISPLAY_ENABLED = True)
     'queue_commands': [
-        '`!queue` / `!q` / `!song` / `!name` / `!playing` - Show song queue'
+        '`!queue` - Show current song queue',
+        '`!tracks` - Show all tracks in current playlist'
+    ],
+ 
+    # Playlists section (only shows if has_playlist_structure() = True)
+    'playlist_commands': [
+        '`!playlists` - Show all available playlists',
+        '`!list [name]` - Switch to different playlist'
     ],
     
     # Tracks section (only shows if LIBRARY_DISPLAY_ENABLED = True)
     'tracks_commands': [
-        '`!tracks` / `!playlist` / `!library` - Show tracks in current playlist',
-        '`!tracks [name/number]` / `!playlist [name/number]` - Switch to different playlist'
-    ],
-
-    # Playlists section (only shows if has_playlist_structure() = True)
-    'playlist_commands': [
-        '`!playlists` / `!albums` - Show all available playlists'
+        # Empty - all track/playlist commands moved to playlists section
     ],
 
     # Shuffle section (only shows if SHUFFLE_MODE_ENABLED = True)
     'shuffle_commands': [
-        '`!shuffle` / `!mess` - Toggle shuffle on/off'
+        '`!shuffle` - Toggle shuffle mode'
     ],
     
     # Info section (always shown)
     'info_commands': [
-        '`!help` / `!commands` / `!jill` - Show this message'
+        '`!help` - Show this message'
     ],
     
     # Error message (shown if help generation fails)

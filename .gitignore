@@ -91,5 +91,6 @@ music/
 
 # Git
 .git_backup/
+.git/
 commit.txt
 push.bat

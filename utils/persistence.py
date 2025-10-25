@@ -14,7 +14,11 @@ from typing import Dict
 logger = logging.getLogger(__name__)
 
 # Import from config
-from config.paths import CHANNEL_STORAGE_FILE
+from config.paths import CHANNEL_STORAGE_FILE, PLAYLIST_STORAGE_FILE
+
+# =============================================================================
+# CHANNEL PERSISTENCE
+# =============================================================================
 
 # Cache for loaded channel data to avoid repeated file I/O
 _channel_cache: Dict[int, int] = {}
@@ -22,6 +26,17 @@ _cache_loaded = False
 # Async batch save optimization: reduces filesystem writes by batching channel saves
 _last_save_task = None
 _pending_saves = set()
+
+# =============================================================================
+# PLAYLIST PERSISTENCE
+# =============================================================================
+
+# Cache for loaded playlist data to avoid repeated file I/O
+_playlist_cache: Dict[int, str] = {}
+_playlist_cache_loaded = False
+# Async batch save optimization: reduces filesystem writes by batching playlist saves
+_last_playlist_save_task = None
+_pending_playlist_saves = set()
 
 
 def load_last_channels() -> Dict[int, int]:
@@ -128,3 +143,114 @@ async def _flush_channel_saves():
 
     except Exception as e:
         logger.error(f"Failed to flush channel saves: {e}")
+
+
+# =============================================================================
+# PLAYLIST PERSISTENCE FUNCTIONS
+# =============================================================================
+
+
+def load_last_playlists() -> Dict[int, str]:
+    """
+    Load the last used playlist IDs from persistent storage.
+
+    Returns:
+        Dict[int, str]: Mapping of guild_id -> playlist_id
+    """
+    global _playlist_cache, _playlist_cache_loaded
+
+    # Return cached data if already loaded
+    if _playlist_cache_loaded:
+        return _playlist_cache.copy()
+
+    try:
+        if os.path.exists(PLAYLIST_STORAGE_FILE):
+            with open(PLAYLIST_STORAGE_FILE, 'r') as f:
+                data = json.load(f)
+                # Convert string keys back to integers (JSON stores keys as strings)
+                _playlist_cache = {int(guild_id): playlist_id for guild_id, playlist_id in data.items()}
+        else:
+            _playlist_cache = {}
+
+        _playlist_cache_loaded = True
+        return _playlist_cache.copy()
+
+    except (json.JSONDecodeError, ValueError, FileNotFoundError) as e:
+        logger.warning(f"Could not load playlist storage: {e}")
+        _playlist_cache = {}
+        _playlist_cache_loaded = True
+        return {}
+
+
+def save_last_playlist(guild_id: int, playlist_id: str) -> None:
+    """
+    Save the last used playlist ID for a guild.
+
+    Args:
+        guild_id: Discord guild ID
+        playlist_id: Playlist identifier (folder name)
+
+    Note:
+        Uses lazy batching to reduce filesystem writes.
+        Actual save happens after 10-second delay via mark_playlist_dirty().
+    """
+    global _playlist_cache, _playlist_cache_loaded
+
+    try:
+        # Use cached data if available, otherwise load
+        if not _playlist_cache_loaded:
+            load_last_playlists()
+
+        # Only save if playlist actually changed (avoid unnecessary I/O)
+        if _playlist_cache.get(guild_id) != playlist_id:
+            _playlist_cache[guild_id] = playlist_id
+            mark_playlist_dirty(guild_id)
+
+    except Exception as e:
+        logger.warning(f"Could not save playlist storage: {e}")
+
+
+def mark_playlist_dirty(guild_id: int):
+    """
+    Mark a guild's playlist data as dirty for batch saving.
+
+    This optimization reduces filesystem writes by batching playlist saves
+    with a 10-second delay instead of immediate writes on every change.
+
+    Args:
+        guild_id: Discord guild ID to mark as dirty
+    """
+    _pending_playlist_saves.add(guild_id)
+    global _last_playlist_save_task
+    if not _last_playlist_save_task or _last_playlist_save_task.done():
+        _last_playlist_save_task = asyncio.create_task(_flush_playlist_saves())
+
+
+async def _flush_playlist_saves():
+    """
+    Flush all pending playlist saves to disk after a 10-second delay.
+
+    This async batch save operation reduces I/O overhead by writing
+    multiple playlist changes in a single filesystem operation.
+    """
+    await asyncio.sleep(10)
+    if not _pending_playlist_saves:
+        return
+
+    # Snapshot and clear to avoid RuntimeError from concurrent modifications
+    to_save = list(_pending_playlist_saves)
+    _pending_playlist_saves.clear()
+
+    try:
+        data = load_last_playlists()
+        for gid in to_save:
+            if gid in _playlist_cache:
+                data[gid] = _playlist_cache[gid]
+
+        with open(PLAYLIST_STORAGE_FILE, 'w') as f:
+            json.dump(data, f, indent=2)
+
+        logger.debug(f"Flushed {len(to_save)} playlist save(s) to disk")
+
+    except Exception as e:
+        logger.error(f"Failed to flush playlist saves: {e}")

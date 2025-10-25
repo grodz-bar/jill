@@ -1,9 +1,10 @@
 ================================================================================
-JILL - A CYBERPUNK BARTENDER DISCORD MUSIC BOT
+				JILL - A CYBERPUNK BARTENDER DISCORD MUSIC BOT					
 ================================================================================
 
-A simple yet robust Discord music bot built with disnake that plays local .opus
-files with queue navigation, shuffle modes, and automated message cleanup.
+
+A simple yet robust Discord music bot that plays local .opus files with neat
+features like multiple playlists, auto clean up, and song selection.
 
 
 QUICK START:
@@ -14,20 +15,23 @@ QUICK START:
 
 
 BASIC COMMANDS:
-!play [track#]  - Start playing or jump to track
-!pause          - Pause playback
-!play           - Resume playback
-!stop           - Stop and reset queue
-!skip           - Skip to next track
-!previous       - Go to previous track
-!queue          - Show current queue
-!list [page]    - Browse available tracks
-!shuffle        - Enable/disable shuffle mode
-!help           - Show help message
+!play [track#]    - Start playing or jump to track
+!pause            - Pause playback
+!play             - Resume playback
+!stop             - Stop and reset queue
+!skip             - Skip to next track
+!previous         - Go to previous track
+!queue            - Show current queue
+!list [page]      - Browse available tracks
+!shuffle          - Enable/disable shuffle mode
+!playlists        - Show all playlists (if using them)
+!playlist [name]  - Switch to a different playlist
+!help             - Show help message
 
 
 FEATURES:
 - Music Control: Play, pause, skip, queue navigation
+- Multiple Playlists: Organize music in subfolders, switch between playlists
 - Smart Automation: Auto-pause when alone, dual message cleanup systems
 - Shuffle Mode: Randomize track order and auto-reshuffles
 - Multi-Layer Spam Protection: Prevents abuse and rate-limiting
@@ -42,4 +46,4 @@ All settings are in the /config/ folder. The most important files:
 - config/timing.py   - Adjust cooldowns and timing
 
 
-For troubleshooting, see troubleshooting.txt
+NOTE: jill uses the amazing disnake API: https://docs.disnake.dev

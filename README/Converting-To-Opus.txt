@@ -104,8 +104,8 @@ FILE SIZES:
 - 128kbps opus ≈ 0.95 MB per minute
 - Average song ≈ ~5 MB at 256kbps
 
-NOTE: It is unclear if bots playing on boosted servers that have set their voice
-channel manually higher than 96kbps actually benefit from it.
+NOTE: It is unclear if bots playing on boosted servers that have their voice
+channel manually set higher than 96kbps actually benefit from it.
 
 ================================================================================
 TROUBLESHOOTING

@@ -3,6 +3,9 @@ Timing Settings - All timing and cooldown configurations
 
 This file contains all timing-related settings organized by category.
 These control how fast/slow the bot responds and manages various operations.
+
+Changing some of these values can can break things and make the bot more prone
+to spam and Discord's API rate-limiting, so be careful and test thoroughly.
 """
 
 # =========================================================================================================
@@ -166,6 +169,16 @@ UNSHUFFLE_SPAM_THRESHOLD = 5       # Times user can spam before warning
 HELP_DEBOUNCE_WINDOW = 1.0         # Wait time for spam to stop (seconds)
 HELP_COOLDOWN = 1.0                # Cooldown after execution (seconds)
 HELP_SPAM_THRESHOLD = 4            # Times user can spam before warning
+
+# Playlists list command debouncing
+PLAYLISTS_DEBOUNCE_WINDOW = 1.0    # Wait time for spam to stop (seconds)
+PLAYLISTS_COOLDOWN = 1.0           # Cooldown after execution (seconds)
+PLAYLISTS_SPAM_THRESHOLD = 4       # Times user can spam before warning
+
+# Switch playlist command debouncing
+SWITCH_PLAYLIST_DEBOUNCE_WINDOW = 2.5  # Wait time for spam to stop (seconds)
+SWITCH_PLAYLIST_COOLDOWN = 2.0     # Cooldown after execution (seconds)
+SWITCH_PLAYLIST_SPAM_THRESHOLD = 5 # Times user can spam before warning
 
 # =========================================================================================================
 # ADVANCED TIMING SETTINGS (Don't change unless you know what you're doing)

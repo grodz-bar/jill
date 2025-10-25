@@ -2,17 +2,75 @@
 Track Class and Library Loading
 
 Represents individual music tracks and provides library loading functionality.
+Also handles playlist discovery and organization.
 """
 
 import re
 import logging
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 
 logger = logging.getLogger(__name__)
 
 # Import from config
 from config.paths import MUSIC_FOLDER
+
+
+class Playlist:
+    """
+    Represents a music playlist (subfolder in music directory).
+
+    Attributes:
+        playlist_id: Unique identifier (folder name)
+        playlist_path: Full path to playlist folder
+        display_name: Formatted name for display (without number prefix)
+        track_count: Number of .opus tracks in this playlist
+
+    Design notes:
+        - Playlists are sorted numerically by leading digits (like tracks)
+        - display_name strips "01 - " prefix for clean display
+        - Equality based on playlist_id
+    """
+
+    _prefix_pattern = re.compile(r'^\d+\s*-\s*')  # Precompiled regex for numeric prefix removal
+
+    def __init__(self, playlist_path: Path, track_count: int = 0):
+        """
+        Create a new playlist.
+
+        Args:
+            playlist_path: Full path to the playlist folder
+            track_count: Number of tracks in this playlist
+        """
+        self.playlist_id = playlist_path.name
+        self.playlist_path = playlist_path
+        self.track_count = track_count
+        self.display_name = self._get_display_name()
+
+    def _get_display_name(self) -> str:
+        """
+        Format folder name for display.
+
+        Removes leading numbers and dash ("01 - ")
+
+        Example:
+            "01 - Album Name" → "Album Name"
+        """
+        name = self.playlist_id
+        name = Playlist._prefix_pattern.sub('', name)  # Remove "01 - " using precompiled regex
+        return name
+
+    def __eq__(self, other) -> bool:
+        """Playlists are equal if they have the same ID."""
+        return isinstance(other, Playlist) and self.playlist_id == other.playlist_id
+
+    def __hash__(self) -> int:
+        """Hash based on ID allows playlists to be used in sets/dicts."""
+        return hash(self.playlist_id)
+
+    def __repr__(self) -> str:
+        """Debug representation."""
+        return f"Playlist(id={self.playlist_id}, name={self.display_name}, tracks={self.track_count})"
 
 
 class Track:
@@ -77,7 +135,84 @@ class Track:
         return f"Track(id={self.track_id}, name={self.display_name})"
 
 
-def load_library(guild_id: int = 0) -> Tuple[List[Track], Dict[int, Track]]:
+def discover_playlists(guild_id: int = 0) -> List[Playlist]:
+    """
+    Discover all playlists (subfolders with .opus files) in music directory.
+
+    Scans MUSIC_FOLDER for subdirectories containing .opus files.
+    Sorts playlists numerically by leading digits in folder name.
+
+    Args:
+        guild_id: Guild ID for logging purposes (optional)
+
+    Returns:
+        List of Playlist objects sorted by folder number
+
+    Example:
+        playlists = discover_playlists(guild_id=123456)
+        # [Playlist(01 - Album), Playlist(02 - OST), ...]
+    """
+    music_path = Path(MUSIC_FOLDER)
+    if not music_path.exists():
+        logger.warning(f"Guild {guild_id}: Music folder not found: {MUSIC_FOLDER}")
+        return []
+
+    playlists = []
+
+    # Scan for subdirectories
+    for folder in music_path.iterdir():
+        if not folder.is_dir():
+            continue
+
+        # Count .opus files in this folder
+        opus_files = [f for f in folder.glob("*") if f.is_file() and f.suffix.lower() == '.opus']
+        if opus_files:
+            playlists.append(Playlist(folder, track_count=len(opus_files)))
+
+    if not playlists:
+        logger.debug(f"Guild {guild_id}: No playlist subfolders found in {MUSIC_FOLDER}")
+        return []
+
+    def get_sort_key(playlist: Playlist) -> int:
+        """Extract leading number from folder name for sorting."""
+        match = re.match(r'^(\d+)', playlist.playlist_id)
+        if match:
+            return int(match.group(1))
+        else:
+            # Unnumbered folders sort to end
+            logger.warning(f"Guild {guild_id}: Playlist folder missing numeric prefix (will sort last): {playlist.playlist_id}")
+            return 999999
+
+    sorted_playlists = sorted(playlists, key=get_sort_key)
+    logger.info(f"Guild {guild_id}: Discovered {len(sorted_playlists)} playlists")
+
+    return sorted_playlists
+
+
+def has_playlist_structure() -> bool:
+    """
+    Check if music folder has playlist structure (subfolders with tracks).
+
+    Returns:
+        True if subfolders with .opus files exist, False otherwise
+
+    Use this to determine whether to enable multi-playlist features.
+    """
+    music_path = Path(MUSIC_FOLDER)
+    if not music_path.exists():
+        return False
+
+    # Check if any subdirectories contain .opus files
+    for folder in music_path.iterdir():
+        if folder.is_dir():
+            opus_files = [f for f in folder.glob("*") if f.is_file() and f.suffix.lower() == '.opus']
+            if opus_files:
+                return True
+
+    return False
+
+
+def load_library(guild_id: int = 0, playlist_path: Optional[Path] = None) -> Tuple[List[Track], Dict[int, Track]]:
     """
     Load all music files from disk into library.
 
@@ -87,6 +222,7 @@ def load_library(guild_id: int = 0) -> Tuple[List[Track], Dict[int, Track]]:
 
     Args:
         guild_id: Guild ID for logging purposes (optional)
+        playlist_path: Path to playlist folder (if None, uses MUSIC_FOLDER root)
 
     Returns:
         Tuple of (library list, track_by_index dict):
@@ -97,14 +233,16 @@ def load_library(guild_id: int = 0) -> Tuple[List[Track], Dict[int, Track]]:
         library, track_index = load_library(guild_id=123456)
         track_5 = track_index[4]  # Get 5th track (0-indexed)
     """
-    music_path = Path(MUSIC_FOLDER)
-    if not music_path.exists():
-        logger.warning(f"Music folder not found: {MUSIC_FOLDER}")
+    # Use playlist path if provided, otherwise use root music folder
+    target_path = playlist_path if playlist_path else Path(MUSIC_FOLDER)
+
+    if not target_path.exists():
+        logger.warning(f"Guild {guild_id}: Music path not found: {target_path}")
         return [], {}
 
-    files = [f for f in music_path.glob("*") if f.is_file() and f.suffix.lower() == '.opus']
+    files = [f for f in target_path.glob("*") if f.is_file() and f.suffix.lower() == '.opus']
     if not files:
-        logger.warning(f"No .opus files found in {MUSIC_FOLDER}")
+        logger.warning(f"Guild {guild_id}: No .opus files found in {target_path}")
         return [], {}
 
     def get_sort_key(filepath: Path) -> int:
@@ -124,5 +262,5 @@ def load_library(guild_id: int = 0) -> Tuple[List[Track], Dict[int, Track]]:
     # Build fast lookup index
     track_by_index = {track.library_index: track for track in library}
 
-    logger.info("Guild %s: Loaded %d tracks", guild_id, len(library))
+    logger.info("Guild %s: Loaded %d tracks from %s", guild_id, len(library), target_path)
     return library, track_by_index

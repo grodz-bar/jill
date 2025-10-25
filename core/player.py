@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 from systems.spam_protection import SpamProtector
 from systems.cleanup import CleanupManager
 from systems.voice_manager import VoiceManager, PlaybackState
-from core.track import Track, load_library
+from core.track import Track, load_library, Playlist, discover_playlists, has_playlist_structure
 from config.messages import DRINK_EMOJIS
 from config.timing import MAX_HISTORY
-from utils.persistence import load_last_channels, save_last_channel
+from utils.persistence import load_last_channels, save_last_channel, load_last_playlists, save_last_playlist
 
 
 class MusicPlayer:
@@ -59,8 +59,11 @@ class MusicPlayer:
         self.voice_manager = VoiceManager(guild_id)
 
         # =====================================================================
-        # MUSIC LIBRARY & QUEUE
+        # PLAYLISTS & MUSIC LIBRARY
         # =====================================================================
+        self.available_playlists: List[Playlist] = []
+        self.current_playlist: Optional[Playlist] = None
+
         self.library: List[Track] = []
         self.track_by_index: Dict[int, Track] = {}
 
@@ -99,12 +102,51 @@ class MusicPlayer:
         self._is_reconnecting: bool = False
         self._suppress_callback: bool = False
 
-        # Load library
-        self.library, self.track_by_index = load_library(guild_id)
-        self.reset_queue()
+        # Discover playlists and load library
+        self._initialize_playlists()
 
         # Wire up references between systems
         self._wire_systems()
+
+    def _initialize_playlists(self):
+        """
+        Initialize playlist system and load appropriate library.
+
+        Called during player construction. Discovers playlists, loads last used
+        playlist from persistence, or falls back to first available.
+        """
+        # Discover available playlists
+        self.available_playlists = discover_playlists(self.guild_id)
+
+        # Determine which playlist to load
+        playlist_to_load = None
+
+        if self.available_playlists:
+            # Multi-playlist mode: load last used or first available
+            saved_playlists = load_last_playlists()
+            saved_playlist_id = saved_playlists.get(self.guild_id)
+
+            if saved_playlist_id:
+                # Try to find saved playlist
+                for playlist in self.available_playlists:
+                    if playlist.playlist_id == saved_playlist_id:
+                        playlist_to_load = playlist
+                        break
+
+            # If saved playlist not found, use first available
+            if not playlist_to_load:
+                playlist_to_load = self.available_playlists[0]
+                logger.info(f"Guild {self.guild_id}: Saved playlist not found, using first available: {playlist_to_load.display_name}")
+
+            self.current_playlist = playlist_to_load
+            self.library, self.track_by_index = load_library(self.guild_id, playlist_to_load.playlist_path)
+        else:
+            # Single-playlist mode: load from root music folder
+            logger.info(f"Guild {self.guild_id}: No playlists found, using root music folder")
+            self.library, self.track_by_index = load_library(self.guild_id)
+
+        # Initialize queue
+        self.reset_queue()
 
     def _wire_systems(self):
         """Wire up references between systems for intercommunication."""
@@ -304,6 +346,101 @@ class MusicPlayer:
     def has_next(self) -> bool:
         """Check if there are upcoming tracks in queue."""
         return len(self.upcoming) > 0
+
+    # =========================================================================
+    # Playlist Management
+    # =========================================================================
+
+    def find_playlist_by_identifier(self, identifier: str) -> Optional[Playlist]:
+        """
+        Find playlist by number or name (case-insensitive substring match).
+
+        Args:
+            identifier: Either a number (1-based) or name substring
+
+        Returns:
+            Matching Playlist or None if not found
+
+        Examples:
+            find_playlist_by_identifier("1") → First playlist
+            find_playlist_by_identifier("lofi") → Playlist with "lofi" in name
+        """
+        if not self.available_playlists:
+            return None
+
+        # Try parsing as number (1-based index)
+        try:
+            index = int(identifier) - 1
+            if 0 <= index < len(self.available_playlists):
+                return self.available_playlists[index]
+        except ValueError:
+            pass
+
+        # Try name matching (case-insensitive substring)
+        identifier_lower = identifier.lower()
+        for playlist in self.available_playlists:
+            if identifier_lower in playlist.display_name.lower():
+                return playlist
+
+        return None
+
+    async def switch_playlist(self, identifier: str, voice_client=None) -> Tuple[bool, str]:
+        """
+        Switch to a different playlist.
+
+        Stops playback, clears queue, loads new library, saves to persistence.
+
+        Args:
+            identifier: Playlist number or name substring
+            voice_client: Optional voice client (to stop playback)
+
+        Returns:
+            Tuple of (success: bool, message: str)
+
+        Examples:
+            success, msg = await player.switch_playlist("3")
+            success, msg = await player.switch_playlist("undertale")
+        """
+        # Find target playlist
+        target_playlist = self.find_playlist_by_identifier(identifier)
+
+        if not target_playlist:
+            return False, f"Playlist not found: '{identifier}'"
+
+        # Check if already on this playlist
+        if self.current_playlist and target_playlist.playlist_id == self.current_playlist.playlist_id:
+            return False, f"Already using playlist: {target_playlist.display_name}"
+
+        # Stop playback if playing
+        if voice_client and voice_client.is_connected():
+            try:
+                if voice_client.is_playing() or voice_client.is_paused():
+                    voice_client.stop()
+            except Exception as e:
+                logger.debug(f"Guild {self.guild_id}: Could not stop playback during playlist switch: {e}")
+
+        # Clear playback state
+        self.played.clear()
+        self.now_playing = None
+        self.upcoming.clear()
+        self.state = PlaybackState.IDLE
+
+        # Load new library
+        self.current_playlist = target_playlist
+        self.library, self.track_by_index = load_library(self.guild_id, target_playlist.playlist_path)
+
+        # Reset queue with new library
+        self.reset_queue()
+
+        # Save to persistence
+        save_last_playlist(self.guild_id, target_playlist.playlist_id)
+
+        logger.info(
+            f"Guild {self.guild_id}: Switched to playlist '{target_playlist.display_name}' "
+            f"({len(self.library)} tracks)"
+        )
+
+        return True, f"Switched to **{target_playlist.display_name}** ({len(self.library)} tracks)"
 
 
 # =============================================================================

@@ -1,14 +1,16 @@
 # 🍸 Jill — Cyberpunk Bartender Discord Music Bot
 
-Self-hosted, customizable Discord music bot for your local library.
+Self-hosted, customizable Discord music bot for your local song library.
 
 ---
 
-## What it does
+## Features
 - Direct playback of local **.opus** files (no re-encoding)
-- Simple, predictable queue with optional shuffle
-- Resilient under command spam (debounce + cooldowns)
-- Low-noise chat output; auto-pause/leave when idle
+- Super customizable: change responses, commands, features, etc
+- Multiple playlists (organize music in subfolders, switch between them)
+- Protection against command spam with debounce + cooldowns
+- Easy to use queue, previous, skip, playlist switching, shuffle, etc
+- Smart message cleanup system to keep text channels tidy
 
 ---
 
@@ -17,31 +19,32 @@ Self-hosted, customizable Discord music bot for your local library.
 - **Linux setup:** [SETUP-Linux.txt](../README/SETUP-Linux.txt)
 - **Get a Discord token:** [Getting-Discord-Token.txt](../README/Getting-Discord-Token.txt)
 - **Convert audio to Opus:** [Converting-To-Opus.txt](../README/Converting-To-Opus.txt)
-- **Troubleshooting:** [troubleshooting.txt](../README/troubleshooting.txt)
 - **Files overview:** [Files.txt](../README/Files.txt)
+- **Troubleshooting:** [troubleshooting.txt](../README/troubleshooting.txt)
 - **Reference README:** [README.txt](../README/README.txt)
 
 ---
 
 ## Commands (core)
 ```
-!play [n]        # join/resume; or jump to track n
-!pause           # pause
-!skip            # next track
-!previous        # previous track
-!stop            # disconnect/reset
-!queue           # show last/now/next
-!library [page]  # browse library
-!shuffle         # toggle shuffle
-!unshuffle       # back to order
-!help            # show help
+!play [n]         # join/resume; or jump to track n
+!pause            # pause
+!skip             # next track
+!previous         # previous track
+!stop             # disconnect/reset
+!queue            # show last/now/next
+!list [page]      # browse song list
+!playlists [page] # browse playlist library
+!playlist [name]  # switch to playlist
+!shuffle          # toggle shuffle
+!unshuffle        # back to order
+!help             # show help
 ```
 
 ---
 
 ## Config references
-- [`.env.example`](../.env.example)
-- [`aliases.py`](../config/aliases.py) — aliases
+- [`aliases.py`](../config/aliases.py) — command aliases
 - [`messages.py`](../config/messages.py) — messages
 - [`features.py`](../config/features.py) — features
 - [`timing.py`](../config/timing.py) — cooldowns/TTLs
@@ -51,5 +54,5 @@ Self-hosted, customizable Discord music bot for your local library.
 ---
 
 ## Notes
-- No telemetry; playback is local.
+- No telemetry whatsoever; playback is local.
 - Requires Python 3.11+ and FFmpeg.

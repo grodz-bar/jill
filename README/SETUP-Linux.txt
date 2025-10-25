@@ -1,12 +1,10 @@
 ================================================================================
-SETUP GUIDE - VA-11 HALL-A MUSIC BOT
+LINUX SETUP GUIDE
 ================================================================================
 
 This guide works for:
 - Debian/Ubuntu Linux
 - Raspberry Pi OS (formerly Raspbian)
-
-NOTE: Personally I used a Windows machine SSH'd into the Linux one to set it up.
 
 ================================================================================
 STEP 1: SYSTEM REQUIREMENTS
@@ -38,16 +36,12 @@ and getting your token. You will need this later.
 STEP 3: PREPARE MUSIC FILES
 ================================================================================
 
-This bot requires .opus audio files with specific encoding:
-- 48kHz sample rate
-- Stereo
-- 256kbps VBR
-- 20ms frame duration
+FILE AUDIO FORMAT:
+-------------------------------
+This bot requires .opus audio files with specific encoding, don't worry,
+it's easy, just follow the 'Converting-To-Opus.txt' guide.
 
-Don't worry, it's easy to get those.
-See 'Converting-To-Opus.txt' for the conversion instructions.
-
-FILE NAMING FORMAT (IMPORTANT):
+FILE NAMING FORMAT:
 -------------------------------
 Files MUST start with numbers for proper sorting. The bot expects:
 
@@ -56,6 +50,12 @@ Files MUST start with numbers for proper sorting. The bot expects:
     03 - Track Name.opus
     ...
     10 - Track Name.opus
+
+Format rules:
+- Start with digits (01, 02, 03... or 1, 2, 3...)
+- Follow with space, dash, space: " - "
+- Then your track name
+- End with .opus extension
 
 Example good names:
 ✓ 01 - Hopes and Dreams.opus
@@ -67,21 +67,16 @@ Example bad names:
 ✗ Track 01.opus (number not at start)
 ✗ Song_01.opus (number not at start)
 
-Format rules:
-- Start with digits (01, 02, 03... or 1, 2, 3...)
-- Follow with space, dash, space (recommended but flexible)
-- Then your track name
-- End with .opus extension
-
 The bot will:
 - Sort files numerically (01, 02, 03... 10, 11, not alphabetically)
 - Display song names like this: "Track Name" (not "01 - Track Name")
 - Use track numbers for !play commands (!play 5 plays the 5th track)
+- Use track name for !play commands (!play Dawn Approaches)
 
 NOTE: I used PowerRename (Windows) to rename my stuff faster.
 
 ================================================================================
-STEP 4: PLACE SONGS IN A FOLDER
+STEP 4: ORGANIZE YOUR MUSIC
 ================================================================================
 
 Create music directory:
@@ -89,10 +84,21 @@ Create music directory:
 1. Create the directory:
     mkdir -p ~/jill/music
 
-Place your .opus files in ~/jill/music/
+Choose ONE of these organization methods:
 
-IMPORTANT: The music folder should contain ONLY .opus files.
-No other file types (.mp3, .flac, .wav, etc.) should be in this folder.
+METHOD A - Single Playlist (Simple):
+Place all .opus files directly in ~/jill/music/
+
+METHOD B - Multiple Playlists:
+Create subfolders in ~/jill/music/ for each playlist:
+- ~/jill/music/01 - Album Name/
+- ~/jill/music/02 - OST/
+- ~/jill/music/03 - Chill Music/
+
+Then place .opus files in each subfolder.
+
+IMPORTANT: Only .opus files should be in music folders.
+No other file types (.mp3, .flac, .wav, etc.) are allowed.
 
 ================================================================================
 STEP 5: DOWNLOAD BOT
@@ -117,32 +123,17 @@ Your directory structure should be:
     ├── bot.py
     ├── requirements.txt
     ├── .env (created in Step 7)
-    ├── /config/ (configuration folder - USER CUSTOMIZATION)
+    ├── /config/ (configuration folder)
     │   ├── __init__.py
     │   ├── features.py
     │   ├── messages.py
     │   ├── timing.py
     │   ├── paths.py
     │   └── aliases.py
-    ├── /handlers/ (command handlers - implementation)
-    │   ├── __init__.py
-    │   └── commands.py
-    ├── /core/ (core music player - implementation)
-    │   ├── __init__.py
-    │   ├── player.py
-    │   ├── playback.py
-    │   └── track.py
-    ├── /systems/ (specialized systems - implementation)
-    │   ├── __init__.py
-    │   ├── spam_protection.py
-    │   ├── cleanup.py
-    │   ├── voice_manager.py
-    │   └── watchdog.py
-    ├── /utils/ (utility helpers - implementation)
-    │   ├── __init__.py
-    │   ├── discord_helpers.py
-    │   ├── persistence.py
-    │   └── context_managers.py
+    ├── /handlers/ (jill's code)
+    ├── /core/ (jill's code)
+    ├── /systems/ (jill's code)
+    ├── /utils/ (jill's code)
     ├── /README/ (documentation folder)
     │   ├── README.txt
     │   ├── SETUP-Linux.txt
@@ -154,6 +145,13 @@ Your directory structure should be:
     └── /music/
         ├── 01 - Track Name.opus
         ├── 02 - Track Name.opus
+        └── ...
+        │   # OR if you have multiple playlists:
+        ├── 01 - Album Name/
+        │   ├── 01 - Track Name.opus
+        │   └── 02 - Track Name.opus
+        ├── 02 - OST/
+        │   └── 01 - Track Name.opus
         └── ...
 
 ================================================================================
@@ -355,16 +353,13 @@ AUDIO QUALITY:
 - Using pre-encoded .opus files means less CPU usage, plus Discord seems
 to like it better, this is why the format requirements are strict.
 
-POWER:
-- Use official Raspberry Pi power supply for your Pi.
-
 STORAGE:
 - SD card should be Class 10 or better (U1/U3 recommended)
 - Huge libraries might benefit from a USB SSD
 
 NETWORKING:
-- Wired ethernet is more stable than WiFi
-- If using WiFi, ensure strong signal to router
+- Wired > WiFi
+- If using WiFi, see if you drop packets when using Discord (not good)
 - Discord voice uses ~96kbps upstream (opus 256kbps gets compressed)
 
 ================================================================================

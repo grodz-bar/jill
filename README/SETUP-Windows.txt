@@ -1,9 +1,8 @@
 ================================================================================
-JILL DISCORD MUSIC BOT - WINDOWS SETUP GUIDE
+WINDOWS SETUP GUIDE
 ================================================================================
 
-This guide will help you set up Jill on Windows 10/11.
-The bot requires Python 3.11+ and ffmpeg.
+This guide will help you set up jill on Windows 10/11.
 
 ================================================================================
 STEP 1: INSTALL PYTHON
@@ -36,10 +35,47 @@ and getting your token. You will need this later.
 STEP 3: PREPARE MUSIC FILES
 ================================================================================
 
-See 'Converting-To-Opus.txt' for the conversion instructions.
+FILE AUDIO FORMAT:
+-------------------------------
+This bot requires .opus audio files with specific encoding, don't worry,
+it's easy, just follow the 'Converting-To-Opus.txt' guide.
+
+FILE NAMING FORMAT:
+-------------------------------
+Files MUST start with numbers for proper sorting. The bot expects:
+
+    01 - Track Name.opus
+    02 - Track Name.opus
+    03 - Track Name.opus
+    ...
+    10 - Track Name.opus
+
+Format rules:
+- Start with digits (01, 02, 03... or 1, 2, 3...)
+- Follow with space, dash, space: " - "
+- Then your track name
+- End with .opus extension
+
+Example good names:
+✓ 01 - Hopes and Dreams.opus
+✓ 02 - Every Day Is Night.opus
+✓ 10 - Drive Me Wild.opus
+
+Example bad names:
+✗ Hopes and Dreams.opus (no number - won't sort correctly)
+✗ Track 01.opus (number not at start)
+✗ Song_01.opus (number not at start)
+
+The bot will:
+- Sort files numerically (01, 02, 03... 10, 11, not alphabetically)
+- Display song names like this: "Track Name" (not "01 - Track Name")
+- Use track numbers for !play commands (!play 5 plays the 5th track)
+- Use track name for !play commands (!play Dawn Approaches)
+
+NOTE: I used PowerRename (Windows) to rename my stuff faster.
 
 ================================================================================
-STEP 4: PLACE SONGS IN A FOLDER
+STEP 4: ORGANIZE YOUR MUSIC
 ================================================================================
 
 Create music directory:
@@ -50,10 +86,21 @@ Create music directory:
 4. Open the jill folder
 5. Create a new folder named "music"
 
-Place your .opus files in C:\jill\music\
+Choose ONE of these organization methods:
 
-IMPORTANT: The music folder should contain ONLY .opus files.
-No other file types (.mp3, .flac, .wav, etc.) should be in this folder.
+METHOD A - Single Playlist (Simple):
+Place all .opus files directly in C:\jill\music\
+
+METHOD B - Multiple Playlists:
+Create subfolders in C:\jill\music\ for each playlist:
+- C:\jill\music\01 - Album Name\
+- C:\jill\music\02 - OST\
+- C:\jill\music\03 - Chill Music\
+
+Then place .opus files in each subfolder.
+
+IMPORTANT: Only .opus files should be in music folders.
+No other file types (.mp3, .flac, .wav, etc.) are allowed.
 
 ================================================================================
 STEP 5: DOWNLOAD BOT
@@ -80,32 +127,17 @@ Your directory structure should be:
     ├── bot.py
     ├── requirements.txt
     ├── .env (created in Step 7)
-    ├── /config/ (configuration folder - USER CUSTOMIZATION)
+    ├── /config/ (configuration folder)
     │   ├── __init__.py
     │   ├── features.py
     │   ├── messages.py
     │   ├── timing.py
     │   ├── paths.py
     │   └── aliases.py
-    ├── /handlers/ (command handlers - implementation)
-    │   ├── __init__.py
-    │   └── commands.py
-    ├── /core/ (core music player - implementation)
-    │   ├── __init__.py
-    │   ├── player.py
-    │   ├── playback.py
-    │   └── track.py
-    ├── /systems/ (specialized systems - implementation)
-    │   ├── __init__.py
-    │   ├── spam_protection.py
-    │   ├── cleanup.py
-    │   ├── voice_manager.py
-    │   └── watchdog.py
-    ├── /utils/ (utility helpers - implementation)
-    │   ├── __init__.py
-    │   ├── discord_helpers.py
-    │   ├── persistence.py
-    │   └── context_managers.py
+    ├── /handlers/ (jill's code)
+    ├── /core/ (jill's code)
+    ├── /systems/ (jill's code)
+    ├── /utils/ (jill's code)
     ├── /README/ (documentation folder)
     │   ├── README.txt
     │   ├── SETUP-Linux.txt
@@ -117,6 +149,13 @@ Your directory structure should be:
     └── /music/
         ├── 01 - Track Name.opus
         ├── 02 - Track Name.opus
+        └── ...
+        │   # OR if you have multiple playlists:
+        ├── 01 - Album Name/
+        │   ├── 01 - Track Name.opus
+        │   └── 02 - Track Name.opus
+        ├── 02 - OST/
+        │   └── 01 - Track Name.opus
         └── ...
 
 ================================================================================

@@ -17,27 +17,29 @@ QUICK GUIDE:
 # MESSAGE CLEANUP FEATURES
 # =========================================================================================================
 
-DELETE_OTHER_BOTS = True           # Delete other bots' messages during cleanup
-                                   # False = only delete our messages (keeps other bots' spam)
+# CLEANUP SYSTEMS EXPLAINED:
+# --------------------------
+# SCHEDULED CLEANUP (TTL-based): Messages get "expiration dates" and are deleted when time is up
+# CHANNEL SWEEP (History scan): Scans channel history periodically + when spam detected and smartly
+# cleans up left over bot messages and left over user commands (!play, !queue, etc)
+# 
+# Why both? SCHEDULED CLEANUP is fast for known messages, CHANNEL SWEEP catches missed ones.
+# Together they ensure a clean chat with redundancy.
+#
+# IMPORTANT: Both cleanup systems work in the text channel where you first used !play.
+# Cleanup features activate after the first !play command. The bot automatically remembers 
+# which channel to clean up and restores it after restart. Channel data is stored in 
+# last_channels.json and managed transparently.
+
+DELETE_OTHER_BOTS = False          # Delete other bots' messages as well during cleanup
+                                   # False = only delete jill's messages (and user !commands)
+                                   # Set to False by default just in case, but I find it useful
 
 AUTO_CLEANUP_ENABLED = True        # Enable automatic message cleanup (background worker)
                                    # False = manual cleanup only (chat gets cluttered)
 
 TTL_CLEANUP_ENABLED = True         # Auto-delete messages after TTL expires
                                    # False = messages stay forever
-
-# CLEANUP SYSTEMS EXPLAINED:
-# --------------------------
-# SCHEDULED CLEANUP (TTL-based): Messages get "expiration dates" and are deleted when time is up
-# CHANNEL SWEEP (History scan): Scans channel history periodically + when spam detected
-# 
-# Why both? SCHEDULED CLEANUP is fast for known messages, CHANNEL SWEEP catches missed ones.
-# Together they ensure clean chat with redundancy.
-#
-# IMPORTANT: Both cleanup systems work in the text channel where you first used !play.
-# Cleanup features activate after the first !play command. The bot automatically remembers 
-# which channel to clean up and restores it after restart. Channel data is stored in 
-# last_channels.json and managed transparently.
 
 # =========================================================================================================
 # ANTI-SPAM FEATURES
@@ -58,7 +60,7 @@ TTL_CLEANUP_ENABLED = True         # Auto-delete messages after TTL expires
 SPAM_PROTECTION_ENABLED = True     # CRITICAL: Prevents API rate limits
                                    # False = NO PROTECTION (can break bot!)
 
-SPAM_WARNING_ENABLED = True      # Show spam warning responses when users spam commands
+SPAM_WARNING_ENABLED = True        # Show spam warning responses when users spam commands
                                    # False = silent (users won't know why commands don't work)
 
 # =========================================================================================================
@@ -75,6 +77,8 @@ AUTO_DISCONNECT_ENABLED = True     # Auto-disconnect when alone too long (defaul
 # PLAYBACK FEATURES
 # =========================================================================================================
 
+# NOTE: Disabled features won't show up in the !help menu to prevent confusion.
+
 SHUFFLE_MODE_ENABLED = True        # Enable !shuffle and !unshuffle commands
                                    # False = commands return "feature disabled"
 
@@ -89,6 +93,9 @@ LIBRARY_DISPLAY_ENABLED = True     # Enable !library command (shows all tracks)
 
 LIBRARY_PAGE_SIZE = 20             # Number of tracks per page in !library
                                    # Higher = more tracks per page (longer messages)
+
+PLAYLIST_PAGE_SIZE = 20            # Number of playlists per page in !playlists
+                                   # Higher = more playlists per page (longer messages)
 
 # =========================================================================================================
 # ADVANCED FEATURES
@@ -107,9 +114,11 @@ VOICE_RECONNECT_ENABLED = True     # Auto-reconnect on voice errors
 # FUTURE FEATURES (WIP)
 # =========================================================================================================
 
-#PLAYLIST_MODE_ENABLED = False      # Enable playlist functionality  
+#FULL_SHUFFLE_ENABLED = False       # Shuffles every song of every playlist together
 #CROSS_SERVER_SYNC_ENABLED = False  # Enable cross-server synchronization
 #VOLUME_CONTROL_ENABLED = False     # Enable volume control commands
-#(Volume control unlikely since it causes so many freaking issues.)
+
+# NOTE: Volume control unlikely to be implemented since it causes so many freaking issues,
+# but maybe as I'll add the feature and a toggle for the people that wanna risk it.
 
 

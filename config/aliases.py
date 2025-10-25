@@ -1,7 +1,6 @@
 """
-Command Aliases - Alternative command names
+Command Aliases
 
-This file contains all command aliases and their validation.
 Users can customize alternative command names here.
 
 QUICK GUIDE:
@@ -9,8 +8,12 @@ QUICK GUIDE:
 - Each alias can only be used ONCE across all commands
 - Aliases work with all parameter combinations (e.g., !play and !play 5)
 - Aliases are case-insensitive (!Play = !play = !PLAY)
-- Restart bot after changes: sudo systemctl restart jill.service
+- Restart bot after changes: sudo systemctl restart jill.service (Linux)
 - Avoid reserved names: 'help', disnake commands, anything starting with '_'
+
+WARNING:
+- DO NOT change the "first" command in the list (for example: queue, play, pause, skip, stop, etc)
+as that will break those functions. Only change the commands inside the brackets []! (See example bellow)
 
 EXAMPLES:
 - To add 'forward' to skip command: 'skip': ['next', 'ns', 'forward']
@@ -25,13 +28,9 @@ logger = logging.getLogger(__name__)
 # =========================================================================================================
 # COMMAND ALIASES (Customize here!)
 # =========================================================================================================
-# Key = primary command, Value = list of aliases
-# Each alias can only be used ONCE across all commands
-# Aliases work with all parameter combinations (e.g., !play and !play 5)
 
 COMMAND_ALIASES = {
     'queue': ['q', 'playing', 'name', 'song'],
-    'library': ['fullqueue', 'songs', 'list', 'allsongs', 'playlist', 'fq', 'all'],
     'play': ['resume', 'unpause', 'start', 'join', 'skipto', 'jumpto'],
     'pause': ['break'],
     'skip': ['next', 'ns'],
@@ -39,6 +38,9 @@ COMMAND_ALIASES = {
     'previous': ['prev', 'back', 'ps'],
     'shuffle': ['mess', 'scramble'],
     'unshuffle': ['fix', 'organize'],
+    'library': ['fullqueue', 'songs', 'list', 'allsongs', 'fq', 'all'],
+    'playlists': ['libraries', 'albums', 'lists', 'collections'],
+    'switchplaylist': ['playlist', 'album', 'switch', 'useplaylist'],
     'help': ['commands', 'jill'],
 }
 

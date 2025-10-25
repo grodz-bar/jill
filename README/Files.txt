@@ -48,6 +48,13 @@ The bot follows this directory structure:
         ├── 01 - Track Name.opus
         ├── 02 - Track Name.opus
         └── ...
+        │ # OR if you have multiple playlists:
+        ├── 01 - Album Name/
+        │   ├── 01 - Track Name.opus
+        │   └── 02 - Track Name.opus
+        ├── 02 - OST/
+        │   └── 01 - Track Name.opus
+        └── ...
 
 
 FILES DESCRIPTION:
@@ -79,12 +86,7 @@ Troubleshooting guide for common issues.
 .env.example
 ------------
 Sample environment configuration file.
-Copy to ".env" and fill in your bot token and music folder path.
-
-.gitignore
-----------
-Tells git which files to ignore (logs, tokens, music, runtime state, caches, etc.)
-Prevents accidentally committing sensitive data and temporary files.
+Copy or rename to ".env" and fill in your bot token and music folder path.
 
 requirements.txt
 ----------------
@@ -106,6 +108,11 @@ Channel persistence storage file (auto-created).
 Stores the last used text channel per Discord server.
 Allows cleanup features to resume after bot restart.
 Automatically managed - do not edit manually.
+
+.gitignore
+----------
+Tells git which files to ignore (logs, tokens, music, runtime state, caches, etc.)
+Prevents accidentally committing sensitive data and temporary files.
 
 ================================================================================
 SETUP ORDER (Recommended):

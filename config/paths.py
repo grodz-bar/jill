@@ -34,3 +34,9 @@ MUSIC_FOLDER = os.getenv('MUSIC_FOLDER') or str(_BOT_ROOT / 'music')  # Path to 
 # Format: JSON file with guild_id -> channel_id mappings
 # WARNING: Do not change this path unless you absolutely know what you're doing
 CHANNEL_STORAGE_FILE = str(_BOT_ROOT / 'last_channels.json')  # Path to channel storage file
+
+# PLAYLIST_STORAGE_FILE stores the last used playlist per guild
+# This allows the bot to remember which playlist each guild was using after restart
+# Format: JSON file with guild_id -> playlist_id mappings
+# WARNING: Do not change this path unless you absolutely know what you're doing
+PLAYLIST_STORAGE_FILE = str(_BOT_ROOT / 'last_playlists.json')  # Path to playlist storage file

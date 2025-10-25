@@ -13,16 +13,16 @@ Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.1
 
 **Implementation:**
 - `bot.py` — entry point, event handlers, watchdog setup
-- `handlers/commands.py` — all 10 commands
+- `handlers/commands.py` — all commands
 - `core/player.py` — MusicPlayer, queue, shuffle
 - `core/playback.py` — _play_current, _play_next, FFmpeg callbacks
-- `core/track.py` — Track class, library loading
+- `core/track.py` — Track class, library loading, playlist discovery
 - `systems/spam_protection.py` — 5-layer spam protection
 - `systems/cleanup.py` — dual cleanup (TTL + history scan)
 - `systems/voice_manager.py` — auto-pause/disconnect/resume
 - `systems/watchdog.py` — playback hang detection
 - `utils/discord_helpers.py` — safe Discord wrappers
-- `utils/persistence.py` — channel storage
+- `utils/persistence.py` — channel storage, playlist persistence
 - `utils/context_managers.py` — suppress_callbacks, reconnecting_state
 
 ## Critical Rules (DO NOT BREAK)

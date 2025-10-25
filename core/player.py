@@ -224,8 +224,10 @@ class MusicPlayer:
         if not track:
             return None
 
-        # Reset queue from this track
-        self.played.clear()
+        # Preserve current track in history so user can go back
+        if self.now_playing:
+            self.played.append(self.now_playing)
+
         self.now_playing = track
 
         # Build upcoming queue

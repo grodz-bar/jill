@@ -13,13 +13,13 @@ Self-hosted, customizable Discord music bot for your local library.
 ---
 
 ## Docs
-- **Windows setup:** [`SETUP-Windows.txt`](../SETUP-Windows.txt)
-- **Linux setup:** [`SETUP-Linux.txt`](../SETUP-Linux.txt)
-- **Get a Discord token:** [`Getting-Discord-Token.txt`](../Getting-Discord-Token.txt)
-- **Convert audio to Opus:** [`Converting-To-Opus.txt`](../Converting-To-Opus.txt)
-- **Troubleshooting:** [`troubleshooting.txt`](../troubleshooting.txt)
-- **Files overview:** [`Files.txt`](../Files.txt)
-- **Reference README:** [`README.txt`](../README.txt)
+- **Windows setup:** [SETUP-Windows.txt](../README/SETUP-Windows.txt)
+- **Linux setup:** [SETUP-Linux.txt](../README/SETUP-Linux.txt)
+- **Get a Discord token:** [Getting-Discord-Token.txt](../README/Getting-Discord-Token.txt)
+- **Convert audio to Opus:** [Converting-To-Opus.txt](../README/Converting-To-Opus.txt)
+- **Troubleshooting:** [troubleshooting.txt](../README/troubleshooting.txt)
+- **Files overview:** [Files.txt](../README/Files.txt)
+- **Reference README:** [README.txt](../README/README.txt)
 
 ---
 
@@ -41,11 +41,10 @@ Self-hosted, customizable Discord music bot for your local library.
 
 ## Config references
 - [`.env.example`](../.env.example)
-- [`paths.py`](../paths.py) — library & storage paths
-- [`features.py`](../features.py) — feature flags
-- [`messages.py`](../messages.py) — bot text
-- [`timing.py`](../timing.py) — cooldowns/TTLs
-- [`aliases.py`](../aliases.py) — optional aliases
+- [`aliases.py`](../config/aliases.py) — aliases
+- [`messages.py`](../config/messages.py) — messages
+- [`features.py`](../config/features.py) — features
+- [`timing.py`](../config/timing.py) — cooldowns/TTLs
 
 > See the setup docs above for environment variables and service examples.
 

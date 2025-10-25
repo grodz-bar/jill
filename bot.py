@@ -18,10 +18,10 @@
 """
 jill Discord Music Bot
 ========================================================
-VERSION: 1.0.1
+VERSION: 0.9.5
 ========================================================
 
-A Discord music bot built with clean, modular architecture.
+A Discord music bot built using the disnake API.
 See AGENTS.md for development guidelines.
 """
 
@@ -86,7 +86,7 @@ async def on_ready():
     global _playback_watchdog_task, _alone_watchdog_task
 
     logger.info(f'Bot connected as {bot.user}')
-    logger.info('Jill v1.0.0 - Copyright (C) 2025 grodz-bar')
+    logger.info('Jill v0.9.5 - Copyright (C) 2025 grodz-bar')
     logger.info('Licensed under GPL 3.0 - See LICENSE.md for details')
 
     # Restore players for guilds with saved channels

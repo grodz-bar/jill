@@ -70,9 +70,12 @@ feed `systems.cleanup.CleanupManager` even when embeds update in place.
 
 **File safety:** Only `.opus` files from `MUSIC_FOLDER`, prevent path traversal
 
+**Version updates:** Remind and then ask user about updating version in `bot.py` ~lines 21 & 89
+
 ## Documentation
 
 **Always document:**
 - New functions/classes with docstrings (explain purpose, args, return)
 - Complex logic with inline comments (explain *why*, not *what*)
 - Update this AGENTS.md if you add new files or change architecture
+- Update .txt's and .py's to reflect up to date behaviour after making changes, but only if needed.

@@ -105,6 +105,10 @@ ALONE_DISCONNECT_DELAY = 600       # Seconds alone before auto-disconnect (10 mi
 # MESSAGE LIFETIMES (seconds) - How long each message type stays visible
 # =========================================================================================================
 
+# Used by systems.cleanup.CleanupManager to schedule deletions. Status embeds
+# are edited in place, and these TTLs govern follow-up messages such as queue
+# lists, shuffle toggles, and errors.
+
 MESSAGE_TTL = {
     'now_serving': 600,            # Current track info - protected while playing
     'pause': 10,                   # "Paused" message
@@ -147,12 +151,12 @@ PAUSE_SPAM_THRESHOLD = 5           # Times user can spam before warning
 
 # Skip command debouncing
 SKIP_DEBOUNCE_WINDOW = 1.0         # Wait time for spam to stop (seconds)
-SKIP_COOLDOWN = 1.0                # Cooldown after execution (seconds)
+SKIP_DEBOUNCE_COOLDOWN = 1.0       # Cooldown after execution (seconds)
 SKIP_SPAM_THRESHOLD = 10           # Times user can spam before warning
 
 # Stop command debouncing
 STOP_DEBOUNCE_WINDOW = 2.0         # Wait time for spam to stop (seconds)
-STOP_COOLDOWN = 2.0                # Cooldown after execution (seconds)
+STOP_DEBOUNCE_COOLDOWN = 2.0       # Cooldown after execution (seconds)
 STOP_SPAM_THRESHOLD = 5            # Times user can spam before warning
 
 # Previous command debouncing

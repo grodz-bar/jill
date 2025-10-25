@@ -6,16 +6,17 @@ Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.1
 
 **Config** (`/config/` - user customization only):
 - `features.py` — toggles (shuffle, queue, cleanup, auto-pause)
-- `timing.py` — all timing constants (TTLs, cooldowns, debounce)
 - `messages.py` — all user-facing text
 - `aliases.py` — command aliases
 - `paths.py` — file paths
+- `timing.py` — all timing constants (TTLs, cooldowns, debounce). Message TTLs still
+feed `systems.cleanup.CleanupManager` even when embeds update in place.
 
 **Implementation:**
 - `bot.py` — entry point, event handlers, watchdog setup
 - `handlers/commands.py` — all commands
 - `core/player.py` — MusicPlayer, queue, shuffle
-- `core/playback.py` — _play_current, _play_next, FFmpeg callbacks
+- `core/playback.py` — _play_current, _play_next, FFmpeg callbacks (session-guarded playback tokens)
 - `core/track.py` — Track class, library loading, playlist discovery
 - `systems/spam_protection.py` — 5-layer spam protection
 - `systems/cleanup.py` — dual cleanup (TTL + history scan)
@@ -23,7 +24,7 @@ Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.1
 - `systems/watchdog.py` — playback hang detection
 - `utils/discord_helpers.py` — safe Discord wrappers
 - `utils/persistence.py` — channel storage, playlist persistence
-- `utils/context_managers.py` — suppress_callbacks, reconnecting_state
+- `utils/context_managers.py` — suppress_callbacks (cancels playback session), reconnecting_state
 
 ## Command Structure
 
@@ -56,6 +57,9 @@ Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.1
 - Constants from `timing.py` (don't hardcode timings)
 - Messages from `messages.py` (don't hardcode user text)
 - `python -m pip` not `pip` (reliability)
+
+**Playback safety:**
+- Cancel or replace the active playback session (`player.cancel_active_session()` or `suppress_callbacks`) before stopping/starting audio manually. This prevents stale callbacks from advancing the queue.
 
 **Never:**
 - Add blocking I/O in event handlers (use `asyncio.to_thread()`)

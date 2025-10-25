@@ -10,13 +10,32 @@ The bot follows this directory structure:
     ├── bot.py                            # Main bot file
     ├── requirements.txt                  # Python dependencies
     ├── .env                              # Bot configuration (created during setup)
-    ├── /config/                          # Configuration folder
+    ├── /config/                          # Configuration folder (USER CUSTOMIZATION)
     │   ├── __init__.py                   # Python package marker
     │   ├── aliases.py                    # Command aliases
     │   ├── features.py                   # Feature toggles
     │   ├── messages.py                   # Bot messages and responses
     │   ├── timing.py                     # Timing and cooldown settings
     │   └── paths.py                      # File paths configuration
+    ├── /handlers/                        # Command handlers (implementation)
+    │   ├── __init__.py                   # Python package marker
+    │   └── commands.py                   # All bot commands
+    ├── /core/                            # Core music player (implementation)
+    │   ├── __init__.py                   # Python package marker
+    │   ├── player.py                     # MusicPlayer class
+    │   ├── playback.py                   # Playback functions
+    │   └── track.py                      # Track class and library loading
+    ├── /systems/                         # Specialized systems (implementation)
+    │   ├── __init__.py                   # Python package marker
+    │   ├── spam_protection.py            # 5-layer spam protection
+    │   ├── cleanup.py                    # Message cleanup (TTL + history)
+    │   ├── voice_manager.py              # Voice operations & auto-pause
+    │   └── watchdog.py                   # Playback monitoring
+    ├── /utils/                           # Utility helpers (implementation)
+    │   ├── __init__.py                   # Python package marker
+    │   ├── discord_helpers.py            # Discord API helpers
+    │   ├── persistence.py                # Channel persistence
+    │   └── context_managers.py           # Context helpers
     ├── /README/                          # Documentation folder
     │   ├── README.txt                    # Main overview
     │   ├── SETUP-Linux.txt               # Linux setup guide

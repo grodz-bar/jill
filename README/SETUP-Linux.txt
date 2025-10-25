@@ -23,10 +23,9 @@ Verify Python version:
 
 1. Check Python version:
     python3 --version
-2. You should see "Python 3.11.x" (or similar)
+2. You should see "Python 3.11.x" or newer
 
-If your version is too old, you may need to install a newer Python version.
-Bot was tested on Python 3.11+.
+NOTE: If your version is too old, you may need to install a newer Python version.
 
 ================================================================================
 STEP 2: GET DISCORD BOT TOKEN
@@ -118,13 +117,32 @@ Your directory structure should be:
     ├── bot.py
     ├── requirements.txt
     ├── .env (created in Step 7)
-    ├── /config/ (configuration folder)
+    ├── /config/ (configuration folder - USER CUSTOMIZATION)
     │   ├── __init__.py
     │   ├── features.py
     │   ├── messages.py
     │   ├── timing.py
     │   ├── paths.py
     │   └── aliases.py
+    ├── /handlers/ (command handlers - implementation)
+    │   ├── __init__.py
+    │   └── commands.py
+    ├── /core/ (core music player - implementation)
+    │   ├── __init__.py
+    │   ├── player.py
+    │   ├── playback.py
+    │   └── track.py
+    ├── /systems/ (specialized systems - implementation)
+    │   ├── __init__.py
+    │   ├── spam_protection.py
+    │   ├── cleanup.py
+    │   ├── voice_manager.py
+    │   └── watchdog.py
+    ├── /utils/ (utility helpers - implementation)
+    │   ├── __init__.py
+    │   ├── discord_helpers.py
+    │   ├── persistence.py
+    │   └── context_managers.py
     ├── /README/ (documentation folder)
     │   ├── README.txt
     │   ├── SETUP-Linux.txt
@@ -148,14 +166,17 @@ Create venv:
     python3 -m venv ~/jill-env
 2. Activate virtual environment:
     source ~/jill-env/bin/activate
-3. Install dependencies:
 
-1. Navigate to bot directory:
+   You should see "(jill-env)" at the start of your prompt
+
+3. Navigate to bot directory:
     cd ~/jill
-2. Install from requirements:
-    pip install -r requirements.txt
+4. Install dependencies:
+    python3 -m pip install -r requirements.txt
 
-4. Deactivate venv (we'll use it via script later):
+   (Note: Using "python3 -m pip" ensures correct pip version is used)
+
+5. Deactivate venv (we'll use it via script later):
     deactivate
 
 ================================================================================

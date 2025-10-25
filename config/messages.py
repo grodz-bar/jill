@@ -70,6 +70,9 @@ MESSAGES = {
     'skip_no_disc': '✖️ No disc in jukebox.',
     'nothing_playing': '✖️ Nothing\'s playing right now.',
     'queue_will_loop': '_(Queue will loop after this)_',
+    'queue_now_playing': '**Now playing:**',
+    'queue_last_played': '**Last played:**',
+    'queue_up_next': '**Up next:**',
     
     # ===================================================================================================================
     # SHUFFLE - Shuffle mode and organization messages

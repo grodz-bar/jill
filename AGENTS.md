@@ -1,6 +1,6 @@
 # AGENTS.md - Discord Music Bot
 
-Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.11+, `pip install -r requirements.txt`)
+Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.11+, `python -m pip install -r requirements.txt`)
 
 ## File Map (Where to Look)
 
@@ -84,4 +84,4 @@ feed `systems.cleanup.CleanupManager` even when embeds update in place.
 - New functions/classes with docstrings (explain purpose, args, return)
 - Complex logic with inline comments (explain *why*, not *what*)
 - Update this AGENTS.md if you add new files or change architecture
-- Update .txt's and .py's to reflect up to date behaviour after making changes, but only if needed.
+- Update .txts and .pys to reflect up-to-date behavior after making changes, but only if applicable.

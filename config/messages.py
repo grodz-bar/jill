@@ -33,7 +33,7 @@ CUSTOMIZATION TIPS:
 - If you have your own custom server emojis, you can use them like this:
 
 1. Find what emoji you want to use and what its name is; you can see the emoji's name by hovering
- over them in the emoji selection menu.
++ over it in the emoji selection menu.
 
 2. Go to a text channel and type \:youremojiname: then hit Enter to send
 
@@ -139,7 +139,7 @@ MESSAGES = {
     # ===================================================================================================================
     'playlists_header': '**🎵 Playlists (Page {page}/{total_pages})**\n',
     'playlists_next_page': '\nUse `!playlists {next_page}` for next page.',
-    'playlists_help': '\nUse `!tracks [number or name]` to switch playlists.',
+    'playlists_help': '\nUse `!list [number or name]` to switch playlists.',
     'playlist_switched': '✅ {message}',
     'error_playlist_not_found': '❌ Couldn\'t find playlist \'{query}\'. Try `!playlists` to see all available.',
     'error_playlist_already_active': '😑 Already using that playlist.',

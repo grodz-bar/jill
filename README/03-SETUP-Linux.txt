@@ -100,23 +100,12 @@ The setup wizard will guide you through configuration in just a few minutes.
 
 BEFORE STARTING THE WIZARD, make sure you have ready:
 - Your Discord bot token (from Step 2)
-- Python 3.11+ (the wizard can install this for you if needed)
-- FFmpeg (the wizard can install this for you if needed, for audio conversion)
-- If you want to convert audio files: Path to your source music folder with audio files
-- Optional: Music already converted to .opus format
-
-The wizard will handle everything else automatically, including installing missing dependencies!
+- Your local music files
 
 OPTION A - Use Setup Wizard (Fast & Easy):
 1. Navigate to bot directory: cd ~/jill
 2. Make setup script executable: chmod +x scripts/linux_setup.sh
 3. Run the setup wizard: ./scripts/linux_setup.sh
-4. Follow the interactive prompts:
-   - Confirm what the setup will do
-   - Enter your Discord bot token (from Step 2)
-   - Choose music folder path or press Enter for default
-   - Optionally convert audio files to .opus format
-5. Setup will complete automatically
 
 The wizard will automatically:
 - Create a virtual environment (venv) inside the bot folder
@@ -128,7 +117,7 @@ The wizard will automatically:
 
 SKIP TO: If you used the setup wizard, go directly to STEP 5 to run your bot!
 
-OPTION B - Manual Setup (Advanced):
+OPTION B - Manual Setup:
 If you prefer to set up manually, follow these steps:
 
 1. Create virtual environment: python3 -m venv venv
@@ -142,14 +131,13 @@ If you prefer to set up manually, follow these steps:
 5. Deactivate venv: deactivate
 6. Continue to STEP 5
 
-NOTE: You can exit the setup wizard at any time (Ctrl+C) and continue with manual setup.
-
 ================================================================================
 STEP 5: ADD YOUR MUSIC FILES (If Needed)
 ================================================================================
+WARNING: Even if you used the wizard you'll need to make sure your .opus music
+file naming follows the format convention bellow.
 
-If you didn't use the setup wizard's conversion feature, you'll need to add .opus files 
-to your music folder.
+NOTE: See 04-Converting-To-Opus.txt for help converting audio files.
 
 FILE NAMING FORMAT:
 -------------------------------
@@ -183,7 +171,8 @@ The bot will:
 - Use track numbers for !play commands (!play 5 plays the 5th track)
 - Use track name for !play commands (!play Dawn Approaches)
 
-NOTE: See 04-Converting-To-Opus.txt for help converting audio files.
+NOTE: On Linux, tools like `rename`, `mmv`, or `vidir` help batch-rename
+quickly. On Windows, PowerRename works well.
 
 ================================================================================
 STEP 6: RUN THE BOT
@@ -196,8 +185,7 @@ STEP 6: RUN THE BOT
 
 You should see:
 - "Bot connected as YourBot#1234"
-- "Music folder found: /home/YOUR-USERNAME/jill/music"
-- List of loaded tracks (or message if folder is empty)
+- "Music folder found: /home/example/jill/music"
 
 Test in Discord:
 1. Invite bot to your server (see '02-Getting-Discord-Token.txt')
@@ -211,36 +199,20 @@ STEP 7: AUTO-START WITH SYSTEMD (OPTIONAL BUT RECOMMENDED)
 ================================================================================
 NOTE: Do this so bot will start automatically after a machine boot.
 
-Create a run script:
+Using the included script:
 
-OPTION A - Use included script (Recommended):
-1. Make the included script executable:
+1. Make sure it is executable:
     chmod +x ~/jill/scripts/linux_run_bot.sh
-2. The script is ready to use (no editing needed)
-
-OPTION B - Create custom script:
-1. Open nano editor:
-    nano ~/jill/run_bot.sh
-2. Add these lines (REPLACE 'YOUR-USERNAME' with your actual username):
-
-#!/bin/bash
-cd /home/YOUR-USERNAME/jill
-source venv/bin/activate
-exec python3 bot.py
-
-3. Save and exit (Ctrl+X, Y, Enter in nano)
-
-4. Make the script executable:
-    chmod +x ~/jill/run_bot.sh
 
 Create systemd service file:
 
-1. Open nano with sudo:
+2. Open nano with sudo:
     sudo nano /etc/systemd/system/jill.service
-2. Add these lines (REPLACE 'YOUR-USERNAME' with your actual username):
-
+	
+3. Add these lines:
+----------------------------------------------------------------
 [Unit]
-Description=jill Music Bot
+Description=Jill Discord Bot
 After=network-online.target
 Wants=network-online.target
 
@@ -256,23 +228,29 @@ RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
+----------------------------------------------------------------
+WARNING: REPLACE 'YOUR-USERNAME' with your actual username.
 
-NOTE: If you used Method 3 in Step 7, also add these lines under [Service]:
+4. Save and exit (Ctrl+X, Y, Enter in nano)
+
+5. Reload systemd configuration:
+    sudo systemctl daemon-reload
+	
+6. Enable the service to start on boot:
+    sudo systemctl enable jill.service
+	
+7. Start the service:
+    sudo systemctl start jill.service
+	
+8. Check service status:
+    sudo systemctl status jill.service
+
+OPTIONAL: If you don't want to use the .env file (default setup),
+you can place these lines under [Service] instead:
 Environment="DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN"
 Environment="MUSIC_FOLDER=/home/YOUR-USERNAME/jill/music/"
 
-3. Save and exit (Ctrl+X, Y, Enter in nano)
-
-Enable and start the service:
-
-1. Reload systemd configuration:
-    sudo systemctl daemon-reload
-2. Enable the service to start on boot:
-    sudo systemctl enable jill.service
-3. Start the service:
-    sudo systemctl start jill.service
-4. Check service status:
-    sudo systemctl status jill.service
+NOTE: If you're storing Jill somewhere else edit the file to reflect that.
 
 ================================================================================
 CUSTOMIZATION
@@ -280,7 +258,7 @@ CUSTOMIZATION
 
 HOW TO EDIT CONFIG FILES:
 -------------------------
-Config files are just text files - edit them with nano
+Config files are just text files - edit them with nano.
 Example:
 
 1. cd ~/jill/config
@@ -299,7 +277,7 @@ Make sure to restart bot after changes:
 
     sudo systemctl restart jill.service
 
-For bot profile picture/banner/etc, just change it on the developer portal:
+For bot profile picture/banner/etc, change it on the developer portal:
 https://discord.com/developers/applications
 
 ================================================================================

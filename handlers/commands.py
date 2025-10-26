@@ -28,6 +28,7 @@ COMMAND ALIASES, NOT THIS FILE!
 import asyncio
 import logging
 import random
+import disnake
 from collections import deque
 from difflib import SequenceMatcher
 from typing import Optional

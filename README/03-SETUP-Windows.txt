@@ -14,7 +14,7 @@ Verify installation:
 1. Press Windows key + R
 2. Type "cmd" and press Enter
 3. Type "python --version" and press Enter
-4. You should see "Python 3.11.x" or "Python 3.14.x"
+4. You should see "Python 3.11+ (e.g., 3.12.x/3.13.x/3.14.x)"
 5. Type "python -m pip --version" and press Enter
 6. You should see "pip" with a version number
 7. Close the Command Prompt window
@@ -238,7 +238,7 @@ To update dependencies:
 3. Activate virtual environment:
     C:\jill\venv\Scripts\activate
 4. Update packages:
-    pip install -r requirements.txt --upgrade
+    python -m pip install -r requirements.txt --upgrade
 
 ================================================================================
 CUSTOMIZATION

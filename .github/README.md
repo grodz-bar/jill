@@ -35,7 +35,7 @@ Self-hosted, customizable Discord music bot for your local song library.
 ---
 
 ## Commands (core)
-```
+```text
 !play [n]         # join/resume; or jump to track n
 !pause            # pause
 !skip             # next track

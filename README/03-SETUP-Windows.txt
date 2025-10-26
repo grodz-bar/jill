@@ -60,7 +60,6 @@ Your directory structure should be:
     │   ├── win_run_bot.bat
     │   ├── linux_setup.sh
     │   └── linux_run_bot.sh
-    ├── .env (created in Step 6)
     ├── /config/ (configuration folder)
     │   ├── __init__.py
     │   ├── features.py
@@ -72,6 +71,8 @@ Your directory structure should be:
     ├── /core/ (jill's code)
     ├── /systems/ (jill's code)
     ├── /utils/ (jill's code)
+    ├── /venv/ (created during setup - virtual environment)
+    ├── .env (created during setup - bot configuration)
     ├── /README/ (documentation folder)
     │   ├── 01-README.txt
     │   ├── 02-Getting-Discord-Token.txt
@@ -137,7 +138,7 @@ If you prefer to set up manually, follow these steps:
 6. Create .env file in C:\jill\:
    - Create a file named ".env" (including the dot)
    - Add: DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN
-   - Add: MUSIC_FOLDER=C:\jill\music\
+   - (Optional) Add: MUSIC_FOLDER=C:\jill\music\ (leave blank to use default: music\ folder)
 7. Continue to STEP 5
 
 NOTE: You can exit the setup wizard at any time (Ctrl+C) and continue with manual setup.

@@ -59,7 +59,6 @@ Your directory structure should be:
     │   ├── win_run_bot.bat
     │   ├── linux_setup.sh
     │   └── linux_run_bot.sh
-    ├── .env (created in Step 6)
     ├── /config/ (configuration folder)
     │   ├── __init__.py
     │   ├── features.py
@@ -71,6 +70,8 @@ Your directory structure should be:
     ├── /core/ (jill's code)
     ├── /systems/ (jill's code)
     ├── /utils/ (jill's code)
+    ├── /venv/ (created during setup - virtual environment)
+    ├── .env (created during setup - bot configuration)
     ├── /README/ (documentation folder)
     │   ├── 01-README.txt
     │   ├── 02-Getting-Discord-Token.txt
@@ -118,7 +119,7 @@ OPTION A - Use Setup Wizard (Fast & Easy):
 5. Setup will complete automatically
 
 The wizard will automatically:
-- Create a virtual environment at ~/jill-env/
+- Create a virtual environment (venv) inside the bot folder
 - Install required Python packages
 - Create your .env configuration file
 - Create the music folder if it doesn't exist
@@ -130,13 +131,13 @@ SKIP TO: If you used the setup wizard, go directly to STEP 5 to run your bot!
 OPTION B - Manual Setup (Advanced):
 If you prefer to set up manually, follow these steps:
 
-1. Create virtual environment: python3 -m venv ~/jill-env
-2. Activate virtual environment: source ~/jill-env/bin/activate
+1. Create virtual environment: python3 -m venv venv
+2. Activate virtual environment: source venv/bin/activate
 3. Install dependencies: python3 -m pip install -r requirements.txt
-4. Create .env file in ~/jill/:
+4. Create .env file in the bot folder:
    - Run: nano .env
    - Add: DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN
-   - Add: MUSIC_FOLDER=~/jill/music/
+   - (Optional) Add: MUSIC_FOLDER=path/to/music (leave blank to use default: music/ folder)
    - Save and exit (Ctrl+X, Y, Enter)
 5. Deactivate venv: deactivate
 6. Continue to STEP 5
@@ -224,7 +225,7 @@ OPTION B - Create custom script:
 
 #!/bin/bash
 cd /home/YOUR-USERNAME/jill
-source /home/YOUR-USERNAME/jill-env/bin/activate
+source venv/bin/activate
 exec python3 bot.py
 
 3. Save and exit (Ctrl+X, Y, Enter in nano)

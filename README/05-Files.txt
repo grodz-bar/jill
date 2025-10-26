@@ -25,6 +25,10 @@ The bot follows this directory structure:
     ├── /handlers/                        # Command handlers (implementation)
     │   ├── __init__.py                   # Python package marker
     │   └── commands.py                   # All bot commands
+    ├── /venv/                            # Python virtual environment (created during setup)
+    ├── .env                              # Bot configuration (created during setup)
+    ├── last_channels.json                # Channel persistence (auto-created, managed)
+    ├── last_playlists.json               # Playlist persistence (auto-created, managed)
     ├── /core/                            # Core music player (implementation)
     │   ├── __init__.py                   # Python package marker
     │   ├── player.py                     # MusicPlayer class
@@ -87,13 +91,15 @@ NOTE: The setup wizards can do this automatically for you.
 
 scripts/win_setup.bat
 ---------------------
-Interactive setup wizard for Windows. Creates venv, installs dependencies,
-configures bot token and music folder, and optionally converts audio files.
+Interactive setup wizard for Windows. Creates venv inside bot folder, installs 
+dependencies, configures bot token and music folder (default: music/ subfolder), 
+and optionally converts audio files. Bot folder is fully portable.
 
 scripts/linux_setup.sh
 ----------------------
-Interactive setup wizard for Linux. Creates venv, installs dependencies,
-configures bot token and music folder, and optionally converts audio files.
+Interactive setup wizard for Linux. Creates venv inside bot folder, installs 
+dependencies, configures bot token and music folder (default: music/ subfolder), 
+and optionally converts audio files. Bot folder is fully portable.
 
 scripts/win_run_bot.bat
 -----------------------
@@ -110,7 +116,8 @@ Troubleshooting guide for common issues.
 .env.example
 ------------
 Sample environment configuration file.
-Copy or rename to ".env" and fill in your bot token and music folder path.
+Copy or rename to ".env" and fill in your bot token (music folder optional - 
+uses default music/ folder inside bot directory if not specified).
 
 requirements.txt
 ----------------

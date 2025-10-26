@@ -1,6 +1,21 @@
 @echo off
+setlocal EnableExtensions EnableDelayedExpansion
+
 REM Change to parent directory (project root)
-cd /d %~dp0..
+cd /d "%~dp0.." || (
+    echo ERROR: Unable to locate project root.
+    pause
+    exit /b 1
+)
+
+if exist scripts\win_setup.bat (
+    REM Ensure we are really in project root by verifying requirements file
+    if not exist requirements.txt (
+        echo ERROR: Could not find requirements.txt in project root.
+        pause
+        exit /b 1
+    )
+)
 
 echo ========================================
 echo Jill Discord Bot - Setup Wizard
@@ -10,19 +25,22 @@ echo This wizard will set up your bot in a few easy steps.
 echo You can press Ctrl+C at any time to exit and run this again later.
 echo.
 
-REM Check Python first
+REM STEP 0: PYTHON CHECK
+echo Checking for Python...
+for /f "tokens=*" %%p in ('python --version 2^>^&1') do set "PYTHON_VERSION=%%p"
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: Python not found
     echo.
+    echo ERROR: Python not found
     echo Please install Python 3.11 or newer and add it to PATH.
     echo See 03-SETUP-Windows.txt for instructions.
+    echo.
     pause
     exit /b 1
 )
 
 echo Found Python:
-python --version
+echo %PYTHON_VERSION%
 echo.
 
 echo ========================================
@@ -35,7 +53,7 @@ echo - Ask you to configure your bot token and music folder
 echo - Optionally convert audio files to .opus format
 echo - Create a .env configuration file
 echo.
-set /p CONTINUE="Do you want to continue? (Y/n): "
+set /p "CONTINUE=Do you want to continue? (Y/n): "
 if /i "%CONTINUE%"=="n" (
     echo.
     echo Setup cancelled.
@@ -44,46 +62,65 @@ if /i "%CONTINUE%"=="n" (
 )
 echo.
 
-REM Create venv (idempotent - skip if exists)
+REM STEP 1: VIRTUAL ENVIRONMENT
 if exist "venv\" (
     echo Virtual environment already exists, skipping creation...
 ) else (
     echo Creating virtual environment...
     python -m venv venv
     if errorlevel 1 (
+        echo.
         echo ERROR: Failed to create virtual environment
         pause
         exit /b 1
     )
     echo Virtual environment created successfully.
+    timeout /t 2 /nobreak >nul
 )
 echo.
 
-REM Activate venv
+if not exist "venv\Scripts\activate" (
+    echo ERROR: Virtual environment activation script not found.
+    echo Please delete the venv folder and rerun this setup.
+    pause
+    exit /b 1
+)
 call venv\Scripts\activate
+if errorlevel 1 (
+    echo ERROR: Failed to activate virtual environment.
+    pause
+    exit /b 1
+)
 
-REM Install/update dependencies
 echo Installing dependencies...
 python -m pip install --upgrade pip --quiet
+if errorlevel 1 (
+    echo.
+    echo ERROR: Failed to upgrade pip
+    pause
+    exit /b 1
+)
 python -m pip install -r requirements.txt
 if errorlevel 1 (
+    echo.
     echo ERROR: Failed to install dependencies
     pause
     exit /b 1
 )
 echo Dependencies installed successfully.
+timeout /t 2 /nobreak >nul
 echo.
 
-REM Configuration section
 echo ========================================
 echo Configuration
 echo ========================================
 echo.
 
-REM Check if .env already exists
 if exist ".env" (
     echo WARNING: .env file already exists.
-    set /p OVERWRITE="Do you want to overwrite it? (y/N): "
+    set /p "OVERWRITE=Do you want to overwrite it? (y/N): "
+    for /f "tokens=1" %%A in ("%OVERWRITE%") do set "OVERWRITE=%%A"
+    set "OVERWRITE=%OVERWRITE:~0,1%"
     if /i not "%OVERWRITE%"=="y" (
         echo.
         echo Setup cancelled. Your existing .env file was not modified.
@@ -92,54 +129,56 @@ if exist ".env" (
         exit /b 0
     )
     echo.
+    echo Overwriting existing .env file...
+    timeout /t 2 /nobreak >nul
 )
 
-REM Bot token prompt
 echo Step 1: Discord Bot Token
 echo --------------------------
 echo Enter your Discord bot token from the Discord Developer Portal.
 echo See 02-Getting-Discord-Token.txt if you need help getting your token.
 echo.
-set /p BOT_TOKEN="Bot Token: "
-
-REM Validate token not empty
+:ASK_TOKEN
+set "BOT_TOKEN="
+set /p "BOT_TOKEN=Bot Token: "
 if "%BOT_TOKEN%"=="" (
     echo.
     echo ERROR: Bot token cannot be empty.
-    echo Please run this script again and enter your token.
-    pause
-    exit /b 1
+    echo Please enter your token.
+    goto ASK_TOKEN
 )
 echo.
 
-REM Music folder prompt
 echo Step 2: Music Folder Location
 echo --------------------------
 echo Where should the bot look for your music files?
 echo.
-echo Default location: music\
+echo Default location: music\ (inside bot folder, fully portable)
 echo.
 echo Options:
-echo - Press Enter to use the default location
+echo - Press Enter to use the default location (recommended for portability)
 echo - Type a custom path (e.g., D:\Music\jill\)
 echo - Type 'exit' to cancel setup
 echo.
 echo If the folder doesn't exist, this script will create it for you.
 echo.
-set /p MUSIC_PATH="Music folder path: "
-
-REM Handle exit
+set "DEFAULT_PATH=0"
+set /p "MUSIC_PATH=Music folder path: "
 if /i "%MUSIC_PATH%"=="exit" (
     echo.
     echo Setup cancelled.
     pause
     exit /b 0
 )
+if "%MUSIC_PATH%"=="" (
+    set "MUSIC_PATH=music"
+    set "DEFAULT_PATH=1"
+) else (
+    set "MUSIC_PATH=%MUSIC_PATH:"=%"
+)
 
-REM Use default if empty
-if "%MUSIC_PATH%"=="" set MUSIC_PATH=music\
+if not "%MUSIC_PATH:~-1%"=="\\" set "MUSIC_PATH=%MUSIC_PATH%\\"
 
-REM Create music folder if it doesn't exist
 if not exist "%MUSIC_PATH%" (
     echo.
     echo Music folder does not exist. Creating: %MUSIC_PATH%
@@ -149,121 +188,196 @@ if not exist "%MUSIC_PATH%" (
         echo Please create it manually before running the bot.
     ) else (
         echo Music folder created successfully.
+        timeout /t 2 /nobreak >nul
     )
 ) else (
     echo Music folder found: %MUSIC_PATH%
 )
 echo.
 
-REM Optional conversion section
-echo Step 3: Audio File Conversion (Optional)
-echo --------------------------------------------
-echo Do you want to convert audio files to .opus now?
-echo.
-echo If you already have .opus files, select No and add them to your music folder.
-echo If you have MP3s, FLACs, or other audio files, we can convert them for you.
-echo.
-set /p CONVERT_FILES="Convert audio files now? (y/N): "
+set "CONVERSION_SUCCESS=false"
+set /p "CONVERT_FILES=Convert audio files now? (y/N): "
 if /i "%CONVERT_FILES%"=="y" (
-    echo.
-    echo Checking for FFmpeg...
-    ffmpeg -version >nul 2>&1
-    if errorlevel 1 (
-        echo ERROR: FFmpeg is not installed or not in PATH.
-        echo.
-        echo Please install FFmpeg and add it to PATH, or follow the manual conversion guide:
-        echo See 03-SETUP-Windows.txt and 04-Converting-To-Opus.txt
-        echo.
-        echo Press any key to continue without conversion...
-        pause >nul
-    ) else (
-        echo FFmpeg found.
-        echo.
-        
-        REM Ask for file format
-        set /p FILE_FORMAT="What audio format are your files? (mp3/flac/wav/m4a/other): "
-        if "%FILE_FORMAT%"=="" set FILE_FORMAT=mp3
-        
-        REM Ask for source folder
-        echo.
-        set /p SOURCE_FOLDER="Enter the path to your source music folder: "
-        
-        REM Validate source folder
-        if exist "%SOURCE_FOLDER%\" (
-            echo.
-            echo Source folder found: %SOURCE_FOLDER%
-            echo Conversion will preserve folder structure (subfolders = playlists).
-            echo.
-            echo Source: %SOURCE_FOLDER%
-            echo Destination: %MUSIC_PATH%
-            echo Format: %FILE_FORMAT% ^> .opus
-            echo.
-            set /p CONFIRM="Proceed with conversion? (Y/n): "
-            if /i not "%CONFIRM%"=="n" (
-                echo.
-                echo Starting conversion...
-                echo This may take a while depending on the number of files.
-                echo.
-                
-                REM Convert files recursively
-                set COUNT=0
-                for /r "%SOURCE_FOLDER%" %%f in (*.%FILE_FORMAT%) do (
-                    set /a COUNT+=1
-                    ffmpeg -i "%%f" -c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20 "%MUSIC_PATH%%%~pnf.opus" -loglevel error -n
-                    if errorlevel 1 (
-                        echo WARNING: Failed to convert: %%f
-                    )
-                )
-                
-                echo.
-                echo Conversion complete! Processed %COUNT% files.
-                echo.
-                
-                REM Ask about deleting originals
-                set /p DELETE_ORIGINALS="Delete original files after conversion? (y/N): "
-                if /i "%DELETE_ORIGINALS%"=="y" (
-                    echo.
-                    echo WARNING: This will permanently delete the original files from %SOURCE_FOLDER%
-                    set /p DELETE_CONFIRM="Are you sure? Type 'yes' to confirm: "
-                    if /i "%DELETE_CONFIRM%"=="yes" (
-                        echo Deleting original files...
-                        for /r "%SOURCE_FOLDER%" %%f in (*.%FILE_FORMAT%) do del "%%f" /f /q
-                        echo Original files deleted.
-                    ) else (
-                        echo Original files kept.
-                    )
-                )
-                echo.
-            ) else (
-                echo Conversion cancelled.
-            )
-        ) else (
-            echo.
-            echo ERROR: Source folder not found: %SOURCE_FOLDER%
-            echo Please check the path and run the wizard again if needed.
-            echo.
-        )
-    )
+    call :RUN_CONVERSION
 ) else (
     echo Skipping conversion.
+    timeout /t 2 /nobreak >nul
+)
+goto AFTER_CONVERSION
+
+:RUN_CONVERSION
+echo.
+echo Checking for FFmpeg...
+ffmpeg -version >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: FFmpeg is not installed or not in PATH.
+    echo Please install FFmpeg and add it to PATH, or follow the manual conversion guide:
+    echo See 03-SETUP-Windows.txt and 04-Converting-To-Opus.txt
+    echo.
+    echo Press any key to continue without conversion...
+    pause >nul
+    echo Skipping conversion.
+    timeout /t 2 /nobreak >nul
+    goto :EOF
 )
 
-REM Create .env file
+echo FFmpeg found.
+timeout /t 2 /nobreak >nul
+
+:CONVERSION_GUIDE
+echo.
+echo We'll copy your audio into your Jill music folder so the bot can play it.
+echo Converted songs will be saved to: %MUSIC_PATH%
+echo Subfolders in your source folder become playlists automatically.
+echo.
+timeout /t 2 /nobreak >nul
+
+:ASK_SOURCE_FOLDER
+echo.
+set /p "FILE_FORMAT=What audio format are your files? (mp3/flac/wav/m4a/other): "
+if "%FILE_FORMAT%"=="" set "FILE_FORMAT=mp3"
+echo.
+set "SOURCE_FOLDER="
+echo Where are the original files you want to convert?
+echo Enter the full folder path (for example: D:\Downloads\Albums\).
+echo Press Enter to use your Jill music folder: %MUSIC_PATH%
+echo.
+set /p "SOURCE_FOLDER=Source folder path: "
+if "%SOURCE_FOLDER%"=="" (
+    set "SOURCE_FOLDER=%MUSIC_PATH%"
+    echo.
+    echo Using your Jill music folder as both the source and destination.
+    timeout /t 2 /nobreak >nul
+)
+
+set "SOURCE_FOLDER=%SOURCE_FOLDER:"=%"
+if not "%SOURCE_FOLDER:~-1%"=="\" set "SOURCE_FOLDER=%SOURCE_FOLDER%\"
+
+if not exist "%SOURCE_FOLDER%" (
+    echo.
+    echo ERROR: Source folder not found: %SOURCE_FOLDER%
+    echo Please check the path and try again.
+    echo.
+    set /p "TRY_AGAIN=Would you like to try again? (Y/n): "
+    if /i "%TRY_AGAIN%"=="n" (
+        echo Skipping conversion.
+        timeout /t 2 /nobreak >nul
+        goto :EOF
+    )
+    goto ASK_SOURCE_FOLDER
+)
+
+echo.
+echo Source folder found: %SOURCE_FOLDER%
+echo.
+echo Source: %SOURCE_FOLDER%
+echo Destination: %MUSIC_PATH%
+echo Conversion will preserve folder structure (subfolders = playlists).
+echo Format: %FILE_FORMAT% ^> .opus
+echo.
+set /p "CONFIRM=Proceed with conversion? (Y/n): "
+if /i "%CONFIRM%"=="n" (
+    echo Conversion cancelled.
+    echo Skipping conversion.
+    timeout /t 2 /nobreak >nul
+    goto :EOF
+)
+
+set "FILE_COUNT=0"
+for /r "%SOURCE_FOLDER%" %%f in (*.%FILE_FORMAT%) do (
+    set /a FILE_COUNT+=1
+)
+
+if !FILE_COUNT! EQU 0 (
+    echo.
+    echo No %FILE_FORMAT% files found in: %SOURCE_FOLDER%
+    echo Add your %FILE_FORMAT% files to this folder and try again.
+    set /p "TRY_AGAIN=Would you like to try again? (Y/n): "
+    if /i "!TRY_AGAIN!"=="n" (
+        echo Skipping conversion.
+        timeout /t 2 /nobreak >nul
+        goto :EOF
+    )
+    goto ASK_SOURCE_FOLDER
+)
+
+echo Found !FILE_COUNT! %FILE_FORMAT% file(s).
+echo Starting conversion...
+echo This may take a while depending on the number of files.
+echo.
+
+set "SOURCE_BASE=!SOURCE_FOLDER!"
+set "SUCCESSFUL=0"
+for /r "%SOURCE_FOLDER%" %%f in (*.%FILE_FORMAT%) do (
+    set "CURRENT_FILE=%%f"
+    set "REL_PATH=!CURRENT_FILE:%SOURCE_BASE%=!"
+    set "DEST_PATH=!MUSIC_PATH!!REL_PATH!"
+    for %%I in ("!DEST_PATH!") do set "DEST_DIR=%%~dpI"
+    if not exist "!DEST_DIR!" mkdir "!DEST_DIR!" >nul 2>&1
+    for %%I in ("!DEST_PATH!") do set "DEST_FILE=%%~dpnI"
+    ffmpeg -i "%%f" -c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20 "!DEST_FILE!.opus" -loglevel error -n
+    if errorlevel 1 (
+        echo WARNING: Failed to convert: %%f
+    ) else (
+        set /a SUCCESSFUL+=1
+    )
+)
+
+echo.
+echo Successfully converted !SUCCESSFUL! file(s).
+timeout /t 2 /nobreak >nul
+
+set /p "DELETE_ORIGINALS=Delete original files after conversion? (y/N): "
+if /i "!DELETE_ORIGINALS!"=="y" (
+    echo.
+    echo WARNING: This will permanently delete the original files from %SOURCE_FOLDER%
+    set /p "DELETE_CONFIRM=Are you sure? Type 'yes' to confirm: "
+    if /i "!DELETE_CONFIRM!"=="yes" (
+        echo Deleting original files...
+        for /r "%SOURCE_FOLDER%" %%f in (*.%FILE_FORMAT%) do del "%%f" /f /q
+        echo Original files deleted.
+        timeout /t 2 /nobreak >nul
+    ) else (
+        echo Original files kept.
+        timeout /t 2 /nobreak >nul
+    )
+)
+
+set "CONVERSION_SUCCESS=true"
+goto :EOF
+
+:AFTER_CONVERSION
+
+echo.
 echo ========================================
 echo Creating Configuration
 echo ========================================
 echo.
 
-echo DISCORD_BOT_TOKEN=%BOT_TOKEN%> .env
-echo MUSIC_FOLDER=%MUSIC_PATH%>> .env
+set "BOT_TOKEN_ESC=%BOT_TOKEN%"
+set "MUSIC_PATH_ESC=%MUSIC_PATH%"
+set "DEFAULT_PATH_VALUE=%DEFAULT_PATH%"
+setlocal DisableDelayedExpansion
+>".env" echo DISCORD_BOT_TOKEN=%BOT_TOKEN_ESC%
+if "%DEFAULT_PATH_VALUE%"=="0" >>".env" echo MUSIC_FOLDER=%MUSIC_PATH_ESC%
+endlocal
 
-REM Ask about deleting .env.example
+if "%DEFAULT_PATH%"=="1" (
+    echo Using default music folder: music\ (inside bot folder)
+    echo This keeps your bot portable - you can move the entire bot folder anywhere.
+    timeout /t 2 /nobreak >nul
+) else (
+    echo Music folder saved to .env: %MUSIC_PATH%
+    timeout /t 2 /nobreak >nul
+)
+
+echo.
 if exist ".env.example" (
-    echo.
-    set /p DELETE_EXAMPLE="Delete .env.example (no longer needed)? (Y/n): "
+    set /p "DELETE_EXAMPLE=Delete .env.example (no longer needed)? (Y/n): "
     if /i not "%DELETE_EXAMPLE%"=="n" (
         del ".env.example" 2>nul
         echo .env.example deleted.
+        timeout /t 2 /nobreak >nul
         echo.
     )
 )
@@ -273,21 +387,31 @@ echo Setup Complete!
 echo ========================================
 echo.
 echo Configuration saved to .env
-echo Music folder: %MUSIC_PATH%
 echo.
-
-if /i "%CONVERT_FILES%"=="y" (
+if "%DEFAULT_PATH%"=="1" (
+    echo Music folder: music\ (inside bot folder - portable)
+    echo.
+    echo IMPORTANT: Your bot folder is fully portable!
+    echo   - Virtual environment: venv\ (inside bot folder)
+    echo   - Music folder: music\ (inside bot folder)
+    echo   - Move the entire bot folder anywhere without issues.
+) else (
+    echo Music folder: %MUSIC_PATH%
+    echo.
+    echo NOTE: Music stays at this custom location. Update .env if you move it.
+)
+echo.
+if "%CONVERSION_SUCCESS%"=="true" (
     echo Your files have been converted and are ready to use!
 ) else (
     echo Next steps:
-    echo 1. Add .opus music files to your music folder
-    echo    See 04-Converting-To-Opus.txt for help converting audio files
-    echo 2. Run scripts/win_run_bot.bat to start your bot
-    echo.
+    echo   1. Add .opus music files to your music folder.
+    echo      See 04-Converting-To-Opus.txt for help converting audio files.
+    echo   2. Run scripts/win_run_bot.bat to start your bot.
 )
-echo.
+timeout /t 2 /nobreak >nul
 echo.
 echo For help, see the README folder or 06-troubleshooting.txt
 echo.
 pause
-
+exit /b 0

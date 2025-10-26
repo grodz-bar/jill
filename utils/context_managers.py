@@ -47,11 +47,13 @@ def suppress_callbacks(player: Any):
     if callable(cancel_session):
         cancel_session()
 
+    # Preserve previous state to handle nested calls correctly
+    prev = getattr(player, "_suppress_callback", False)
     player._suppress_callback = True
     try:
         yield
     finally:
-        player._suppress_callback = False
+        player._suppress_callback = prev
 
 
 @contextmanager
@@ -68,8 +70,10 @@ def reconnecting_state(player: Any):
     Args:
         player: MusicPlayer instance with _is_reconnecting attribute
     """
+    # Preserve previous state to handle nested calls correctly
+    prev = getattr(player, "_is_reconnecting", False)
     player._is_reconnecting = True
     try:
         yield
     finally:
-        player._is_reconnecting = False
+        player._is_reconnecting = prev

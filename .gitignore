@@ -7,6 +7,7 @@ bot.log
 
 # Runtime state files
 last_channels.json
+last_playlists.json
 
 # Python cache directories
 .mypy_cache/

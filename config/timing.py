@@ -83,15 +83,6 @@ SPAM_CLEANUP_DELAY = 20            # Seconds to wait before cleaning up spam mes
                                    # LOWER = cleans faster, HIGHER = lets users see warning messages
 
 # =========================================================================================================
-# COMMAND COOLDOWNS
-# =========================================================================================================
-
-SKIP_COOLDOWN = 2.0                # Time after !skip before another !skip works
-PLAY_COOLDOWN = 2.0                # Time after !play before another !play works  
-STOP_COOLDOWN = 2.0                # Time after !stop before another !stop works
-RECONNECT_COOLDOWN = 3.0           # Time after channel switch before commands work
-
-# =========================================================================================================
 # AUTO-PAUSE TIMING
 # =========================================================================================================
 
@@ -116,7 +107,7 @@ MESSAGE_TTL = {
     'stop': 20,                    # "Stopped" message
     'queue': 30,                   # !queue command output
     'tracks': 90,                  # !tracks command output (longer to read)
-    'library': 90,                 # Alias for 'tracks' (backwards compatibility)
+    'playlists': 90,               # !playlists command output (longer to read)
     'help': 120,                   # !help command output (wall of text)
     'shuffle': 30,                 # Shuffle mode confirmation
     'error_quick': 10,             # Quick error messages
@@ -151,12 +142,12 @@ PAUSE_SPAM_THRESHOLD = 5           # Times user can spam before warning
 
 # Skip command debouncing
 SKIP_DEBOUNCE_WINDOW = 1.0         # Wait time for spam to stop (seconds)
-SKIP_DEBOUNCE_COOLDOWN = 1.0       # Cooldown after execution (seconds)
+SKIP_COOLDOWN = 1.0                # Cooldown after execution (seconds)
 SKIP_SPAM_THRESHOLD = 10           # Times user can spam before warning
 
 # Stop command debouncing
 STOP_DEBOUNCE_WINDOW = 2.0         # Wait time for spam to stop (seconds)
-STOP_DEBOUNCE_COOLDOWN = 2.0       # Cooldown after execution (seconds)
+STOP_COOLDOWN = 2.0                # Cooldown after execution (seconds)
 STOP_SPAM_THRESHOLD = 5            # Times user can spam before warning
 
 # Previous command debouncing
@@ -202,7 +193,5 @@ COMMAND_QUEUE_TIMEOUT = 0.5              # Max wait for queue operations (don't 
 WATCHDOG_INTERVAL = 600                  # Check for stuck playback every 10 minutes
 WATCHDOG_TIMEOUT = 660                   # Consider playback stuck after 11 minutes
 
-# Legacy constants (kept for compatibility)
 CALLBACK_MIN_INTERVAL = 1.0              # Min time between callback-triggered track advances
 ALONE_WATCHDOG_INTERVAL = 10             # Check alone status every 10 seconds
-

@@ -95,14 +95,15 @@ async def playback_watchdog(bot, players: Dict[int, 'MusicPlayer']):
                             with suppress_callbacks(player):
                                 player.voice_client.stop()
 
-                            # Manually queue next track since we suppressed the callback
+                            # Manually queue next track since we suppressed the callback (priority=True for internal commands)
                             from core.playback import _play_next
                             await player.spam_protector.queue_command(
-                                lambda: _play_next(guild_id, bot, players)
+                                lambda gid=guild_id: _play_next(gid, bot, players),
+                                priority=True
                             )
 
-                        except Exception as e:
-                            logger.error(f"Watchdog stop failed: {e}")
+                        except Exception:
+                            logger.exception("Watchdog stop failed")
 
                 else:
                     # Track changed, update tracking
@@ -110,8 +111,12 @@ async def playback_watchdog(bot, players: Dict[int, 'MusicPlayer']):
                         player._last_track_id = current_track.track_id
                         player._last_track_start = current_time
 
-        except Exception as e:
-            logger.error(f"Playback watchdog error: {e}", exc_info=True)
+        except asyncio.CancelledError:
+            # Task was cancelled during shutdown - exit cleanly
+            logger.debug("Playback watchdog cancelled, shutting down")
+            break
+        except Exception:
+            logger.exception("Playback watchdog error")
 
 
 async def alone_watchdog(bot, players: Dict[int, 'MusicPlayer']):
@@ -144,7 +149,7 @@ async def alone_watchdog(bot, players: Dict[int, 'MusicPlayer']):
             await asyncio.sleep(sleep_interval)
 
             # Snapshot iteration to prevent crashes during modifications
-            for guild_id, player in list(players.items()):
+            for _guild_id, player in list(players.items()):
                 if player.voice_client and player.voice_client.is_connected():
                     # Handle alone state (auto-pause/disconnect)
                     current_state = player.voice_manager.get_playback_state()
@@ -158,5 +163,9 @@ async def alone_watchdog(bot, players: Dict[int, 'MusicPlayer']):
                     if new_state is not None:
                         player.state = new_state
 
-        except Exception as e:
-            logger.error(f"Alone watchdog error: {e}", exc_info=True)
+        except asyncio.CancelledError:
+            # Task was cancelled during shutdown - exit cleanly
+            logger.debug("Alone watchdog cancelled, shutting down")
+            break
+        except Exception:
+            logger.exception("Alone watchdog error")

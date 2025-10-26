@@ -116,6 +116,9 @@ class SpamProtector:
         Returns:
             bool: True if spam detected (command should be silently ignored)
         """
+        if not SPAM_PROTECTION_ENABLED:
+            return False
+
         current_time = time.time()
         last_time = self._user_last_command.get(user_id, 0)
 
@@ -326,6 +329,10 @@ class SpamProtector:
                     await cmd()  # Execute the command
                 finally:
                     self._command_queue.task_done()
+            except asyncio.CancelledError:
+                # Task was cancelled during shutdown - exit cleanly
+                logger.debug(f"Guild {self.guild_id}: Command processor cancelled, shutting down")
+                break
             except Exception as e:
                 logger.error(f"Guild {self.guild_id}: Command processor error: {e}", exc_info=True)
 
@@ -339,17 +346,18 @@ class SpamProtector:
 
         Args:
             cmd: Async function to execute
-            priority: If True, use shorter timeout (for critical operations)
+            priority: If True, skip queue health check and use shorter timeout (for critical internal operations like _play_next)
 
         Note:
             Command will execute when all previous commands finish.
             This is how we prevent race conditions.
+            Priority commands (internal operations) are never dropped to prevent playback stalls.
         """
-        # Check queue health
-        if self._command_queue.qsize() >= COMMAND_QUEUE_MAXSIZE * 0.9:  # 90% full
+        # Check queue health (skip for priority/internal commands)
+        if not priority and self._command_queue.qsize() >= COMMAND_QUEUE_MAXSIZE * 0.9:  # 90% full
             logger.warning(
                 f"Guild {self.guild_id}: Command queue nearly full "
-                f"({self._command_queue.qsize()}/{COMMAND_QUEUE_MAXSIZE}), dropping command"
+                f"({self._command_queue.qsize()}/{COMMAND_QUEUE_MAXSIZE}), dropping non-priority command"
             )
             return
 

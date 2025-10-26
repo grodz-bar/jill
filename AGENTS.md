@@ -49,6 +49,12 @@ feed `systems.cleanup.CleanupManager` even when embeds update in place.
 
 ## Critical Rules (DO NOT BREAK)
 
+**Graceful shutdown:**
+- Signal handlers (SIGINT, SIGTERM) trigger `shutdown_bot()` async sequence
+- Shutdown order: watchdogs → players → voice → bot connection
+- Never use blocking operations in shutdown sequence
+- All subsystems must handle cancellation gracefully
+
 **Never merge/disable dual cleanup systems:**
 - TTL cleanup + history scan run independently (redundancy by design)
 

@@ -64,7 +64,7 @@ AUDIO CONVERSION ISSUES
 
 "ffmpeg not recognized":
 - Linux: Install with apt (sudo apt install ffmpeg)
-- Windows: Add ffmpeg to PATH (see Converting-To-Opus.txt)
+- Windows: Add ffmpeg to PATH (see 04-Converting-To-Opus.txt)
 
 "Could not write header for output file":
 - Check you have write permission in folder
@@ -99,8 +99,55 @@ Task Scheduler won't start bot (Windows):
 Service won't start (Linux):
 - Check 'sudo systemctl status jill.service' for errors
 - Verify paths in service file are correct
-- Ensure run_bot.sh is executable (chmod +x)
+- Ensure linux_run_bot.sh is executable (chmod +x ~/jill/scripts/linux_run_bot.sh)
 - Check service logs: sudo journalctl -u jill.service -f
+
+================================================================================
+STOPPING THE BOT (GRACEFUL SHUTDOWN)
+================================================================================
+
+The bot implements a graceful shutdown system that ensures all tasks are
+properly cleaned up before exiting. This prevents data loss and race conditions.
+
+How to stop the bot properly:
+
+Windows (Command Prompt):
+- Press Ctrl+C in the console window
+- Wait 2-3 seconds for shutdown to complete
+- You'll see "Shutdown complete" in the logs
+
+Windows (Task Scheduler):
+- Open Task Scheduler
+- Right-click "Jill Discord Bot" task → End
+- Or: Stop-ScheduledTask -TaskName "Jill Discord Bot" (PowerShell)
+
+Linux (systemd service):
+- sudo systemctl stop jill.service
+- The bot will shutdown gracefully within 2-3 seconds
+- Check status: sudo systemctl status jill.service
+
+Linux (manual/screen session):
+- Press Ctrl+C in the terminal
+- Wait for "Shutdown complete" message
+- Or: kill -TERM <pid> (sends SIGTERM signal)
+
+What happens during graceful shutdown:
+1. Signal received (SIGINT from Ctrl+C or SIGTERM from systemd)
+2. Watchdog tasks cancelled
+3. All players shutdown (spam protectors, cleanup managers)
+4. Voice connections closed
+5. Bot disconnects from Discord
+6. Logs "Shutdown complete"
+
+DO NOT:
+- Use "kill -9" or "End Process" in Task Manager (forces immediate exit)
+- Close terminal window without Ctrl+C (unclean shutdown)
+- Use systemctl kill (too aggressive, use stop instead)
+
+If the bot doesn't shutdown within 10 seconds:
+- Something is deadlocked (rare)
+- Check logs for errors
+- As last resort, use kill -9 <pid> or Task Manager → End Process
 
 ================================================================================
 LOGGING AND DEBUGGING

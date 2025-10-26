@@ -2,6 +2,10 @@
 HOW TO CONVERT MUSIC TO OPUS FORMAT (Linux and Windows Guide)
 ================================================================================
 
+NOTE: The setup wizard (scripts\win_setup.bat / scripts/linux_setup.sh) can 
+automatically convert audio files for you during initial setup. Or follow this 
+guide for manual conversion.
+
 The bot requires .opus files with these exact specifications:
 - 48kHz sample rate
 - Stereo (2 channels)
@@ -111,7 +115,7 @@ channel manually set higher than 96kbps actually benefit from it.
 TROUBLESHOOTING
 ================================================================================
 
-For troubleshooting audio conversion issues, see troubleshooting.txt
+For troubleshooting audio conversion issues, see 06-troubleshooting.txt
 
 ================================================================================
 

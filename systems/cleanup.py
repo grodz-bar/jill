@@ -170,6 +170,10 @@ class CleanupManager:
 
                 await self._process_ttl_deletions()
 
+            except asyncio.CancelledError:
+                # Task was cancelled during shutdown - exit cleanly
+                logger.debug(f"Guild {self.guild_id}: TTL cleanup worker cancelled, shutting down")
+                break
             except Exception as e:
                 logger.error(f"Guild {self.guild_id}: TTL cleanup worker error: {e}", exc_info=True)
 
@@ -227,6 +231,10 @@ class CleanupManager:
                 await self.cleanup_channel_history()
                 self._last_history_cleanup = time.time()
 
+            except asyncio.CancelledError:
+                # Task was cancelled during shutdown - exit cleanly
+                logger.debug(f"Guild {self.guild_id}: History cleanup worker cancelled, shutting down")
+                break
             except Exception as e:
                 logger.error(f"Guild {self.guild_id}: History cleanup worker error: {e}", exc_info=True)
 

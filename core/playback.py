@@ -73,7 +73,9 @@ from utils.discord_helpers import (
     make_audio_source,
     safe_voice_state_change,
     update_presence,
+    sanitize_for_format,
 )
+from utils.context_managers import suppress_callbacks
 
 
 async def _play_current(guild_id: int, bot, players: dict) -> None:
@@ -90,10 +92,15 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
 
     Side effects:
         - Starts playback via voice_client.play()
-        - Sets callback for when track finishes
+        - Sets callback for when track finishes (with anti-spam protection)
         - Updates bot presence status
         - Sends "Now serving" message
         - Updates watchdog tracking
+
+    Implementation notes:
+        - Uses context manager to safely suppress callbacks during voice client stop
+        - Callback includes anti-spam timer that persists across playback sessions
+        - Uses priority queueing for internal _play_next commands to prevent dropping
     """
     from core.player import get_player  # Import here to avoid circular
     player = await get_player(guild_id, bot, bot.user.id)
@@ -125,8 +132,8 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
     # Validate file exists
     if not track.opus_path.exists():
         logger.error(f"Guild {guild_id}: Track file missing: {track.opus_path}")
-        # Skip to next track
-        await player.spam_protector.queue_command(lambda: _play_next(guild_id, bot, players))
+        # Skip to next track (priority=True to ensure internal commands aren't dropped)
+        await player.spam_protector.queue_command(lambda: _play_next(guild_id, bot, players), priority=True)
         return
 
     # Create a playback session token so stale callbacks can be ignored safely.
@@ -144,25 +151,24 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
         is_paused = False
 
     if is_playing or is_paused:
-        player._suppress_callback = True
-        player.voice_client.stop()
+        # Use context manager to safely suppress callbacks, even if exceptions occur
+        with suppress_callbacks(player):
+            player.voice_client.stop()
 
-        # Wait for voice client to fully stop
-        max_wait = VOICE_CONNECTION_MAX_WAIT
-        wait_increment = VOICE_CONNECTION_CHECK_INTERVAL
-        waited = 0
-        while waited < max_wait:
-            remaining = max_wait - waited
-            await asyncio.sleep(min(wait_increment, remaining))
-            waited += wait_increment
-            try:
-                vc = player.voice_client
-                if vc and not vc.is_playing() and not vc.is_paused():
+            # Wait for voice client to fully stop
+            max_wait = VOICE_CONNECTION_MAX_WAIT
+            wait_increment = VOICE_CONNECTION_CHECK_INTERVAL
+            waited = 0
+            while waited < max_wait:
+                remaining = max_wait - waited
+                await asyncio.sleep(min(wait_increment, remaining))
+                waited += wait_increment
+                try:
+                    vc = player.voice_client
+                    if vc and not vc.is_playing() and not vc.is_paused():
+                        break
+                except Exception:
                     break
-            except Exception:
-                break
-
-        player._suppress_callback = False
 
     # Small delay to let voice client settle
     await asyncio.sleep(VOICE_SETTLE_DELAY)
@@ -226,11 +232,16 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
                 logger.warning(f"Guild {guild_id}: Callback too quick, skipping")
                 return
 
+            # CRITICAL: Update BOTH the player attribute AND the closure variable.
+            # Bug fix: Previously only updated local `_last_callback_time`, which meant
+            # the anti-spam timer never persisted between playback sessions. Each new
+            # track started with stale timestamp, making rapid callbacks possible.
+            player._last_callback_time = current_time
             _last_callback_time = current_time
 
-            # Queue the next track
+            # Queue the next track (priority=True to ensure internal commands aren't dropped)
             asyncio.run_coroutine_threadsafe(
-                player.spam_protector.queue_command(lambda: _play_next(guild_id, bot, players)),
+                player.spam_protector.queue_command(lambda: _play_next(guild_id, bot, players), priority=True),
                 bot.loop
             )
 
@@ -251,7 +262,7 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
         # Send "Now serving" message
         await asyncio.sleep(MESSAGE_SETTLE_DELAY)
         drink = player.get_drink_emoji()
-        new_content = MESSAGES['now_serving'].format(drink=drink, track=track.display_name)
+        new_content = MESSAGES['now_serving'].format(drink=drink, track=sanitize_for_format(track.display_name))
 
         # Use cleanup manager's smart message handling
         await player.cleanup_manager.update_now_playing_message(new_content, player.voice_client)

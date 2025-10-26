@@ -41,10 +41,9 @@ from core.playback import _play_current, _play_next, _play_first
 from core.track import has_playlist_structure
 from config.aliases import COMMAND_ALIASES
 from config.timing import (
-    PLAY_COOLDOWN,
     PAUSE_DEBOUNCE_WINDOW, PAUSE_COOLDOWN, PAUSE_SPAM_THRESHOLD,
-    SKIP_DEBOUNCE_WINDOW, SKIP_DEBOUNCE_COOLDOWN, SKIP_SPAM_THRESHOLD,
-    STOP_DEBOUNCE_WINDOW, STOP_DEBOUNCE_COOLDOWN, STOP_SPAM_THRESHOLD,
+    SKIP_DEBOUNCE_WINDOW, SKIP_COOLDOWN, SKIP_SPAM_THRESHOLD,
+    STOP_DEBOUNCE_WINDOW, STOP_COOLDOWN, STOP_SPAM_THRESHOLD,
     PREVIOUS_DEBOUNCE_WINDOW, PREVIOUS_COOLDOWN, PREVIOUS_SPAM_THRESHOLD,
     SHUFFLE_DEBOUNCE_WINDOW, SHUFFLE_COOLDOWN, SHUFFLE_SPAM_THRESHOLD,
     QUEUE_DEBOUNCE_WINDOW, QUEUE_COOLDOWN, QUEUE_SPAM_THRESHOLD,
@@ -64,7 +63,7 @@ from config.features import (
     PLAYLIST_PAGE_SIZE,
 )
 from config.messages import MESSAGES, HELP_TEXT
-from utils.discord_helpers import can_connect_to_channel, safe_disconnect, update_presence
+from utils.discord_helpers import can_connect_to_channel, safe_disconnect, update_presence, sanitize_for_format
 from systems.voice_manager import PlaybackState
 from utils.context_managers import suppress_callbacks
 
@@ -150,24 +149,23 @@ def setup(bot):
         if await player.spam_protector.check_user_spam(ctx.author.id, "play"):
             return
 
+        # Set text channel early so validation errors can be sent
+        if not player.text_channel:
+            player.set_text_channel(ctx.channel)
+
         # Validation: User must be in voice
         if not ctx.author.voice:
-            if player.text_channel:
-                await player.cleanup_manager.send_with_ttl(
-                    player.text_channel,
-                    MESSAGES['error_not_in_voice'],
-                    'error',
-                    ctx.message
-                )
+            await player.cleanup_manager.send_with_ttl(
+                player.text_channel,
+                MESSAGES['error_not_in_voice'],
+                'error',
+                ctx.message
+            )
             return
 
         # Layer 2: Global rate limit
         if player.spam_protector.check_global_rate_limit():
             return
-
-        # Set text channel if not set
-        if not player.text_channel:
-            player.set_text_channel(ctx.channel)
 
         # Connect to voice if needed
         if not player.voice_client or not player.voice_client.is_connected():
@@ -185,10 +183,19 @@ def setup(bot):
                 vc = await channel.connect()
                 player.set_voice_client(vc)
                 await asyncio.sleep(VOICE_CONNECT_DELAY)
-            except Exception as e:
+            except (disnake.HTTPException, disnake.ClientException) as e:
                 await player.cleanup_manager.send_with_ttl(
                     player.text_channel,
                     MESSAGES['error_cant_connect'].format(error=str(e)),
+                    'error',
+                    ctx.message
+                )
+                return
+            except Exception as e:
+                logger.exception("Guild %s: Unexpected connect error", ctx.guild.id)
+                await player.cleanup_manager.send_with_ttl(
+                    player.text_channel,
+                    MESSAGES['error_cant_connect'].format(error="unexpected error"),
                     'error',
                     ctx.message
                 )
@@ -214,7 +221,7 @@ def setup(bot):
             if player.now_playing:
                 await player.cleanup_manager.send_with_ttl(
                     player.text_channel,
-                    MESSAGES['resume'].format(track=player.now_playing.display_name),
+                    MESSAGES['resume'].format(track=sanitize_for_format(player.now_playing.display_name)),
                     'resume',
                     ctx.message
                 )
@@ -251,7 +258,7 @@ def setup(bot):
                 # Was a name but not found
                 await player.cleanup_manager.send_with_ttl(
                     player.text_channel,
-                    MESSAGES['error_track_not_found'].format(query=track_arg),
+                    MESSAGES['error_track_not_found'].format(query=sanitize_for_format(track_arg)),
                     'error',
                     ctx.message
                 )
@@ -317,7 +324,7 @@ def setup(bot):
             "skip",
             lambda: _execute_skip(ctx, bot),
             SKIP_DEBOUNCE_WINDOW,
-            SKIP_DEBOUNCE_COOLDOWN,
+            SKIP_COOLDOWN,
             SKIP_SPAM_THRESHOLD,
             MESSAGES.get('spam_skip')
         )
@@ -362,7 +369,7 @@ def setup(bot):
             "stop",
             lambda: _execute_stop(ctx, bot),
             STOP_DEBOUNCE_WINDOW,
-            STOP_DEBOUNCE_COOLDOWN,
+            STOP_COOLDOWN,
             STOP_SPAM_THRESHOLD,
             MESSAGES.get('spam_stop')
         )
@@ -633,7 +640,7 @@ def setup(bot):
 
         msg = MESSAGES['tracks_header'].format(page=page, total_pages=total_pages)
         for track in player.library[start:end]:
-            msg += f"{track.library_index + 1}. {track.display_name}\n"
+            msg += f"{track.library_index + 1}. {sanitize_for_format(track.display_name)}\n"
 
         if page < total_pages:
             msg += MESSAGES['tracks_next_page'].format(next_page=page + 1)
@@ -669,8 +676,8 @@ def setup(bot):
         if player.voice_client and player.voice_client.is_connected():
             try:
                 was_playing = player.voice_client.is_playing() or player.voice_client.is_paused()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Guild %s: voice state probe failed: %s", ctx.guild.id, e)
 
         # Switch playlist
         success, message = await player.switch_playlist(identifier, player.voice_client)
@@ -678,7 +685,7 @@ def setup(bot):
         if success:
             await player.cleanup_manager.send_with_ttl(
                 player.text_channel or ctx.channel,
-                MESSAGES['playlist_switched'].format(message=message),
+                MESSAGES['playlist_switched'].format(message=sanitize_for_format(message)),
                 'tracks',
                 ctx.message
             )
@@ -693,7 +700,7 @@ def setup(bot):
             if "not found" in message.lower():
                 await player.cleanup_manager.send_with_ttl(
                     player.text_channel or ctx.channel,
-                    MESSAGES['error_playlist_not_found'].format(query=identifier),
+                    MESSAGES['error_playlist_not_found'].format(query=sanitize_for_format(identifier)),
                     'error',
                     ctx.message
                 )
@@ -775,7 +782,7 @@ def setup(bot):
         for idx, playlist in enumerate(player.available_playlists[start:end], start + 1):
             # Mark current playlist
             current_marker = " ← Current" if player.current_playlist and playlist.playlist_id == player.current_playlist.playlist_id else ""
-            msg += f"`{idx:02d}.` {playlist.display_name} ({playlist.track_count} tracks){current_marker}\n"
+            msg += f"`{idx:02d}.` {sanitize_for_format(playlist.display_name)} ({playlist.track_count} tracks){current_marker}\n"
 
         if page < total_pages:
             msg += MESSAGES['playlists_next_page'].format(next_page=page + 1)
@@ -785,7 +792,7 @@ def setup(bot):
         await player.cleanup_manager.send_with_ttl(
             player.text_channel or ctx.channel,
             msg,
-            'library',
+            'playlists',
             ctx.message
         )
 

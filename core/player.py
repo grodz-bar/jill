@@ -28,7 +28,7 @@ import random
 import logging
 from collections import deque
 from difflib import SequenceMatcher
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 import disnake
 
 logger = logging.getLogger(__name__)

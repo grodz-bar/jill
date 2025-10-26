@@ -22,23 +22,132 @@ Verify installation:
 If python --version doesn't work:
    - Restart your computer (PATH changes need a reboot)
    - Reinstall Python and choose "Add to PATH" if prompted
-   - Or see troubleshooting.txt for manual PATH configuration
+   - Or see 06-troubleshooting.txt for manual PATH configuration
 
 ================================================================================
 STEP 2: GET DISCORD BOT TOKEN
 ================================================================================
 
-See 'Getting-Discord-Token.txt' for instructions on creating a Discord bot
+See '02-Getting-Discord-Token.txt' for instructions on creating a Discord bot
 and getting your token. You will need this later.
 
 ================================================================================
-STEP 3: PREPARE MUSIC FILES
+STEP 3: DOWNLOAD BOT
 ================================================================================
 
-FILE AUDIO FORMAT:
--------------------------------
-This bot requires .opus audio files with specific encoding, don't worry,
-it's easy, just follow the 'Converting-To-Opus.txt' guide.
+Download the bot to your system:
+
+Method 1 - Download Release ZIP:
+1. Go to the project's releases page
+2. Download the latest release ZIP file
+3. Extract the zip file to C:\jill\
+NOTE: Ensure files are in C:\jill\ (not C:\jill\jill\)
+
+Method 2 - Using Git:
+1. Open Command Prompt
+2. Navigate to C:\:
+    cd C:\
+3. Clone the repository:
+    git clone https://github.com/grodz-bar/jill.git jill
+
+Your directory structure should be:
+
+    C:\jill\
+    ├── bot.py
+    ├── requirements.txt
+    ├── /scripts/
+    │   ├── win_setup.bat
+    │   ├── win_run_bot.bat
+    │   ├── linux_setup.sh
+    │   └── linux_run_bot.sh
+    ├── .env (created in Step 6)
+    ├── /config/ (configuration folder)
+    │   ├── __init__.py
+    │   ├── features.py
+    │   ├── messages.py
+    │   ├── timing.py
+    │   ├── paths.py
+    │   └── aliases.py
+    ├── /handlers/ (jill's code)
+    ├── /core/ (jill's code)
+    ├── /systems/ (jill's code)
+    ├── /utils/ (jill's code)
+    ├── /README/ (documentation folder)
+    │   ├── 01-README.txt
+    │   ├── 02-Getting-Discord-Token.txt
+    │   ├── 03-SETUP-Windows.txt
+    │   ├── 03-SETUP-Linux.txt
+    │   ├── 04-Converting-To-Opus.txt
+    │   ├── 05-Files.txt
+    │   └── 06-troubleshooting.txt
+    └── /music/
+        ├── 01 - Track Name.opus
+        ├── 02 - Track Name.opus
+        └── ...
+        │   # OR if you have multiple playlists:
+        ├── 01 - Album Name/
+        │   ├── 01 - Track Name.opus
+        │   └── 02 - Track Name.opus
+        ├── 02 - OST/
+        │   └── 01 - Track Name.opus
+        └── ...
+
+================================================================================
+STEP 4: RUN SETUP WIZARD (RECOMMENDED)
+================================================================================
+
+The setup wizard will guide you through configuration in just a few minutes.
+
+BEFORE STARTING THE WIZARD, make sure you have ready:
+- Your Discord bot token (from Step 2)
+- Python 3.11+ installed (required for wizard to run)
+- If you want to convert audio files: FFmpeg installed (see 04-Converting-To-Opus.txt)
+- If you want to convert audio files: Path to your source music folder with audio files
+- Optional: Music already converted to .opus format
+
+The wizard will handle everything else automatically!
+
+OPTION A - Use Setup Wizard (Fast & Easy):
+1. Navigate to C:\jill\ in File Explorer
+2. Double-click "scripts\win_setup.bat"
+3. Follow the interactive prompts:
+   - Confirm what the setup will do
+   - Enter your Discord bot token (from Step 2)
+   - Choose music folder path or press Enter for default
+   - Optionally convert audio files to .opus format
+4. Setup will complete automatically
+
+The wizard will automatically:
+- Create a virtual environment
+- Install required Python packages
+- Create your .env configuration file
+- Create the music folder if it doesn't exist
+- Optionally convert your audio files to .opus (with folder structure preservation)
+
+SKIP TO: If you used the setup wizard, go directly to STEP 5 to run your bot!
+
+OPTION B - Manual Setup (Advanced):
+If you prefer to set up manually, follow these steps:
+
+1. Open Command Prompt
+2. Navigate to bot directory: cd C:\jill
+3. Create virtual environment: python -m venv venv
+4. Activate virtual environment: C:\jill\venv\Scripts\activate
+5. Install dependencies: python -m pip install -r requirements.txt
+6. Create .env file in C:\jill\:
+   - Create a file named ".env" (including the dot)
+   - Add: DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN
+   - Add: MUSIC_FOLDER=C:\jill\music\
+7. Continue to STEP 5
+
+NOTE: You can exit the setup wizard at any time (Ctrl+C) and continue with manual setup.
+
+================================================================================
+STEP 5: ADD YOUR MUSIC FILES (If Needed)
+================================================================================
+
+If you didn't use the setup wizard's conversion feature, you'll need to add .opus files 
+to your music folder.
 
 FILE NAMING FORMAT:
 -------------------------------
@@ -72,170 +181,32 @@ The bot will:
 - Use track numbers for !play commands (!play 5 plays the 5th track)
 - Use track name for !play commands (!play Dawn Approaches)
 
-NOTE: I used PowerRename (Windows) to rename my stuff faster.
+NOTE: See 04-Converting-To-Opus.txt for help converting audio files.
 
 ================================================================================
-STEP 4: ORGANIZE YOUR MUSIC
+STEP 6: RUN THE BOT
 ================================================================================
-
-Create music directory:
-
-1. Open File Explorer
-2. Navigate to C:\
-3. Create a new folder named "jill"
-4. Open the jill folder
-5. Create a new folder named "music"
-
-Choose ONE of these organization methods:
-
-METHOD A - Single Playlist:
-Place all .opus files directly in C:\jill\music\
-
-METHOD B - Multiple Playlists:
-Create subfolders in C:\jill\music\ for each playlist:
-- C:\jill\music\01 - Album Name\
-- C:\jill\music\02 - OST\
-- C:\jill\music\03 - Chill Music\
-
-Then place .opus files in each subfolder.
-
-IMPORTANT: Only .opus files should be in music folders.
-No other file types (.mp3, .flac, .wav, etc.) are allowed.
-
-================================================================================
-STEP 5: DOWNLOAD BOT
-================================================================================
-
-Download the bot to your system:
-
-Method 1 - Download Release ZIP:
-1. Go to the project's releases page
-2. Download the latest release ZIP file
-3. Extract the zip file to C:\jill\
-NOTE: Ensure files are in C:\jill\ (not C:\jill\jill\)
-
-Method 2 - Using Git:
-1. Open Command Prompt
-2. Navigate to C:\:
-    cd C:\
-3. Clone the repository:
-    git clone https://github.com/grodz-bar/jill.git jill
-
-Your directory structure should be:
-
-    C:\jill\
-    ├── bot.py
-    ├── requirements.txt
-    ├── .env (created in Step 7)
-    ├── /config/ (configuration folder)
-    │   ├── __init__.py
-    │   ├── features.py
-    │   ├── messages.py
-    │   ├── timing.py
-    │   ├── paths.py
-    │   └── aliases.py
-    ├── /handlers/ (jill's code)
-    ├── /core/ (jill's code)
-    ├── /systems/ (jill's code)
-    ├── /utils/ (jill's code)
-    ├── /README/ (documentation folder)
-    │   ├── README.txt
-    │   ├── SETUP-Linux.txt
-    │   ├── SETUP-Windows.txt
-    │   ├── Getting-Discord-Token.txt
-    │   ├── Converting-To-Opus.txt
-    │   ├── troubleshooting.txt
-    │   └── Files.txt
-    └── /music/
-        ├── 01 - Track Name.opus
-        ├── 02 - Track Name.opus
-        └── ...
-        │   # OR if you have multiple playlists:
-        ├── 01 - Album Name/
-        │   ├── 01 - Track Name.opus
-        │   └── 02 - Track Name.opus
-        ├── 02 - OST/
-        │   └── 01 - Track Name.opus
-        └── ...
-
-================================================================================
-STEP 6: CREATE PYTHON VIRTUAL ENVIRONMENT
-================================================================================
-
-Create venv:
-
-1. Open Command Prompt
-2. Navigate to bot directory:
-    cd C:\jill
-3. Create virtual environment:
-    python -m venv C:\jill\venv
-4. Activate virtual environment:
-    C:\jill\venv\Scripts\activate
-
-   You should see "(venv)" at the start of your command prompt
-
-5. Install dependencies:
-    python -m pip install -r requirements.txt
-
-================================================================================
-STEP 7: CONFIGURE TO YOUR OWN BOT
-================================================================================
-NOTE: MUSIC_FOLDER is optional. If you don't set it, the bot uses C:\jill\music\
-
-Create a .env file in C:\jill\:
 
 1. Navigate to C:\jill\ in File Explorer
-2. Create a new file named ".env" (including the dot)
-3. Open with Notepad and add:
-
-    DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN
-    MUSIC_FOLDER=C:\jill\music\
-
-4. Save and close
-
-================================================================================
-STEP 8: TEST THE BOT
-================================================================================
-
-Run the bot:
-
-1. Open Command Prompt
-2. Navigate to bot directory:
-    cd C:\jill
-3. Activate virtual environment:
-    C:\jill\venv\Scripts\activate
-4. Start the bot:
-    python bot.py
+2. Double-click "scripts\win_run_bot.bat"
 
 You should see:
-- "Logged in as YourBot#1234"
+- "Bot connected as YourBot#1234"
 - "Music folder found: C:\jill\music"
-- List of loaded tracks
+- List of loaded tracks (or message if folder is empty)
 
 Test in Discord:
-1. Invite bot to your server (see 'Getting-Discord-Token.txt')
+1. Invite bot to your server (see '02-Getting-Discord-Token.txt')
 2. Join a voice channel
 3. Type !play to start music
 
+To stop the bot, press Ctrl+C in the console window.
+
 ================================================================================
-STEP 9: AUTO-START ON BOOT (OPTIONAL)
+STEP 7: AUTO-START ON BOOT (OPTIONAL)
 ================================================================================
 
 NOTE: Do this so bot will start automatically after a machine boot.
-
-Create a batch file:
-
-1. Navigate to C:\jill\ in File Explorer
-2. Create a new file named "run_bot.bat"
-3. Open with Notepad and add:
-
-    @echo off
-    cd /d C:\jill
-    call C:\jill\venv\Scripts\activate
-    python bot.py
-    pause
-
-4. Save and close
 
 Create a Windows Task Scheduler task:
 
@@ -244,7 +215,7 @@ Create a Windows Task Scheduler task:
 3. Name: "Jill Discord Bot"
 4. Trigger: "When the computer starts"
 5. Action: "Start a program"
-6. Program: C:\jill\run_bot.bat
+6. Program: C:\jill\scripts\win_run_bot.bat
 7. Finish
 
 ================================================================================
@@ -306,7 +277,7 @@ For Task Scheduler logs:
 TROUBLESHOOTING
 ================================================================================
 
-For troubleshooting, see troubleshooting.txt
+For troubleshooting, see 06-troubleshooting.txt
 
 ================================================================================
 

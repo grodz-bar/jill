@@ -37,6 +37,30 @@ _last_presence_update: float = 0
 _current_presence_text: Optional[str] = None
 
 
+def sanitize_for_format(text: str) -> str:
+    """
+    Escape braces in user-controlled strings to prevent .format() crashes.
+
+    User-controlled data (track names, playlist names from filenames) can contain
+    { and } characters. If these are passed directly to str.format(), they will
+    cause KeyError. This function escapes them by doubling: { -> {{, } -> }}
+
+    Args:
+        text: User-controlled string (track name, playlist name, etc.)
+
+    Returns:
+        str: Sanitized string safe for use with .format()
+
+    Example:
+        >>> track_name = "Song {test}.opus"
+        >>> sanitize_for_format(track_name)
+        'Song {{test}}.opus'
+        >>> MESSAGES['now_serving'].format(track=sanitize_for_format(track_name))
+        'Now serving: Song {test}.opus'
+    """
+    return text.replace('{', '{{').replace('}', '}}')
+
+
 def _get_status_enum() -> disnake.Status:
     """
     Convert BOT_STATUS config string to disnake.Status enum.
@@ -85,7 +109,7 @@ async def safe_disconnect(voice_client: Optional[disnake.VoiceClient], force: bo
 
 async def safe_send(channel: Optional[disnake.TextChannel], content: str) -> Optional[disnake.Message]:
     """
-    Safely send message to channel with error handling.
+    Safely send message to channel with error handling and mention suppression.
 
     Args:
         channel: Text channel to send to (None is safe)
@@ -95,15 +119,17 @@ async def safe_send(channel: Optional[disnake.TextChannel], content: str) -> Opt
         Message object if sent successfully, None otherwise
 
     Note:
-        Catches common Discord API errors:
-        - NotFound: Channel was deleted
-        - Forbidden: Bot lost permissions
-        - HTTPException: Rate limited or other API error
+        - Disables all mentions (@everyone, @here, user/role mentions) to prevent abuse
+        - Catches common Discord API errors:
+          - NotFound: Channel was deleted
+          - Forbidden: Bot lost permissions
+          - HTTPException: Rate limited or other API error
     """
     if not channel:
         return None
     try:
-        msg = await channel.send(content)
+        # Suppress all mentions to prevent mass-ping abuse from user-controlled content
+        msg = await channel.send(content, allowed_mentions=disnake.AllowedMentions.none())
         return msg
     except (disnake.NotFound, disnake.Forbidden, disnake.HTTPException) as e:
         logger.debug("Could not send message: %s", e)

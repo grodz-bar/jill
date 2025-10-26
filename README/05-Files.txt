@@ -9,6 +9,11 @@ The bot follows this directory structure:
     /jill/
     ├── bot.py                            # Main bot file
     ├── requirements.txt                  # Python dependencies
+    ├── /scripts/                         # Setup and launcher scripts
+    │   ├── win_setup.bat                 # Windows setup wizard
+    │   ├── linux_setup.sh                # Linux setup wizard
+    │   ├── win_run_bot.bat               # Windows launcher
+    │   └── linux_run_bot.sh             # Linux launcher
     ├── .env                              # Bot configuration (created during setup)
     ├── /config/                          # Configuration folder (USER CUSTOMIZATION)
     │   ├── __init__.py                   # Python package marker
@@ -37,13 +42,13 @@ The bot follows this directory structure:
     │   ├── persistence.py                # Channel persistence
     │   └── context_managers.py           # Context helpers
     ├── /README/                          # Documentation folder
-    │   ├── README.txt                    # Main overview
-    │   ├── SETUP-Linux.txt               # Linux setup guide
-    │   ├── SETUP-Windows.txt             # Windows setup guide
-    │   ├── Getting-Discord-Token.txt     # Bot token guide
-    │   ├── Converting-To-Opus.txt        # Audio conversion guide
-    │   ├── troubleshooting.txt           # Troubleshooting guide
-    │   └── Files.txt                     # This file
+    │   ├── 01-README.txt                  # Main overview
+    │   ├── 02-Getting-Discord-Token.txt  # Bot token guide
+    │   ├── 03-SETUP-Windows.txt          # Windows setup guide
+    │   ├── 03-SETUP-Linux.txt            # Linux setup guide
+    │   ├── 04-Converting-To-Opus.txt     # Audio conversion guide
+    │   ├── 05-Files.txt                   # This file (reference)
+    │   └── 06-troubleshooting.txt        # Troubleshooting guide
     └── /music/                           # Your music files go here
         ├── 01 - Track Name.opus
         ├── 02 - Track Name.opus
@@ -59,28 +64,47 @@ The bot follows this directory structure:
 
 FILES DESCRIPTION:
 
-README.txt
-----------
+01-README.txt
+-------------
 Main overview - start here! Quick feature list, commands, and basic info.
 
-SETUP-Linux.txt
-----------------
-Detailed setup guide for Linux/Pi.
-
-SETUP-Windows.txt
-------------------
-Detailed setup guide for Windows.
-
-Getting-Discord-Token.txt
--------------------------
+02-Getting-Discord-Token.txt
+-----------------------------
 Quick guide for creating a Discord bot and getting your token.
 
-Converting-To-Opus.txt
------------------------
-Instructions for converting your music to .opus format. (Windows/Linux)
+03-SETUP-Windows.txt
+--------------------
+Detailed setup guide for Windows.
 
-troubleshooting.txt
--------------------
+03-SETUP-Linux.txt
+------------------
+Detailed setup guide for Linux/Pi.
+
+04-Converting-To-Opus.txt
+--------------------------
+Instructions for converting your music to .opus format. (Windows/Linux)
+NOTE: The setup wizards can do this automatically for you.
+
+scripts/win_setup.bat
+---------------------
+Interactive setup wizard for Windows. Creates venv, installs dependencies,
+configures bot token and music folder, and optionally converts audio files.
+
+scripts/linux_setup.sh
+----------------------
+Interactive setup wizard for Linux. Creates venv, installs dependencies,
+configures bot token and music folder, and optionally converts audio files.
+
+scripts/win_run_bot.bat
+-----------------------
+Simple launcher script for Windows. Activates venv and runs the bot.
+
+scripts/linux_run_bot.sh
+------------------------
+Simple launcher script for Linux. Activates venv and runs the bot.
+
+06-troubleshooting.txt
+----------------------
 Troubleshooting guide for common issues.
 
 .env.example
@@ -109,6 +133,13 @@ Stores the last used text channel per Discord server.
 Allows cleanup features to resume after bot restart.
 Automatically managed - do not edit manually.
 
+last_playlists.json
+-------------------
+Playlist persistence storage file (auto-created).
+Stores the last used playlist per Discord server.
+Allows the bot to remember which playlist each server was using after restart.
+Automatically managed - do not edit manually.
+
 .gitignore
 ----------
 Tells git which files to ignore (logs, tokens, music, runtime state, caches, etc.)
@@ -118,10 +149,11 @@ Prevents accidentally committing sensitive data and temporary files.
 SETUP ORDER (Recommended):
 ================================================================================
 
-1. Read 'README.txt' (get familiar with the bot)
-2. Follow 'Getting-Discord-Token.txt' (get your bot token)
-3. Follow 'Converting-To-Opus.txt' (prepare your music)
-4. Follow 'SETUP-Linux.txt' or 'SETUP-Windows.txt' (install and configure the bot)
-5. Run the bot!
+1. Read '01-README.txt' (get familiar with the bot)
+2. Follow '02-Getting-Discord-Token.txt' (get your bot token)
+3. Follow '03-SETUP-Linux.txt' or '03-SETUP-Windows.txt' (run the setup wizard)
+   - The wizard can convert your music automatically
+   - Or convert manually (see '04-Converting-To-Opus.txt')
+4. Run the bot
 
 ================================================================================

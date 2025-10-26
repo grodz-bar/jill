@@ -133,12 +133,6 @@ MESSAGES = {
     'tracks_shuffle_note': '\n🔀 **Shuffle is ON** - The list above shows unshuffled order.',
     'tracks_shuffle_help': 'Use `!play [number or name]` to jump to a track | Use `!queue` to see shuffled playback order.',
     'tracks_normal_help': 'Use `!play [number or name]` to jump to a track.',
-    # Backwards compatibility aliases
-    'library_header': '**🎵 Tracks (Page {page}/{total_pages})**\n',
-    'library_next_page': '\nUse `!tracks {next_page}` for next page.',
-    'library_shuffle_note': '\n🔀 **Shuffle is ON** - The list above shows unshuffled order.',
-    'library_shuffle_help': 'Use `!play [number or name]` to jump to a track | Use `!queue` to see shuffled playback order.',
-    'library_normal_help': 'Use `!play [number or name]` to jump to a track.',
 
     # ===================================================================================================================
     # PLAYLISTS - Playlist browsing and switching messages

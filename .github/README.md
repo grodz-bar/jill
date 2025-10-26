@@ -14,14 +14,23 @@ Self-hosted, customizable Discord music bot for your local song library.
 
 ---
 
+## Quick Start
+1. Download the bot
+2. Run the interactive setup:
+   - **Windows:** Double-click [`scripts/win_setup.bat`](../scripts/win_setup.bat)
+   - **Linux:** `chmod +x scripts/linux_setup.sh && ./scripts/linux_setup.sh` → [view script](../scripts/linux_setup.sh)
+3. Run the bot:
+   - **Windows:** Double-click [`scripts/win_run_bot.bat`](../scripts/win_run_bot.bat)
+   - **Linux:** `./scripts/linux_run_bot.sh` → [view script](../scripts/linux_run_bot.sh)
+
 ## Docs
-- **Windows setup:** [SETUP-Windows.txt](../README/SETUP-Windows.txt)
-- **Linux setup:** [SETUP-Linux.txt](../README/SETUP-Linux.txt)
-- **Get a Discord token:** [Getting-Discord-Token.txt](../README/Getting-Discord-Token.txt)
-- **Convert audio to Opus:** [Converting-To-Opus.txt](../README/Converting-To-Opus.txt)
-- **Files overview:** [Files.txt](../README/Files.txt)
-- **Troubleshooting:** [troubleshooting.txt](../README/troubleshooting.txt)
-- **Reference README:** [README.txt](../README/README.txt)
+- **Overview:** [01-README.txt](../README/01-README.txt)
+- **Get a Discord token:** [02-Getting-Discord-Token.txt](../README/02-Getting-Discord-Token.txt)
+- **Windows setup:** [03-SETUP-Windows.txt](../README/03-SETUP-Windows.txt)
+- **Linux setup:** [03-SETUP-Linux.txt](../README/03-SETUP-Linux.txt)
+- **Convert audio to Opus:** [04-Converting-To-Opus.txt](../README/04-Converting-To-Opus.txt)
+- **Files overview:** [05-Files.txt](../README/05-Files.txt)
+- **Troubleshooting:** [06-troubleshooting.txt](../README/06-troubleshooting.txt)
 
 ---
 
@@ -55,4 +64,4 @@ Self-hosted, customizable Discord music bot for your local song library.
 
 ## Notes
 - No telemetry whatsoever; playback is local.
-- Requires Python 3.11+ and FFmpeg.
+- Requires [Python 3.11+](https://www.python.org/downloads/) and [FFmpeg](https://ffmpeg.org/download.html).

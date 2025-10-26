@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 from config.timing import ALONE_PAUSE_DELAY, ALONE_DISCONNECT_DELAY
 from config.features import AUTO_PAUSE_ENABLED, AUTO_DISCONNECT_ENABLED
 from config.messages import MESSAGES
-from utils.discord_helpers import safe_disconnect, update_presence
+from utils.discord_helpers import safe_disconnect, update_presence, sanitize_for_format
 
 
 class PlaybackState(Enum):
@@ -262,7 +262,7 @@ class VoiceManager:
                     if self._send_message_callback and self.text_channel and now_playing:
                         await self._send_message_callback(
                             self.text_channel,
-                            MESSAGES['resume'].format(track=now_playing.display_name),
+                            MESSAGES['resume'].format(track=sanitize_for_format(now_playing.display_name)),
                             'resume'
                         )
 

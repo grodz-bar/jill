@@ -21,7 +21,7 @@ echo ========================================
 echo Jill Discord Bot - Setup Wizard
 echo ========================================
 echo.
-echo This wizard will set up your bot in a few easy steps.
+echo This wizard will set up Jill in a few easy steps.
 echo You can press Ctrl+C at any time to exit and run this again later.
 echo.
 
@@ -118,6 +118,7 @@ echo.
 
 if exist ".env" (
     echo WARNING: .env file already exists.
+	echo.
     set /p "OVERWRITE=Do you want to overwrite it? (y/N): "
     for /f "tokens=1" %%A in ("!OVERWRITE!") do set "OVERWRITE=%%A"
     set "OVERWRITE=!OVERWRITE:~0,1!"
@@ -130,6 +131,7 @@ if exist ".env" (
     )
     echo.
     echo Overwriting existing .env file...
+	echo.
     timeout /t 2 /nobreak >nul
 )
 
@@ -148,12 +150,14 @@ if "%BOT_TOKEN%"=="" (
     goto ASK_TOKEN
 )
 echo.
+timeout /t 1 /nobreak >nul
 
+echo.
 echo Step 2: Music Folder Location
 echo --------------------------
-echo Where should the bot look for your music files?
+echo Where should Jill look for your music files?
 echo.
-echo Default location: music\ (inside bot folder, fully portable)
+echo Default location: music\ - inside Jill's folder
 echo.
 echo Options:
 echo - Press Enter to use the default location (recommended for portability)
@@ -191,15 +195,26 @@ if not exist "%MUSIC_PATH%" (
         timeout /t 2 /nobreak >nul
     )
 ) else (
+	timeout /t 1 /nobreak >nul
     echo Music folder found: %MUSIC_PATH%
 )
 echo.
-echo --------------------------
 timeout /t 1 /nobreak >nul
 echo.
-
+echo OPTIONAL STEP:
+echo --------------------------
 set "CONVERSION_SUCCESS=false"
-set /p "CONVERT_FILES=Convert audio files now? (y/N): "
+echo Ready to convert and move your music files into !MUSIC_PATH! as .opus files.
+echo.
+echo In this step, we'll:
+echo 1. Scan a folder for music files
+echo 2. Convert them to .opus
+echo 3. Make sure they're inside the music folder you set for Jill
+echo 4. Delete the pre-conversion music files (IF you want)
+echo Note: The subfolder structure will stay the exact same
+echo.
+echo.
+set /p "CONVERT_FILES=Start the guided conversion now? (y/N): "
 if /i "%CONVERT_FILES%"=="y" (
     call :RUN_CONVERSION
 ) else (
@@ -232,16 +247,16 @@ echo.
 echo ========================================
 echo Conversion Overview
 echo ========================================
-echo We'll copy your audio into your Jill music folder so the bot can play it.
+echo We'll copy your audio into Jill's music folder so she can play it.
 echo Destination (the folder you just configured): %MUSIC_PATH%
-echo Folder structure is preserved ^(subfolders become playlists^), so organize things the way you want playlists to appear.
+echo Folder structure is preserved ^(subfolders become playlists^).
 echo.
 echo Quick steps this helper will walk you through:
 echo   1. Choose the file format we should look for.
 echo   2. Point to the folder that holds your existing audio.
 echo   3. We'll mirror that structure into %MUSIC_PATH% as .opus files.
 echo.
-timeout /t 3 /nobreak >nul
+timeout /t 1 /nobreak >nul
 
 :ASK_SOURCE_FOLDER
 echo.
@@ -249,22 +264,29 @@ echo -------- Step 1: Choose the audio format --------
 set /p "FILE_FORMAT=What audio format are your files? (mp3/flac/wav/m4a/other): "
 if "%FILE_FORMAT%"=="" set "FILE_FORMAT=mp3"
 echo.
+timeout /t 1 /nobreak >nul
 echo -------- Step 2: Tell us where the originals live --------
 set "SOURCE_FOLDER="
 echo This is the folder we will read from before writing to %MUSIC_PATH%.
+echo.
 echo Enter the full folder path (for example: D:\Downloads\Albums\).
-echo Press Enter to use your Jill music folder as both source and destination.
+echo or
+echo Press Enter to use Jill's music folder for both.
 echo.
 set /p "SOURCE_FOLDER=Source folder path: "
 if "%SOURCE_FOLDER%"=="" (
     set "SOURCE_FOLDER=%MUSIC_PATH%"
     echo.
     echo Using your Jill music folder as both the source and destination.
-    timeout /t 2 /nobreak >nul
+    timeout /t 1 /nobreak >nul
 )
+timeout /t 1 /nobreak >nul
 
 set "SOURCE_FOLDER=%SOURCE_FOLDER:"=%"
 if not "%SOURCE_FOLDER:~-1%"=="\" set "SOURCE_FOLDER=%SOURCE_FOLDER%\"
+
+set "SOURCE_IS_DEST=false"
+if /i "%SOURCE_FOLDER%"=="%MUSIC_PATH%" set "SOURCE_IS_DEST=true"
 
 if not exist "%SOURCE_FOLDER%" (
     echo.
@@ -280,10 +302,6 @@ if not exist "%SOURCE_FOLDER%" (
     goto ASK_SOURCE_FOLDER
 )
 
-echo.
-echo Source folder found: %SOURCE_FOLDER%
-echo.
-echo Source: %SOURCE_FOLDER%
 echo Destination: %MUSIC_PATH%
 echo Format: %FILE_FORMAT% ^> .opus
 echo Folder structure will be mirrored so playlists stay organized.
@@ -342,25 +360,48 @@ timeout /t 2 /nobreak >nul
 
 set /p "DELETE_ORIGINALS=Delete original files after conversion? (y/N): "
 if /i "!DELETE_ORIGINALS!"=="y" (
-    echo.
-    echo WARNING: This will permanently delete the original files from %SOURCE_FOLDER%
-    set /p "DELETE_CONFIRM=Are you sure? Type 'yes' to confirm: "
-    if /i "!DELETE_CONFIRM!"=="yes" (
-        echo Deleting original files...
-        for /r "%SOURCE_FOLDER%" %%f in (*.%FILE_FORMAT%) do del "%%f" /f /q
-        echo Original files deleted.
-        timeout /t 2 /nobreak >nul
+    if /i "!FILE_FORMAT!"=="opus" (
+        if /i "!SOURCE_IS_DEST!"=="true" (
+		    timeout /t 1 /nobreak >nul
+            echo.
+            echo Skipping deletion: source and destination are the same folder and files are already .opus.
+            timeout /t 2 /nobreak >nul
+        ) else (
+            goto :_DO_DELETE
+        )
     ) else (
-        echo Original files kept.
-        timeout /t 2 /nobreak >nul
+        goto :_DO_DELETE
     )
 )
+
+goto :_AFTER_DELETE
+
+:_DO_DELETE
+echo.
+echo WARNING: This will permanently delete the original files from %SOURCE_FOLDER%
+echo.
+set /p "DELETE_CONFIRM=Are you sure? Type 'yes' to confirm: "
+if /i "!DELETE_CONFIRM!"=="yes" (
+    timeout /t 1 /nobreak >nul
+    echo Deleting original files...
+    for /r "%SOURCE_FOLDER%" %%f in (*.%FILE_FORMAT%) do del "%%f" /f /q
+    timeout /t 1 /nobreak >nul
+    echo Original files deleted.
+    timeout /t 2 /nobreak >nul
+) else (
+    echo Original files kept.
+    timeout /t 2 /nobreak >nul
+)
+
+:_AFTER_DELETE
+
 
 set "CONVERSION_SUCCESS=true"
 goto :EOF
 
 :AFTER_CONVERSION
 
+timeout /t 1 /nobreak >nul
 echo.
 echo ========================================
 echo Creating Configuration
@@ -376,8 +417,7 @@ if "%DEFAULT_PATH_VALUE%"=="0" >>".env" echo MUSIC_FOLDER=%MUSIC_PATH_ESC%
 endlocal
 
 if "%DEFAULT_PATH%"=="1" (
-    echo Using default music folder: music\ (inside bot folder)
-    echo This keeps your bot portable - you can move the entire bot folder anywhere.
+    echo Using default music folder: music\ ^(inside Jill's folder^)
     timeout /t 2 /nobreak >nul
 ) else (
     echo Music folder saved to .env: %MUSIC_PATH%
@@ -396,35 +436,34 @@ if exist ".env.example" (
 )
 
 echo ========================================
-echo Setup Complete!
+echo SETUP COMPLETED - SAFE TO CLOSE SCRIPT
 echo ========================================
 echo.
-echo Configuration saved to .env
+echo Configuration saved to .env file.
 echo.
 if "%DEFAULT_PATH%"=="1" (
-    echo Music folder: music\ (inside bot folder - portable)
+    echo Music folder: music\ - inside Jill's folder
     echo.
-    echo IMPORTANT: Your bot folder is fully portable!
-    echo   - Virtual environment: venv\ (inside bot folder)
-    echo   - Music folder: music\ (inside bot folder)
-    echo   - Move the entire bot folder anywhere without issues.
+    echo	Your bot folder is fully portable:
+    echo   - Virtual environment: venv\ - inside Jill's folder
+    echo   - Music folder: music\ - inside Jill's folder
 ) else (
     echo Music folder: %MUSIC_PATH%
     echo.
-    echo NOTE: Music stays at this custom location. Update .env if you move it.
+    echo NOTE: Update .env file if you move the music folder somewhere else.
 )
-echo.
 if "%CONVERSION_SUCCESS%"=="true" (
-    echo Your files have been converted and are ready to use!
+    echo.
+    echo Next step:
+    echo   1. Run scripts/win_run_bot.bat to start your bot.
 ) else (
+    echo.
     echo Next steps:
     echo   1. Add .opus music files to your music folder.
     echo      See 04-Converting-To-Opus.txt for help converting audio files.
     echo   2. Run scripts/win_run_bot.bat to start your bot.
 )
-timeout /t 2 /nobreak >nul
 echo.
 echo For help, see the README folder or 06-troubleshooting.txt
 echo.
 pause
-exit /b 0

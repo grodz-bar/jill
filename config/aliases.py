@@ -15,8 +15,7 @@ QUICK GUIDE:
 - Avoid reserved names: 'help', disnake commands, anything starting with '_'
 
 WARNING:
-- DO NOT change the "first" command in the list (for example: queue, play, pause, skip, stop, etc)
-as that will break those functions. Only change the commands inside the brackets []! (See example bellow)
+- DO NOT change the dictionary keys (queue, play, pause, skip, stop, etc.) as these are the base command names used internally. Only modify the alias lists inside the brackets [].
 
 EXAMPLES:
 - To add 'forward' to skip command: 'skip': ['next', 'ns', 'forward']

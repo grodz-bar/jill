@@ -70,7 +70,7 @@ feed `systems.cleanup.CleanupManager` even when embeds update in place.
 
 **File safety:** Only `.opus` files from `MUSIC_FOLDER`, prevent path traversal
 
-**Version updates:** Remind and then ask user about updating version in `bot.py` ~lines 21 & 89
+**Version updates:** Remind and then ask user about updating the two version constants in `bot.py`
 
 ## Documentation
 

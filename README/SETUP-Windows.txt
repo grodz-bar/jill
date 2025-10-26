@@ -119,7 +119,7 @@ Method 2 - Using Git:
 2. Navigate to C:\:
     cd C:\
 3. Clone the repository:
-    git clone https://github.com/a-grodz/jill.git jill
+    git clone https://github.com/grodz-bar/jill.git jill
 
 Your directory structure should be:
 

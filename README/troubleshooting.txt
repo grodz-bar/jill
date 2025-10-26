@@ -69,7 +69,7 @@ AUDIO CONVERSION ISSUES
 "Could not write header for output file":
 - Check you have write permission in folder
 - Ensure output filename doesn't have illegal characters
-- Ensure you're replacing the default commmands from the guide
+- Ensure you're replacing the default commands from the guide
 with YOUR specific use case, like changing ALL ".mp3's" to ".flac", etc.
 
 Audio sounds weird/distorted:
@@ -125,14 +125,14 @@ COMMON SOLUTIONS
 If nothing else works:
 01. Restart the bot
 02. Restart your computer
-04. Restart your internet
-05. Restart THE internet
-06. Check Discord API status: https://discordstatus.com
-07. Verify all permissions are correct
-08. Check file paths and permissions
-09. Ensure Python and dependencies are properly installed
-10. Try running the bot manually first before setting up auto-start
-11. Restart the Cosmos
+03. Restart your internet
+04. Restart THE internet
+05. Check Discord API status: https://discordstatus.com
+06. Verify all permissions are correct
+07. Check file paths and permissions
+08. Ensure Python and dependencies are properly installed
+09. Try running the bot manually first before setting up auto-start
+10. Restart the Cosmos
 
 For persistent issues:
 - Check the bot.log file for detailed error messages

@@ -32,14 +32,14 @@ CUSTOMIZATION TIPS:
 - Modify personality by changing the tone of messages
 - If you have your own custom server emojis, you can use them like this:
 
-1. Find what emoji you want to use and what it's name is, you can see the emoji's name by hovering
-over them in the emoji selection menu.
+1. Find what emoji you want to use and what its name is; you can see the emoji's name by hovering
+ over them in the emoji selection menu.
 
 2. Go to a text channel and type \:youremojiname: then hit Enter to send
 
 3. Copy the output of the message, it should look like <:emojiname:1628512340528825422>
 
-4. Replace or add bellow with your custom emoji code, for example, I use:
+4. Replace or add below with your custom emoji code; for example, I use:
 
     'spam_skip': '<:jillgun:1428564230588827442> Easy there, hotshot. I\'ll skip when you stop button mashing.',
     
@@ -93,8 +93,8 @@ MESSAGES = {
     # NAVIGATION - Track navigation and queue messages
     # ===================================================================================================================
     # NOTE: I use invisible characters to align the text, here's one if you want to use it: "⠀"
-    # NOTE for ADDITINAL QUEUE CUSTOMIZATION:
-    # - To customize "upcoming tracks" indentation/spacing, see /handlers/commands.py line ~542
+    # NOTE for ADDITIONAL QUEUE CUSTOMIZATION:
+    # To customize "upcoming tracks" indentation/spacing, see /handlers/commands.py (queue formatting)
 
     'previous_at_start': '😑 Already at the beginning!',
     'skip_no_disc': '✖️ No disc in jukebox.',

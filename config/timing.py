@@ -7,7 +7,7 @@ Timing Settings - All timing and cooldown configurations
 This file contains all timing-related settings organized by category.
 These control how fast/slow the bot responds and manages various operations.
 
-Changing some of these values can can break things and make the bot more prone
+Changing some of these values can break things and make the bot more prone
 to spam and Discord's API rate-limiting, so be careful and test thoroughly.
 """
 

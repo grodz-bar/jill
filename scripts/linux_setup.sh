@@ -45,6 +45,146 @@ expand_path() {
   fi
 }
 
+run_conversion() {
+  echo ""
+  echo "========================================"
+  echo "Conversion Overview"
+  echo "========================================"
+  echo "We'll copy your audio into your Jill music folder so the bot can play it."
+  echo "Destination (the folder you just configured): $MUSIC_PATH"
+  echo "Folder structure is preserved (subfolders become playlists), so organize things the way you want playlists to appear."
+  echo ""
+  echo "Quick steps this helper will walk you through:"
+  echo "  1. Choose the file format we should look for."
+  echo "  2. Point to the folder that holds your existing audio."
+  echo "  3. We'll mirror that structure into $MUSIC_PATH as .opus files."
+  echo ""
+  sleep 3
+
+  while true; do
+    local FILE_FORMAT SOURCE_FOLDER SOURCE_FOLDER_EXPANDED TRY_AGAIN CONFIRM
+    local DELETE_ORIGINALS DELETE_CONFIRM FILE_COUNT
+    local -a FILE_LIST
+
+    echo ""
+    echo "-------- Step 1: Choose the audio format --------"
+    read -rp "What audio format are your files? (mp3/flac/wav/m4a/other): " FILE_FORMAT
+    if [[ -z "$FILE_FORMAT" ]]; then
+      FILE_FORMAT="mp3"
+    fi
+
+    echo ""
+    echo "-------- Step 2: Tell us where the originals live --------"
+    echo "This is the folder we will read from before writing to $MUSIC_PATH."
+    echo "Enter the full folder path (for example: /mnt/downloads/albums/)."
+    echo "Press Enter to use your Jill music folder as both source and destination."
+    echo ""
+    read -rp "Source folder path: " SOURCE_FOLDER
+    if [[ -z "$SOURCE_FOLDER" ]]; then
+      SOURCE_FOLDER="$MUSIC_PATH"
+      echo ""
+      echo "Using your Jill music folder as both the source and destination."
+      sleep_two
+    fi
+
+    SOURCE_FOLDER="$(normalize_path_trailing_slash "$SOURCE_FOLDER")"
+    SOURCE_FOLDER_EXPANDED="$(normalize_path_trailing_slash "$(expand_path "$SOURCE_FOLDER")")"
+
+    if [[ ! -d "$SOURCE_FOLDER_EXPANDED" ]]; then
+      echo ""
+      echo "ERROR: Source folder not found: $SOURCE_FOLDER"
+      echo "Please check the path and try again."
+      echo ""
+      read -rp "Would you like to try again? (Y/n): " TRY_AGAIN
+      if [[ "$TRY_AGAIN" =~ ^[Nn]$ ]]; then
+        echo "Skipping conversion."
+        sleep_two
+        return
+      fi
+      continue
+    fi
+
+    echo ""
+    echo "Source folder found: $SOURCE_FOLDER"
+    echo ""
+    echo "Source: $SOURCE_FOLDER"
+    echo "Destination: $MUSIC_PATH"
+    echo "Format: $FILE_FORMAT > .opus"
+    echo "Folder structure will be mirrored so playlists stay organized."
+    echo ""
+
+    read -rp "Proceed with conversion? (Y/n): " CONFIRM
+    if [[ "$CONFIRM" =~ ^[Nn]$ ]]; then
+      echo "Conversion cancelled."
+      echo "Skipping conversion."
+      sleep_two
+      return
+    fi
+
+    mapfile -t FILE_LIST < <(find "$SOURCE_FOLDER_EXPANDED" -type f -iname "*.${FILE_FORMAT}" -print)
+    FILE_COUNT=${#FILE_LIST[@]}
+    if [[ "$FILE_COUNT" -eq 0 ]]; then
+      echo ""
+      echo "No ${FILE_FORMAT} files found in: $SOURCE_FOLDER"
+      echo "Add your ${FILE_FORMAT} files to this folder and try again."
+      read -rp "Would you like to try again? (Y/n): " TRY_AGAIN
+      if [[ "$TRY_AGAIN" =~ ^[Nn]$ ]]; then
+        echo "Skipping conversion."
+        sleep_two
+        return
+      fi
+      continue
+    fi
+
+    echo "Found $FILE_COUNT $FILE_FORMAT file(s)."
+    echo "Starting conversion..."
+    echo "This may take a while depending on the number of files."
+    echo ""
+
+    local SUCCESSFUL=0
+    while IFS= read -r -d '' file; do
+      rel_path="${file#$SOURCE_FOLDER_EXPANDED}"
+      rel_path="${rel_path#/}"
+      rel_dir="${rel_path%/*}"
+      if [[ "$rel_dir" == "$rel_path" ]]; then
+        dest_dir="$MUSIC_PATH_EXPANDED"
+      else
+        dest_dir="$MUSIC_PATH_EXPANDED$rel_dir/"
+      fi
+      mkdir -p "$dest_dir"
+      dest_file="$MUSIC_PATH_EXPANDED${rel_path%.*}.opus"
+      if ffmpeg -i "$file" -c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20 "$dest_file" -loglevel error -n; then
+        SUCCESSFUL=$((SUCCESSFUL + 1))
+      else
+        echo "WARNING: Failed to convert: $(basename "$file")"
+      fi
+    done < <(find "$SOURCE_FOLDER_EXPANDED" -type f -iname "*.${FILE_FORMAT}" -print0)
+
+    echo ""
+    echo "Successfully converted $SUCCESSFUL file(s)."
+    sleep_two
+
+    read -rp "Delete original files after conversion? (y/N): " DELETE_ORIGINALS
+    if [[ "$DELETE_ORIGINALS" =~ ^[Yy]$ ]]; then
+      echo ""
+      echo "WARNING: This will permanently delete the original files from $SOURCE_FOLDER"
+      read -rp "Are you sure? Type 'yes' to confirm: " DELETE_CONFIRM
+      if [[ "$DELETE_CONFIRM" == "yes" ]]; then
+        echo "Deleting original files..."
+        find "$SOURCE_FOLDER_EXPANDED" -type f -iname "*.${FILE_FORMAT}" -delete
+        echo "Original files deleted."
+        sleep_two
+      else
+        echo "Original files kept."
+        sleep_two
+      fi
+    fi
+
+    CONVERSION_SUCCESS=true
+    return
+  done
+}
+
 print_banner
 
 echo "Checking for Python..."
@@ -221,6 +361,9 @@ else
   echo "Music folder found: $MUSIC_PATH"
 fi
 echo ""
+echo "--------------------------"
+sleep 1
+echo ""
 
 CONVERSION_SUCCESS=false
 read -rp "Convert audio files now? (y/N): " CONVERT_FILES
@@ -244,116 +387,16 @@ if [[ "$CONVERT_FILES" =~ ^[Yy]$ ]]; then
     echo "Please install FFmpeg or follow the manual conversion guide:"
     echo "See 03-SETUP-Linux.txt and 04-Converting-To-Opus.txt"
     pause_message
+    echo "Skipping conversion."
+    sleep_two
   else
     echo "FFmpeg found."
     sleep_two
-
-    while true; do
-      echo ""
-      read -rp "What audio format are your files? (mp3/flac/wav/m4a/other): " FILE_FORMAT
-      if [[ -z "$FILE_FORMAT" ]]; then
-        FILE_FORMAT="mp3"
-      fi
-      echo ""
-      read -rp "Enter the path to your source music folder: " SOURCE_FOLDER
-      if [[ -z "$SOURCE_FOLDER" ]]; then
-        echo ""
-        echo "ERROR: Source folder cannot be empty."
-        read -rp "Would you like to try again? (Y/n): " TRY_AGAIN
-        if [[ "$TRY_AGAIN" =~ ^[Nn]$ ]]; then
-          break
-        fi
-        continue
-      fi
-      SOURCE_FOLDER="$(normalize_path_trailing_slash "$SOURCE_FOLDER")"
-      SOURCE_FOLDER_EXPANDED="$(normalize_path_trailing_slash "$(expand_path "$SOURCE_FOLDER")")"
-      if [[ ! -d "$SOURCE_FOLDER_EXPANDED" ]]; then
-        echo ""
-        echo "ERROR: Source folder not found: $SOURCE_FOLDER"
-        read -rp "Would you like to try again? (Y/n): " TRY_AGAIN
-        if [[ "$TRY_AGAIN" =~ ^[Nn]$ ]]; then
-          break
-        fi
-        continue
-      fi
-
-      echo ""
-      echo "Source folder found: $SOURCE_FOLDER"
-      echo "Conversion will preserve folder structure (subfolders = playlists)."
-      echo ""
-      echo "Source: $SOURCE_FOLDER"
-      echo "Destination: $MUSIC_PATH"
-      echo "Format: $FILE_FORMAT > .opus"
-      echo ""
-      read -rp "Proceed with conversion? (Y/n): " CONFIRM
-      if [[ "$CONFIRM" =~ ^[Nn]$ ]]; then
-        echo "Conversion cancelled."
-        break
-      fi
-
-      mapfile -t FILE_LIST < <(find "$SOURCE_FOLDER_EXPANDED" -type f -iname "*.${FILE_FORMAT}" -print)
-      FILE_COUNT=${#FILE_LIST[@]}
-      if [[ "$FILE_COUNT" -eq 0 ]]; then
-        echo ""
-        echo "No ${FILE_FORMAT} files found in: $SOURCE_FOLDER"
-        read -rp "Would you like to try again? (Y/n): " TRY_AGAIN
-        if [[ "$TRY_AGAIN" =~ ^[Nn]$ ]]; then
-          echo "Skipping conversion."
-          break
-        fi
-        continue
-      fi
-
-      echo "Found $FILE_COUNT $FILE_FORMAT file(s)."
-      echo "Starting conversion..."
-      echo "This may take a while depending on the number of files."
-      echo ""
-
-      SUCCESSFUL=0
-      while IFS= read -r -d '' file; do
-        rel_path="${file#$SOURCE_FOLDER_EXPANDED}"
-        rel_path="${rel_path#/}"
-        rel_dir="${rel_path%/*}"
-        if [[ "$rel_dir" == "$rel_path" ]]; then
-          dest_dir="$MUSIC_PATH_EXPANDED"
-        else
-          dest_dir="$MUSIC_PATH_EXPANDED$rel_dir/"
-        fi
-        mkdir -p "$dest_dir"
-        dest_file="$MUSIC_PATH_EXPANDED${rel_path%.*}.opus"
-        if ffmpeg -i "$file" -c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20 "$dest_file" -loglevel error -n; then
-          SUCCESSFUL=$((SUCCESSFUL + 1))
-        else
-          echo "WARNING: Failed to convert: $(basename "$file")"
-        fi
-      done < <(find "$SOURCE_FOLDER_EXPANDED" -type f -iname "*.${FILE_FORMAT}" -print0)
-
-      echo ""
-      echo "Conversion complete! Processed $FILE_COUNT file(s)."
-      echo "Successfully converted $SUCCESSFUL file(s)."
-      sleep_two
-
-      read -rp "Delete original files after conversion? (y/N): " DELETE_ORIGINALS
-      if [[ "$DELETE_ORIGINALS" =~ ^[Yy]$ ]]; then
-        echo ""
-        echo "WARNING: This will permanently delete the original files from $SOURCE_FOLDER"
-        read -rp "Are you sure? Type 'yes' to confirm: " DELETE_CONFIRM
-        if [[ "$DELETE_CONFIRM" == "yes" ]]; then
-          echo "Deleting original files..."
-          find "$SOURCE_FOLDER_EXPANDED" -type f -iname "*.${FILE_FORMAT}" -delete
-          echo "Original files deleted."
-          sleep_two
-        else
-          echo "Original files kept."
-        fi
-      fi
-
-      CONVERSION_SUCCESS=true
-      break
-    done
+    run_conversion
   fi
 else
   echo "Skipping conversion."
+  sleep_two
 fi
 
 echo ""

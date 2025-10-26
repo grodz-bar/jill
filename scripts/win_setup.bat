@@ -119,9 +119,9 @@ echo.
 if exist ".env" (
     echo WARNING: .env file already exists.
     set /p "OVERWRITE=Do you want to overwrite it? (y/N): "
-    for /f "tokens=1" %%A in ("%OVERWRITE%") do set "OVERWRITE=%%A"
-    set "OVERWRITE=%OVERWRITE:~0,1%"
-    if /i not "%OVERWRITE%"=="y" (
+    for /f "tokens=1" %%A in ("!OVERWRITE!") do set "OVERWRITE=%%A"
+    set "OVERWRITE=!OVERWRITE:~0,1!"
+    if /i not "!OVERWRITE!"=="y" (
         echo.
         echo Setup cancelled. Your existing .env file was not modified.
         echo.
@@ -177,7 +177,7 @@ if "%MUSIC_PATH%"=="" (
     set "MUSIC_PATH=%MUSIC_PATH:"=%"
 )
 
-if not "%MUSIC_PATH:~-1%"=="\\" set "MUSIC_PATH=%MUSIC_PATH%\\"
+if not "%MUSIC_PATH:~-1%"=="\" set "MUSIC_PATH=%MUSIC_PATH%\"
 
 if not exist "%MUSIC_PATH%" (
     echo.
@@ -193,6 +193,9 @@ if not exist "%MUSIC_PATH%" (
 ) else (
     echo Music folder found: %MUSIC_PATH%
 )
+echo.
+echo --------------------------
+timeout /t 1 /nobreak >nul
 echo.
 
 set "CONVERSION_SUCCESS=false"
@@ -226,21 +229,31 @@ timeout /t 2 /nobreak >nul
 
 :CONVERSION_GUIDE
 echo.
+echo ========================================
+echo Conversion Overview
+echo ========================================
 echo We'll copy your audio into your Jill music folder so the bot can play it.
-echo Converted songs will be saved to: %MUSIC_PATH%
-echo Subfolders in your source folder become playlists automatically.
+echo Destination (the folder you just configured): %MUSIC_PATH%
+echo Folder structure is preserved ^(subfolders become playlists^), so organize things the way you want playlists to appear.
 echo.
-timeout /t 2 /nobreak >nul
+echo Quick steps this helper will walk you through:
+echo   1. Choose the file format we should look for.
+echo   2. Point to the folder that holds your existing audio.
+echo   3. We'll mirror that structure into %MUSIC_PATH% as .opus files.
+echo.
+timeout /t 3 /nobreak >nul
 
 :ASK_SOURCE_FOLDER
 echo.
+echo -------- Step 1: Choose the audio format --------
 set /p "FILE_FORMAT=What audio format are your files? (mp3/flac/wav/m4a/other): "
 if "%FILE_FORMAT%"=="" set "FILE_FORMAT=mp3"
 echo.
+echo -------- Step 2: Tell us where the originals live --------
 set "SOURCE_FOLDER="
-echo Where are the original files you want to convert?
+echo This is the folder we will read from before writing to %MUSIC_PATH%.
 echo Enter the full folder path (for example: D:\Downloads\Albums\).
-echo Press Enter to use your Jill music folder: %MUSIC_PATH%
+echo Press Enter to use your Jill music folder as both source and destination.
 echo.
 set /p "SOURCE_FOLDER=Source folder path: "
 if "%SOURCE_FOLDER%"=="" (
@@ -272,8 +285,8 @@ echo Source folder found: %SOURCE_FOLDER%
 echo.
 echo Source: %SOURCE_FOLDER%
 echo Destination: %MUSIC_PATH%
-echo Conversion will preserve folder structure (subfolders = playlists).
 echo Format: %FILE_FORMAT% ^> .opus
+echo Folder structure will be mirrored so playlists stay organized.
 echo.
 set /p "CONFIRM=Proceed with conversion? (Y/n): "
 if /i "%CONFIRM%"=="n" (

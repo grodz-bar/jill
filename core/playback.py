@@ -180,7 +180,6 @@ async def _play_current(guild_id: int, bot) -> None:
 
         # Capture track ID for this specific callback
         callback_track_id = track.track_id
-        _last_callback_time = getattr(player, '_last_callback_time', 0)
 
         # Define callback for when track finishes
         def after_track(error):
@@ -189,7 +188,7 @@ async def _play_current(guild_id: int, bot) -> None:
 
             This runs in a DIFFERENT thread, so we use run_coroutine_threadsafe().
             """
-            nonlocal audio_source, _last_callback_time
+            nonlocal audio_source
 
             if error:
                 error_str = str(error)
@@ -228,8 +227,10 @@ async def _play_current(guild_id: int, bot) -> None:
                 return
 
             # Anti-spam: Prevent rapid-fire callbacks
+            # Always read from player attribute to avoid stale closure values
             current_time = time.time()
-            if current_time - _last_callback_time < CALLBACK_MIN_INTERVAL:
+            last_callback_time = getattr(player, '_last_callback_time', 0)
+            if current_time - last_callback_time < CALLBACK_MIN_INTERVAL:
                 logger.warning(f"Guild {guild_id}: Callback too quick, skipping")
                 return
 

@@ -67,7 +67,8 @@ async def playback_watchdog(bot, players: Dict[int, 'MusicPlayer']):
             # Adaptive sleep: reduce polling when no active voice connections
             sleep_interval = WATCHDOG_INTERVAL
             if not any(p.voice_client and p.voice_client.is_connected() for p in players.values()):
-                sleep_interval = min(300, WATCHDOG_INTERVAL * 6)  # Max 5 min when idle
+                # When idle, check at least every base interval, but not more than once per 5 min
+                sleep_interval = max(WATCHDOG_INTERVAL, 300)  # At least 5 min when idle
 
             await asyncio.sleep(sleep_interval)
 
@@ -144,7 +145,8 @@ async def alone_watchdog(bot, players: Dict[int, 'MusicPlayer']):
             # Adaptive sleep: reduce polling when no active voice connections
             sleep_interval = ALONE_WATCHDOG_INTERVAL
             if not any(p.voice_client and p.voice_client.is_connected() for p in players.values()):
-                sleep_interval = min(300, ALONE_WATCHDOG_INTERVAL * 6)  # Max 5 min when idle
+                # When idle, check at least every base interval, but not more than once per 5 min
+                sleep_interval = max(ALONE_WATCHDOG_INTERVAL, 300)  # At least 5 min when idle
 
             await asyncio.sleep(sleep_interval)
 

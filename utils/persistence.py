@@ -153,13 +153,23 @@ async def _flush_channel_saves():
             if gid in _channel_cache:
                 data[gid] = _channel_cache[gid]
 
-        with open(CHANNEL_STORAGE_FILE, 'w') as f:
-            json.dump(data, f, indent=2)
+        # Atomic write: write to temp file then replace
+        import tempfile
+        _dir = os.path.dirname(CHANNEL_STORAGE_FILE) or "."
+        with tempfile.NamedTemporaryFile('w', delete=False, dir=_dir, encoding='utf-8') as _tmp:
+            json.dump(data, _tmp, indent=2)
+            _tmp_path = _tmp.name
+        os.replace(_tmp_path, CHANNEL_STORAGE_FILE)
 
         logger.debug(f"Flushed {len(to_save)} channel save(s) to disk")
 
-    except Exception as e:
-        logger.error(f"Failed to flush channel saves: {e}")
+    except Exception:
+        logger.exception("Failed to flush channel saves")
+    finally:
+        # If more saves came in during the flush, schedule another pass
+        if _pending_saves:
+            global _last_save_task
+            _last_save_task = asyncio.create_task(_flush_channel_saves())
 
 
 # =============================================================================
@@ -264,10 +274,20 @@ async def _flush_playlist_saves():
             if gid in _playlist_cache:
                 data[gid] = _playlist_cache[gid]
 
-        with open(PLAYLIST_STORAGE_FILE, 'w') as f:
-            json.dump(data, f, indent=2)
+        # Atomic write: write to temp file then replace
+        import tempfile
+        _dir = os.path.dirname(PLAYLIST_STORAGE_FILE) or "."
+        with tempfile.NamedTemporaryFile('w', delete=False, dir=_dir, encoding='utf-8') as _tmp:
+            json.dump(data, _tmp, indent=2)
+            _tmp_path = _tmp.name
+        os.replace(_tmp_path, PLAYLIST_STORAGE_FILE)
 
         logger.debug(f"Flushed {len(to_save)} playlist save(s) to disk")
 
-    except Exception as e:
-        logger.error(f"Failed to flush playlist saves: {e}")
+    except Exception:
+        logger.exception("Failed to flush playlist saves")
+    finally:
+        # If more saves came in during the flush, schedule another pass
+        if _pending_playlist_saves:
+            global _last_playlist_save_task
+            _last_playlist_save_task = asyncio.create_task(_flush_playlist_saves())

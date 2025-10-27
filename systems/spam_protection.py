@@ -98,6 +98,9 @@ class SpamProtector:
         # Reference to cleanup callback (set by player)
         self._cleanup_callback: Optional[Callable[[], Awaitable[None]]] = None
 
+        # Track cleanup tasks for proper lifecycle management
+        self._cleanup_tasks: set = set()
+
     # =========================================================================
     # LAYER 0: Per-User Spam Filter
     # =========================================================================
@@ -182,7 +185,10 @@ class SpamProtector:
 
         # Trigger delayed cleanup if callback is set
         if self._cleanup_callback and AUTO_CLEANUP_ENABLED:
-            asyncio.create_task(self._delayed_spam_cleanup())
+            task = asyncio.create_task(self._delayed_spam_cleanup())
+            self._cleanup_tasks.add(task)
+            # Remove task from set when done to prevent memory leak
+            task.add_done_callback(lambda t: self._cleanup_tasks.discard(t))
 
     async def _delayed_spam_cleanup(self):
         """
@@ -394,6 +400,17 @@ class SpamProtector:
                 handle.cancel()
 
         self._debounce_tasks.clear()
+
+        # Cancel all cleanup tasks
+        for task in list(self._cleanup_tasks):
+            if not task.done():
+                task.cancel()
+
+        # Wait for cleanup tasks to finish cancelling
+        if self._cleanup_tasks:
+            await asyncio.gather(*self._cleanup_tasks, return_exceptions=True)
+
+        self._cleanup_tasks.clear()
 
         logger.info(f"Guild {self.guild_id}: Spam protector shutdown complete")
 

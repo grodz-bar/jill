@@ -27,7 +27,6 @@ Both systems operate independently for redundancy and robustness.
 
 import asyncio
 import bisect
-import time
 from time import monotonic as _now
 import logging
 from datetime import datetime, timedelta, timezone

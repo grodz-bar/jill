@@ -68,7 +68,8 @@ The wizard will automatically:
 BEFORE STARTING THE WIZARD, make sure you have ready:
 - Your Discord bot token (from Step 2)
 - Python 3.11 or newer installed
-- FFmpeg installed (see "INSTALL FFMPEG:" in 04-Converting-To-Opus.txt)
+- FFmpeg installed for audio format conversion to .opus
+  (see "INSTALL FFMPEG:" in 04-Converting-To-Opus.txt for installation guide)
 - Your local music files
 
 Use Setup Wizard:

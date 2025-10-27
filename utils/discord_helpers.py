@@ -105,7 +105,7 @@ async def safe_disconnect(voice_client: Optional[disnake.VoiceClient], force: bo
     try:
         await voice_client.disconnect(force=force)
         return True
-    except disnake.ClientException as e:
+    except (disnake.ClientException, disnake.HTTPException) as e:
         logger.debug("Disconnect failed (non-critical): %s", e)
         return False
 
@@ -183,10 +183,13 @@ async def update_presence(bot, status_text: Optional[str]) -> bool:
 
     current_time = _now()
 
-    # Skip if same text and within throttle window (lock prevents race condition)
+    # Throttle/dedupe: set state under lock to block concurrent duplicates
     async with _presence_lock:
         if status_text == _current_presence_text and current_time - _last_presence_update < 10:
             return True
+        # Optimistically update state before API call to prevent duplicate requests
+        _last_presence_update = current_time
+        _current_presence_text = status_text
 
     try:
         # Get configured status (online/dnd/idle/invisible)
@@ -203,10 +206,6 @@ async def update_presence(bot, status_text: Optional[str]) -> bool:
         else:
             await bot.change_presence(activity=None, status=status)
 
-        # Update state atomically to prevent race conditions
-        async with _presence_lock:
-            _last_presence_update = current_time
-            _current_presence_text = status_text
         return True
     except disnake.HTTPException as e:
         logger.debug("Presence update failed (non-critical): %s", e)
@@ -281,4 +280,7 @@ def make_audio_source(path: str):
         Uses '-re' flag for real-time playback and '-nostdin' to avoid FFmpeg
         waiting for input. '-fflags +nobuffer' reduces initial buffering delay.
     """
-    return disnake.FFmpegOpusAudio(path, before_options='-re -nostdin -fflags +nobuffer')
+    return disnake.FFmpegOpusAudio(
+        path,
+        before_options='-hide_banner -loglevel error -nostdin -re -fflags +nobuffer'
+    )

@@ -22,8 +22,8 @@ Handles voice channel operations, auto-pause when alone, and auto-disconnect.
 Provides utilities for safely checking voice client state.
 """
 
-import time
 import logging
+from time import monotonic as _now  # Use _now() for all time tracking (monotonic clock, consistent across codebase)
 from typing import Optional, Tuple
 from enum import Enum
 import disnake
@@ -112,18 +112,17 @@ class VoiceManager:
         Returns:
             PlaybackState: IDLE, PLAYING, or PAUSED
         """
-        try:
-            vc = self.voice_client
-            if not vc or not vc.is_connected():
-                return PlaybackState.IDLE
-
-            if vc.is_paused():
-                return PlaybackState.PAUSED
-            if vc.is_playing():
-                return PlaybackState.PLAYING
-
-        except (disnake.ClientException, RuntimeError):
+        state = self.get_voice_state_safe(self.voice_client)
+        if state is None:
             return PlaybackState.IDLE
+
+        is_playing, is_paused = state
+        if is_paused:
+            return PlaybackState.PAUSED
+        if is_playing:
+            return PlaybackState.PLAYING
+
+        return PlaybackState.IDLE
 
     # =========================================================================
     # Alone Detection
@@ -189,7 +188,7 @@ class VoiceManager:
             return None
 
         is_alone = self.is_alone_in_channel()
-        current_time = time.monotonic()
+        current_time = _now()
 
         if is_alone:
             # Bot is alone

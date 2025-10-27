@@ -22,7 +22,6 @@ Core music playback functionality including track playing, callbacks, and queue 
 """
 
 import asyncio
-import time
 from time import monotonic as _now
 import logging
 from dataclasses import dataclass, field

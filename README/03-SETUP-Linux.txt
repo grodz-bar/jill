@@ -190,7 +190,13 @@ NOTE: Do this so bot will start automatically after a machine boot.
 2. Create systemd service file:
     sudo nano /etc/systemd/system/jill.service
 	
-3. Add:
+3. Add the following configuration:
+
+WARNING: Before pasting, you MUST replace these placeholders:
+- YOUR-USERNAME → your actual Linux username (appears 5 times below)
+- YOUR-BOT-TOKEN → your Discord bot token (if using optional method)
+- /home/YOUR-USERNAME/jill/ → actual path if stored elsewhere
+
 ----------------------------------------------------------------
 [Unit]
 Description=Jill Discord Bot
@@ -215,10 +221,6 @@ OPTIONAL: If you don't want to use the .env file (from the default setup),
 you can place these lines under [Service] instead:
 Environment="DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN"
 Environment="MUSIC_FOLDER=/home/YOUR-USERNAME/jill/music/"
-
-WARNING: REPLACE 'YOUR-USERNAME' with your actual username.
-
-NOTE: If you're storing Jill somewhere else edit the file to reflect that.
 
 4. Save and exit (Ctrl+X, Y, Enter in nano)
 

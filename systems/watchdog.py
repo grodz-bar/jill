@@ -24,7 +24,6 @@ Background monitoring tasks for detecting and recovering from edge cases:
 """
 
 import asyncio
-import time
 from time import monotonic as _now
 import logging
 from typing import Dict

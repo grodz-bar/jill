@@ -20,7 +20,7 @@ Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.1
 **Implementation:**
 - `bot.py` — entry point, event handlers, watchdog setup
 - `handlers/commands.py` — all commands
-- `core/player.py` — MusicPlayer, queue, shuffle. `switch_playlist()` is synchronous (no await).
+- `core/player.py` — MusicPlayer, queue, shuffle. `switch_playlist()` is currently synchronous (no await).
 - `core/playback.py` — _play_current, _play_next, FFmpeg callbacks (session-guarded playback tokens)
 - `core/track.py` — Track class, library loading, playlist discovery
 - `systems/spam_protection.py` — 5-layer spam protection

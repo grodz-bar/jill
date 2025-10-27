@@ -58,6 +58,7 @@ import os
 import json
 import asyncio
 import logging
+import tempfile
 from typing import Dict, Iterable
 
 logger = logging.getLogger(__name__)
@@ -192,13 +193,16 @@ async def _flush_channel_saves(immediate: bool = False):
         data = _channel_cache.copy()
 
         # Atomic write: write to temp file then replace
-        import tempfile
         _dir = os.path.dirname(CHANNEL_STORAGE_FILE) or "."
         os.makedirs(_dir, exist_ok=True)
         with tempfile.NamedTemporaryFile('w', delete=False, dir=_dir, encoding='utf-8') as _tmp:
             json.dump(data, _tmp, indent=2)
             _tmp_path = _tmp.name
-        os.replace(_tmp_path, CHANNEL_STORAGE_FILE)
+        try:
+            os.replace(_tmp_path, CHANNEL_STORAGE_FILE)
+        except Exception:
+            os.unlink(_tmp_path)
+            raise
 
         logger.debug(f"Flushed {len(to_save)} channel save(s) to disk")
 
@@ -342,13 +346,16 @@ def _write_playlists_to_disk(guild_ids: Iterable[int]) -> None:
     data = _playlist_cache.copy()
 
     # Atomic write: write to temp file then replace
-    import tempfile
     _dir = os.path.dirname(PLAYLIST_STORAGE_FILE) or "."
     os.makedirs(_dir, exist_ok=True)
     with tempfile.NamedTemporaryFile('w', delete=False, dir=_dir, encoding='utf-8') as _tmp:
         json.dump(data, _tmp, indent=2)
         _tmp_path = _tmp.name
-    os.replace(_tmp_path, PLAYLIST_STORAGE_FILE)
+    try:
+        os.replace(_tmp_path, PLAYLIST_STORAGE_FILE)
+    except Exception:
+        os.unlink(_tmp_path)
+        raise
 
 
 def save_last_playlist_immediate(guild_id: int, playlist_id: str) -> None:
@@ -382,6 +389,9 @@ def save_last_playlist_immediate(guild_id: int, playlist_id: str) -> None:
         _write_playlists_to_disk({guild_id})
 
     except Exception:
+        # NOTE: Intentionally catching broad Exception here (vs specific OSError/JSON errors)
+        # This is a critical immediate-save path used for fallback playlist selection.
+        # Must be maximally defensive and log any failure, even unexpected ones.
         logger.exception("Could not persist playlist storage immediately")
 
 

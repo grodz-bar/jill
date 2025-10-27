@@ -426,7 +426,7 @@ def setup(bot):
         if prev_track:
             # Queue via spam_protector with priority for consistency with internal playback operations
             await player.spam_protector.queue_command(
-                lambda: _play_current(ctx.guild.id, bot),
+                lambda gid=ctx.guild.id: _play_current(gid, bot),
                 priority=True
             )
         else:
@@ -754,7 +754,7 @@ def setup(bot):
 
         await player.spam_protector.debounce_command(
             "playlists",
-            lambda p=page: _execute_playlists(ctx, p, bot),
+            lambda c=ctx, p=page: _execute_playlists(c, p, bot),
             PLAYLISTS_DEBOUNCE_WINDOW,
             PLAYLISTS_COOLDOWN,
             PLAYLISTS_SPAM_THRESHOLD,
@@ -819,7 +819,7 @@ def setup(bot):
 
         await player.spam_protector.debounce_command(
             "help",
-            lambda: _execute_help(ctx, bot),
+            lambda c=ctx: _execute_help(c, bot),
             HELP_DEBOUNCE_WINDOW,
             HELP_COOLDOWN,
             HELP_SPAM_THRESHOLD,

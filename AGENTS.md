@@ -65,6 +65,7 @@ All user commands implemented in `handlers/commands.py`. Context-aware (e.g., `!
 
 **Playback safety:**
 - Cancel or replace the active playback session (`player.cancel_active_session()` or `suppress_callbacks`) before stopping/starting audio manually. This prevents stale callbacks from advancing the queue.
+- FFmpeg callbacks run in audio thread: use `bot.loop.call_soon_threadsafe()` for player mutations, never direct assignment
 
 **Never:**
 - Add blocking I/O in event handlers (use `asyncio.to_thread()`)

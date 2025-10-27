@@ -235,8 +235,9 @@ def setup(bot):
 
         # Handle start playback
         if current_state == PlaybackState.IDLE:
+            # Bind ctx.guild.id to avoid late-binding issues if ctx changes before execution
             await player.spam_protector.queue_command(
-                lambda: _play_first(ctx.guild.id, bot)
+                lambda gid=ctx.guild.id: _play_first(gid, bot)
             )
 
     async def _execute_play_jump(ctx, track_arg: str, bot):
@@ -272,7 +273,7 @@ def setup(bot):
 
         player.jump_to_track(track_index)
         await player.spam_protector.queue_command(
-            lambda: _play_current(ctx.guild.id, bot)
+            lambda gid=ctx.guild.id: _play_current(gid, bot)
         )
 
     @bot.command(name='pause', aliases=COMMAND_ALIASES['pause'])
@@ -356,7 +357,7 @@ def setup(bot):
             with suppress_callbacks(player):
                 player.voice_client.stop()
             await player.spam_protector.queue_command(
-                lambda: _play_next(ctx.guild.id, bot)
+                lambda gid=ctx.guild.id: _play_next(gid, bot)
             )
             await player.cleanup_manager.schedule_message_deletion(ctx.message, USER_COMMAND_TTL)
 
@@ -704,7 +705,7 @@ def setup(bot):
             # Auto-play first track if music was playing before switch
             if was_playing and player.voice_client and player.voice_client.is_connected():
                 await player.spam_protector.queue_command(
-                    lambda: _play_first(ctx.guild.id, bot)
+                    lambda gid=ctx.guild.id: _play_first(gid, bot)
                 )
         else:
             # Show error message from switch_playlist
@@ -753,7 +754,7 @@ def setup(bot):
 
         await player.spam_protector.debounce_command(
             "playlists",
-            lambda: _execute_playlists(ctx, page, bot),
+            lambda p=page: _execute_playlists(ctx, p, bot),
             PLAYLISTS_DEBOUNCE_WINDOW,
             PLAYLISTS_COOLDOWN,
             PLAYLISTS_SPAM_THRESHOLD,

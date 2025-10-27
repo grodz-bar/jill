@@ -145,7 +145,7 @@ def save_last_channel(guild_id: int, channel_id: int) -> None:
             mark_channel_dirty(guild_id)
 
     except (OSError, json.JSONDecodeError, ValueError):
-        logger.exception("Could not save playlist storage")
+        logger.exception("Could not save channel storage")
 
 
 def mark_channel_dirty(guild_id: int):
@@ -273,7 +273,7 @@ def save_last_playlist(guild_id: int, playlist_id: str) -> None:
             mark_playlist_dirty(guild_id)
 
     except (OSError, json.JSONDecodeError, ValueError):
-        logger.exception("Could not save channel storage")
+        logger.exception("Could not save playlist storage")
 
 
 def mark_playlist_dirty(guild_id: int):

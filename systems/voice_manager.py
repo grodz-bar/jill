@@ -194,10 +194,18 @@ class VoiceManager:
         if is_alone:
             # Bot is alone
             if self._alone_since is None:
-                # Just became alone
+                # Just became alone - log detailed channel state for debugging
                 self._alone_since = current_time
-                self.is_alone_in_channel(log_result=True)
-                logger.info(f"Guild {self.guild_id}: Bot became alone in voice channel")
+                if self.voice_client and self.voice_client.channel:
+                    channel = self.voice_client.channel
+                    members = list(channel.members)
+                    human_count = sum(1 for m in members if not m.bot)
+                    logger.info(
+                        f"Guild {self.guild_id}: Bot became alone in voice channel '{channel.name}' "
+                        f"(Total: {len(members)}, Humans: {human_count})"
+                    )
+                else:
+                    logger.info(f"Guild {self.guild_id}: Bot became alone in voice channel")
 
             else:
                 # Been alone for a while
@@ -243,12 +251,21 @@ class VoiceManager:
         else:
             # Bot is NOT alone (someone is in channel)
             if self._alone_since is not None:
-                # Someone just joined
-                self.is_alone_in_channel(log_result=True)
-                logger.info(
-                    f"Guild {self.guild_id}: Not alone anymore, state={current_state}, "
-                    f"was_playing_before={self._was_playing_before_alone}"
-                )
+                # Someone just joined - log detailed channel state for debugging
+                if self.voice_client and self.voice_client.channel:
+                    channel = self.voice_client.channel
+                    members = list(channel.members)
+                    human_count = sum(1 for m in members if not m.bot)
+                    logger.info(
+                        f"Guild {self.guild_id}: Not alone anymore in '{channel.name}' "
+                        f"(Total: {len(members)}, Humans: {human_count}), "
+                        f"state={current_state}, was_playing_before={self._was_playing_before_alone}"
+                    )
+                else:
+                    logger.info(
+                        f"Guild {self.guild_id}: Not alone anymore, state={current_state}, "
+                        f"was_playing_before={self._was_playing_before_alone}"
+                    )
 
                 # Auto-resume if we auto-paused
                 if AUTO_PAUSE_ENABLED and current_state == PlaybackState.PAUSED and self._was_playing_before_alone:

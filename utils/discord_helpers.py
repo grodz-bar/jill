@@ -22,9 +22,9 @@ Provides safe wrappers around common Discord API operations with error handling.
 All functions gracefully handle None values and Discord API errors.
 """
 
+import asyncio
 import disnake
 import logging
-import time
 from time import monotonic as _now
 from typing import Optional
 
@@ -36,6 +36,7 @@ from config.features import BOT_STATUS
 # Global presence state (bot-wide, not per-guild)
 _last_presence_update: float = 0
 _current_presence_text: Optional[str] = None
+_presence_lock = asyncio.Lock()  # Prevents race conditions from concurrent update_presence calls
 
 
 def sanitize_for_format(text: str) -> str:
@@ -93,13 +94,14 @@ async def safe_disconnect(voice_client: Optional[disnake.VoiceClient], force: bo
         force: Force disconnect even if playing
 
     Returns:
-        bool: True if disconnected successfully, False otherwise
+        bool: True if disconnected successfully or None (idempotent no-op), False on error
 
     Note:
         Logs errors at debug level since disconnect failures are non-critical.
+        Treats None as successful no-op for cleaner calling code.
     """
     if not voice_client:
-        return False
+        return True  # No-op success for idempotency
     try:
         await voice_client.disconnect(force=force)
         return True
@@ -181,9 +183,10 @@ async def update_presence(bot, status_text: Optional[str]) -> bool:
 
     current_time = _now()
 
-    # Skip if same text and within throttle window
-    if status_text == _current_presence_text and current_time - _last_presence_update < 10:
-        return True
+    # Skip if same text and within throttle window (lock prevents race condition)
+    async with _presence_lock:
+        if status_text == _current_presence_text and current_time - _last_presence_update < 10:
+            return True
 
     try:
         # Get configured status (online/dnd/idle/invisible)
@@ -200,8 +203,10 @@ async def update_presence(bot, status_text: Optional[str]) -> bool:
         else:
             await bot.change_presence(activity=None, status=status)
 
-        _last_presence_update = current_time
-        _current_presence_text = status_text
+        # Update state atomically to prevent race conditions
+        async with _presence_lock:
+            _last_presence_update = current_time
+            _current_presence_text = status_text
         return True
     except disnake.HTTPException as e:
         logger.debug("Presence update failed (non-critical): %s", e)
@@ -238,16 +243,17 @@ async def safe_delete_message(message: Optional[disnake.Message]) -> bool:
         message: Message to delete (None is safe)
 
     Returns:
-        bool: True if deleted successfully or already deleted, False on permission/API errors
+        bool: True if deleted successfully, already deleted (NotFound), or None (no-op)
+              False only on permission/API errors
 
     Note:
-        Catches common errors:
-        - NotFound: Message already deleted (returns True - idempotent success)
-        - Forbidden: Bot lacks permissions (returns False)
-        - HTTPException: Rate limited or other API error (returns False)
+        Idempotent behavior:
+        - None: Returns True (no-op success, nothing to delete)
+        - NotFound: Returns True (already deleted, goal achieved)
+        - Forbidden/HTTPException: Returns False (actual error)
     """
     if not message:
-        return False
+        return True  # No-op success for idempotency
     try:
         await message.delete()
         return True

@@ -167,7 +167,7 @@ async def _play_current(guild_id: int, bot) -> None:
                     vc = player.voice_client
                     if vc and not vc.is_playing() and not vc.is_paused():
                         break
-                except Exception as e:
+                except (AttributeError, RuntimeError) as e:
                     logger.debug("Guild %s: settle check failed (ignored): %s", guild_id, e)
                     break
 
@@ -187,7 +187,10 @@ async def _play_current(guild_id: int, bot) -> None:
             """
             Callback fired when track finishes playing.
 
-            This runs in a DIFFERENT thread, so we use run_coroutine_threadsafe().
+            CRITICAL: This runs in FFmpeg's audio thread (NOT the event loop thread).
+            - Use bot.loop.call_soon_threadsafe() for ANY player attribute mutations
+            - Use asyncio.run_coroutine_threadsafe() for coroutine calls
+            - Direct attribute assignment causes race conditions and crashes
             """
             nonlocal audio_source
 
@@ -236,7 +239,8 @@ async def _play_current(guild_id: int, bot) -> None:
                 return
 
             # CRITICAL: Update player attribute so future callbacks see the latest timestamp.
-            player._last_callback_time = current_time
+            # Must use call_soon_threadsafe since after_track runs in FFmpeg's thread
+            bot.loop.call_soon_threadsafe(setattr, player, '_last_callback_time', current_time)
 
             # Queue the next track (priority=True to ensure internal commands aren't dropped)
             # Bind guild_id in lambda to avoid late-binding surprises
@@ -247,7 +251,8 @@ async def _play_current(guild_id: int, bot) -> None:
 
             if player._playback_session is session:
                 session.cancel()
-                player._playback_session = None
+                # Thread-safe mutation from FFmpeg thread
+                bot.loop.call_soon_threadsafe(setattr, player, '_playback_session', None)
 
         # Start playback with callback
         player.voice_client.play(audio_source, after=after_track)
@@ -286,8 +291,6 @@ async def _play_current(guild_id: int, bot) -> None:
             player.voice_client = None
         if player._playback_session is session:
             player.cancel_active_session()
-    finally:
-        player._suppress_callback = False
 
 
 async def _play_next(guild_id: int, bot) -> None:

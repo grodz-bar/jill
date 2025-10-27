@@ -30,7 +30,7 @@ import bisect
 import time
 from time import monotonic as _now
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Tuple
 import disnake
 
@@ -263,7 +263,7 @@ class CleanupManager:
 
         try:
             messages_to_delete = []
-            cutoff_dt = datetime.utcnow() - timedelta(seconds=CLEANUP_SAFE_AGE_THRESHOLD)
+            cutoff_dt = datetime.now(timezone.utc) - timedelta(seconds=CLEANUP_SAFE_AGE_THRESHOLD)
             other_bot_messages = []
 
             # Build set of message IDs currently tracked by TTL system (with unexpired TTL)

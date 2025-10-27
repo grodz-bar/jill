@@ -98,8 +98,8 @@ class SpamProtector:
         # Reference to cleanup callback (set by player)
         self._cleanup_callback: Optional[Callable[[], Awaitable[None]]] = None
 
-        # Track cleanup tasks for proper lifecycle management
-        self._cleanup_tasks: set = set()
+        # Track all auxiliary tasks (cleanup, debounce) for proper lifecycle management
+        self._aux_tasks: set[asyncio.Task] = set()
 
     # =========================================================================
     # LAYER 0: Per-User Spam Filter
@@ -186,9 +186,9 @@ class SpamProtector:
         # Trigger delayed cleanup if callback is set
         if self._cleanup_callback and AUTO_CLEANUP_ENABLED:
             task = asyncio.create_task(self._delayed_spam_cleanup())
-            self._cleanup_tasks.add(task)
+            self._aux_tasks.add(task)
             # Remove task from set when done to prevent memory leak
-            task.add_done_callback(lambda t: self._cleanup_tasks.discard(t))
+            task.add_done_callback(lambda t: self._aux_tasks.discard(t))
 
     async def _delayed_spam_cleanup(self):
         """
@@ -291,7 +291,9 @@ class SpamProtector:
 
         # Start debounce timer
         def _run_debounced():
-            asyncio.create_task(self.queue_command(execute_func))
+            t = asyncio.create_task(self.queue_command(execute_func))
+            self._aux_tasks.add(t)
+            t.add_done_callback(lambda task: self._aux_tasks.discard(task))
             self._last_execute[command_name] = time.time()
             self._spam_counts[command_name] = 0
             self._spam_warned[command_name] = False
@@ -401,16 +403,16 @@ class SpamProtector:
 
         self._debounce_tasks.clear()
 
-        # Cancel all cleanup tasks
-        for task in list(self._cleanup_tasks):
+        # Cancel all auxiliary tasks (cleanup, debounce queue tasks)
+        for task in list(self._aux_tasks):
             if not task.done():
                 task.cancel()
 
-        # Wait for cleanup tasks to finish cancelling
-        if self._cleanup_tasks:
-            await asyncio.gather(*self._cleanup_tasks, return_exceptions=True)
+        # Wait for auxiliary tasks to finish cancelling
+        if self._aux_tasks:
+            await asyncio.gather(*self._aux_tasks, return_exceptions=True)
 
-        self._cleanup_tasks.clear()
+        self._aux_tasks.clear()
 
         logger.info(f"Guild {self.guild_id}: Spam protector shutdown complete")
 

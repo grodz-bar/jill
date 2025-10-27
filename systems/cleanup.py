@@ -454,10 +454,11 @@ class CleanupManager:
                     logger.debug(f"Guild {self.guild_id}: Edited 'now serving' message")
                     return self._last_now_playing_msg
                 else:
-                    # Message buried, send new one
-                    raise Exception("Message buried by chat activity")
+                    # Message buried, delete old and send new
+                    logger.debug(f"Guild {self.guild_id}: Message buried, sending new")
+                    await self.delete_last_now_playing()
 
-            except Exception as e:
+            except disnake.HTTPException as e:
                 # Edit failed, delete old and send new
                 logger.debug(f"Guild {self.guild_id}: Edit failed ({e}), sending new message")
                 await self.delete_last_now_playing()

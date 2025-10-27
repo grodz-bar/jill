@@ -61,7 +61,8 @@ feed `systems.cleanup.CleanupManager` even when embeds update in place.
 
 **Graceful shutdown:**
 - Signal handlers (SIGINT, SIGTERM) trigger `shutdown_bot()` async sequence
-- Shutdown order: watchdogs → players → voice → bot connection
+- Shutdown order: watchdogs → players → persistence flush → voice → bot connection
+- Persistence: `flush_all_immediately()` ensures no data loss on shutdown
 - Never use blocking operations in shutdown sequence
 - All subsystems must handle cancellation gracefully
 
@@ -70,6 +71,7 @@ feed `systems.cleanup.CleanupManager` even when embeds update in place.
 
 **Always use:**
 - `asyncio.sleep()` not `time.sleep()`
+- `time.monotonic()` for elapsed time tracking (immune to system clock changes)
 - Constants from `timing.py` (don't hardcode timings)
 - Messages from `messages.py` (don't hardcode user text)
 - `python -m pip` not `pip` (reliability)

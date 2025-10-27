@@ -337,7 +337,8 @@ def setup(bot):
             await player.cleanup_manager.send_with_ttl(
                 player.text_channel,
                 MESSAGES['skip_no_disc'],
-                'error'
+                'error',
+                ctx.message
             )
             return
 
@@ -696,28 +697,13 @@ def setup(bot):
                     lambda: _play_first(ctx.guild.id, bot)
                 )
         else:
-            # Check error type
-            if "not found" in message.lower():
-                await player.cleanup_manager.send_with_ttl(
-                    player.text_channel or ctx.channel,
-                    MESSAGES['error_playlist_not_found'].format(query=sanitize_for_format(identifier)),
-                    'error',
-                    ctx.message
-                )
-            elif "already using" in message.lower():
-                await player.cleanup_manager.send_with_ttl(
-                    player.text_channel or ctx.channel,
-                    MESSAGES['error_playlist_already_active'],
-                    'error',
-                    ctx.message
-                )
-            else:
-                await player.cleanup_manager.send_with_ttl(
-                    player.text_channel or ctx.channel,
-                    f"❌ {message}",
-                    'error',
-                    ctx.message
-                )
+            # Show error message from switch_playlist
+            await player.cleanup_manager.send_with_ttl(
+                player.text_channel or ctx.channel,
+                f"❌ {sanitize_for_format(message)}",
+                'error',
+                ctx.message
+            )
 
     # =========================================================================
     # PLAYLIST COMMANDS
@@ -727,11 +713,17 @@ def setup(bot):
     @commands.guild_only()
     async def playlists_command(ctx, page: int = 1):
         """Show available playlists."""
+        player = await get_player(ctx.guild.id, bot, bot.user.id)
+
         # Only enable if playlist structure exists
         if not has_playlist_structure():
+            await player.cleanup_manager.send_with_ttl(
+                player.text_channel or ctx.channel,
+                MESSAGES.get('error_no_playlists', '❌ No playlists found. Music must be in subfolders.'),
+                'error',
+                ctx.message
+            )
             return
-
-        player = await get_player(ctx.guild.id, bot, bot.user.id)
 
         # Check if feature is enabled
         if not PLAYLIST_SWITCHING_ENABLED:

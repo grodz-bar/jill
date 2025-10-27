@@ -102,7 +102,7 @@ async def safe_disconnect(voice_client: Optional[disnake.VoiceClient], force: bo
     try:
         await voice_client.disconnect(force=force)
         return True
-    except Exception as e:
+    except disnake.ClientException as e:
         logger.debug("Disconnect failed (non-critical): %s", e)
         return False
 
@@ -202,7 +202,7 @@ async def update_presence(bot, status_text: Optional[str]) -> bool:
         _last_presence_update = current_time
         _current_presence_text = status_text
         return True
-    except Exception as e:
+    except disnake.HTTPException as e:
         logger.debug("Presence update failed (non-critical): %s", e)
         return False
 

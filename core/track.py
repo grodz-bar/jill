@@ -32,6 +32,9 @@ logger = logging.getLogger(__name__)
 # Import from config
 from config.paths import MUSIC_FOLDER
 
+# Module-level regex pattern for numeric prefix removal (DRY - used by both Playlist and Track)
+_PREFIX_PATTERN = re.compile(r'^\d+\s*-\s*')
+
 
 class Playlist:
     """
@@ -48,8 +51,6 @@ class Playlist:
         - display_name strips "01 - " prefix for clean display
         - Equality based on playlist_id
     """
-
-    _prefix_pattern = re.compile(r'^\d+\s*-\s*')  # Precompiled regex for numeric prefix removal
 
     def __init__(self, playlist_path: Path, track_count: int = 0):
         """
@@ -74,7 +75,7 @@ class Playlist:
             "01 - Album Name" → "Album Name"
         """
         name = self.playlist_id
-        name = Playlist._prefix_pattern.sub('', name)  # Remove "01 - " using precompiled regex
+        name = _PREFIX_PATTERN.sub('', name)  # Remove "01 - " using module-level regex
         return name
 
     def __eq__(self, other) -> bool:
@@ -108,7 +109,6 @@ class Track:
     """
 
     _next_id = 0  # Class variable: auto-incrementing ID counter
-    _prefix_pattern = re.compile(r'^\d+\s*-\s*')  # Precompiled regex for numeric prefix removal
 
     def __init__(self, opus_path: Path, library_index: int):
         """
@@ -136,7 +136,7 @@ class Track:
             "01 - Hopes and Dreams.opus" → "Hopes and Dreams"
         """
         name = self.opus_path.stem  # Filename without extension
-        name = Track._prefix_pattern.sub('', name)  # Remove "01 - " using precompiled regex
+        name = _PREFIX_PATTERN.sub('', name)  # Remove "01 - " using module-level regex
         return name
 
     def __eq__(self, other) -> bool:
@@ -200,7 +200,12 @@ def discover_playlists(guild_id: int = 0) -> List[Playlist]:
             logger.warning(f"Guild {guild_id}: Playlist folder missing numeric prefix (will sort last): {playlist.playlist_id}")
             return 999999
 
-    sorted_playlists = sorted(playlists, key=get_sort_key)
+    # Sort by number first, then by name (casefold for case-insensitive sorting)
+    # This provides stable, deterministic sorting even for unnumbered playlists
+    sorted_playlists = sorted(
+        playlists,
+        key=lambda p: (get_sort_key(p), p.display_name.casefold())
+    )
     logger.info(f"Guild {guild_id}: Discovered {len(sorted_playlists)} playlists")
 
     return sorted_playlists
@@ -273,7 +278,9 @@ def load_library(guild_id: int = 0, playlist_path: Optional[Path] = None) -> Tup
             logger.warning(f"Guild {guild_id}: File missing numeric prefix (will sort last): {filename}")
             return 999999
 
-    sorted_files = sorted(files, key=get_sort_key)
+    # Sort by number first, then by name (casefold for case-insensitive sorting)
+    # This provides stable, deterministic sorting even for unnumbered files
+    sorted_files = sorted(files, key=lambda f: (get_sort_key(f), f.name.casefold()))
     library = [Track(filepath, idx) for idx, filepath in enumerate(sorted_files)]
 
     # Build fast lookup index

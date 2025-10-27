@@ -11,7 +11,7 @@ BOT ISSUES
 Bot doesn't respond to commands:
 - Ensure MESSAGE CONTENT INTENT is enabled in Discord Developer Portal
 - Verify bot has "Send Messages" and "View Channel" permissions in channel
-- Check bot is online (red dot in member list)
+- Check bot is online (default behaviour: red dot in member list)
 - Verify bot is invited to the server correctly
 
 Bot can't join voice:
@@ -48,7 +48,7 @@ Bot can't find music:
 - Check files are .opus format (not .mp3, .flac, etc.)
 - Ensure bot has read permission on music folder
 - Ensure song files are named properly (01 - Track Name.opus)
-- If using multiple playlists: Make sure the playlist folder names follow
+- If using multiple playlists: Make sure the playlist folder name follows
 this format (01 - Album Name, 02 - Game OST, etc.)
 
 Bot joins but no sound:

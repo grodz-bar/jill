@@ -5,15 +5,138 @@ This package contains all configuration settings organized by category.
 Importing this package provides access to all configuration constants.
 
 Usage:
-    from config import *
+    from config import FEATURE_NAME, MESSAGE_NAME, etc.
 """
 
-# Import all configuration modules
-from .features import *
-from .messages import *
-from .timing import *
-from .paths import *
-from .aliases import *
+# ===========================================================================================
+# Feature Configuration
+# ===========================================================================================
+from .features import (
+    DELETE_OTHER_BOTS,
+    AUTO_CLEANUP_ENABLED,
+    TTL_CLEANUP_ENABLED,
+    SPAM_PROTECTION_ENABLED,
+    SPAM_WARNING_ENABLED,
+    AUTO_PAUSE_ENABLED,
+    AUTO_DISCONNECT_ENABLED,
+    SHUFFLE_MODE_ENABLED,
+    QUEUE_DISPLAY_ENABLED,
+    LIBRARY_DISPLAY_ENABLED,
+    QUEUE_DISPLAY_COUNT,
+    LIBRARY_PAGE_SIZE,
+    PLAYLIST_PAGE_SIZE,
+    PLAYLIST_SWITCHING_ENABLED,
+    SMART_MESSAGE_MANAGEMENT,
+    BATCH_DELETE_ENABLED,
+    VOICE_RECONNECT_ENABLED,
+    BOT_STATUS,
+)
+
+# ===========================================================================================
+# Messages and Text
+# ===========================================================================================
+from .messages import (
+    MESSAGES,
+    DRINK_EMOJIS,
+    HELP_TEXT,
+)
+
+# ===========================================================================================
+# Timing Configuration
+# ===========================================================================================
+from .timing import (
+    # Spam protection
+    USER_COMMAND_SPAM_THRESHOLD,
+    GLOBAL_RATE_LIMIT,
+    USER_SPAM_WARNING_THRESHOLD,
+    USER_SPAM_RESET_COOLDOWN,
+    SPAM_WARNING_COOLDOWN,
+    USER_COMMAND_MAX_LENGTH,
+
+    # Cleanup timing
+    TTL_CHECK_INTERVAL,
+    USER_COMMAND_TTL,
+    MESSAGE_SETTLE_DELAY,
+    HISTORY_CLEANUP_INTERVAL,
+    CLEANUP_HISTORY_LIMIT,
+    CLEANUP_SAFE_AGE_THRESHOLD,
+    CLEANUP_BATCH_SIZE,
+    CLEANUP_BATCH_DELAY,
+    MESSAGE_BURIAL_CHECK_LIMIT,
+    MESSAGE_BURIAL_THRESHOLD,
+    SPAM_CLEANUP_DELAY,
+
+    # Voice timing
+    ALONE_PAUSE_DELAY,
+    ALONE_DISCONNECT_DELAY,
+    VOICE_CONNECT_DELAY,
+    VOICE_SETTLE_DELAY,
+    VOICE_RECONNECT_DELAY,
+    VOICE_CONNECTION_MAX_WAIT,
+    VOICE_CONNECTION_CHECK_INTERVAL,
+
+    # Message TTL
+    MESSAGE_TTL,
+
+    # Command debounce/cooldown/spam
+    QUEUE_DEBOUNCE_WINDOW,
+    QUEUE_COOLDOWN,
+    QUEUE_SPAM_THRESHOLD,
+    TRACKS_DEBOUNCE_WINDOW,
+    TRACKS_COOLDOWN,
+    TRACKS_SPAM_THRESHOLD,
+    PLAYLISTS_DEBOUNCE_WINDOW,
+    PLAYLISTS_COOLDOWN,
+    PLAYLISTS_SPAM_THRESHOLD,
+    PLAY_JUMP_DEBOUNCE_WINDOW,
+    PLAY_JUMP_COOLDOWN,
+    PLAY_JUMP_SPAM_THRESHOLD,
+    PAUSE_DEBOUNCE_WINDOW,
+    PAUSE_COOLDOWN,
+    PAUSE_SPAM_THRESHOLD,
+    SKIP_DEBOUNCE_WINDOW,
+    SKIP_COOLDOWN,
+    SKIP_SPAM_THRESHOLD,
+    STOP_DEBOUNCE_WINDOW,
+    STOP_COOLDOWN,
+    STOP_SPAM_THRESHOLD,
+    PREVIOUS_DEBOUNCE_WINDOW,
+    PREVIOUS_COOLDOWN,
+    PREVIOUS_SPAM_THRESHOLD,
+    SHUFFLE_DEBOUNCE_WINDOW,
+    SHUFFLE_COOLDOWN,
+    SHUFFLE_SPAM_THRESHOLD,
+    HELP_DEBOUNCE_WINDOW,
+    HELP_COOLDOWN,
+    HELP_SPAM_THRESHOLD,
+
+    # Playback & watchdog
+    FRAME_DURATION,
+    MAX_HISTORY,
+    COMMAND_QUEUE_MAXSIZE,
+    COMMAND_QUEUE_TIMEOUT,
+    WATCHDOG_INTERVAL,
+    WATCHDOG_TIMEOUT,
+    CALLBACK_MIN_INTERVAL,
+    ALONE_WATCHDOG_INTERVAL,
+)
+
+# ===========================================================================================
+# Paths Configuration
+# ===========================================================================================
+from .paths import (
+    MUSIC_FOLDER,
+    CHANNEL_STORAGE_FILE,
+    PLAYLIST_STORAGE_FILE,
+)
+
+# ===========================================================================================
+# Command Aliases
+# ===========================================================================================
+from .aliases import (
+    COMMAND_ALIASES,
+    validate_command_aliases,
+)
 
 # Export all configuration constants
 __all__ = [

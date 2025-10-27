@@ -68,7 +68,7 @@ MESSAGES = {
     'error_no_tracks': "🎵 No tracks in the jukebox!",
     'error_fight_me': "👺 Fight me.",
     'error_cant_connect': "❌ Can't join that channel: {error}",
-    'error_invalid_track': "❌ Track #{number} doesn't exist. Library has {total} tracks.",
+    'error_invalid_track': "❌ Track #{number} doesn't exist. Current playlist has {total} tracks.",
     'error_track_not_found': "❌ '{query}'? Try !tracks to see what we have.",
     'error_playlist_not_found': '❌ I ran out of \'{query}\'. Try `!playlists` to see the menu.',
     'error_playlist_already_active': '😑 Already using that playlist.',
@@ -142,7 +142,7 @@ MESSAGES = {
     # ===================================================================================================================
     'playlists_header': '**🎵 Playlists (Page {page}/{total_pages})**\n',
     'playlists_next_page': '\nUse `!playlists {next_page}` for next page.',
-    'playlists_help': '\nUse `!list [number or name]` to switch playlists.',
+    'playlists_help': '\nUse `!tracks [name or number]` or `!list [name]` to switch playlists.',
     'playlist_switched': '✅ {message}',
         }
 
@@ -159,7 +159,7 @@ HELP_TEXT = {
     # Section titles
     'playback_title': '**Playback:**',
     'queue_title': '**Queue:**',
-    'tracks_title': '**Library:**',
+    'tracks_title': '**Tracks:**',
     'playlist_title': '**Playlists:**',
     'shuffle_title': '**Shuffle:**',
     'info_title': '**Info:**',

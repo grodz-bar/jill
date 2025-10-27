@@ -22,6 +22,7 @@ Verify installation:
 If python --version doesn't work:
    - Restart your computer (PATH changes need a reboot)
    - Reinstall Python and choose "Add to PATH" if prompted
+   - Try: python3 --version
    - Or see 06-troubleshooting.txt for manual PATH configuration
 
 ================================================================================
@@ -140,8 +141,7 @@ The bot will:
 - Use track numbers for !play commands (!play 5 plays the 5th track)
 - Use track name for !play commands (!play Dawn Approaches)
 
-NOTE: On Windows, I use the PowerRename tool from Microsoft PowerToys
-to batch rename all my files.
+NOTE: PowerRename from Microsoft PowerToys can batch‑rename files.
 
 ================================================================================
 STEP 6: RUN THE BOT

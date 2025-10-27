@@ -71,7 +71,7 @@ def load_last_channels() -> Dict[int, int]:
 
     try:
         if os.path.exists(CHANNEL_STORAGE_FILE):
-            with open(CHANNEL_STORAGE_FILE, 'r') as f:
+            with open(CHANNEL_STORAGE_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 # Convert string keys back to integers (JSON stores keys as strings)
                 _channel_cache = {int(guild_id): channel_id for guild_id, channel_id in data.items()}
@@ -112,8 +112,8 @@ def save_last_channel(guild_id: int, channel_id: int) -> None:
             _channel_cache[guild_id] = channel_id
             mark_channel_dirty(guild_id)
 
-    except Exception as e:
-        logger.warning(f"Could not save channel storage: {e}")
+    except (OSError, json.JSONDecodeError, ValueError) as e:
+        logger.exception("Could not save channel storage: %s", e)
 
 
 def mark_channel_dirty(guild_id: int):
@@ -132,14 +132,18 @@ def mark_channel_dirty(guild_id: int):
         _last_save_task = asyncio.create_task(_flush_channel_saves())
 
 
-async def _flush_channel_saves():
+async def _flush_channel_saves(immediate: bool = False):
     """
     Flush all pending channel saves to disk after a 10-second delay.
 
     This async batch save operation reduces I/O overhead by writing
     multiple channel changes in a single filesystem operation.
+
+    Args:
+        immediate: If True, flush immediately without delay (for shutdown)
     """
-    await asyncio.sleep(10)
+    if not immediate:
+        await asyncio.sleep(10)
     if not _pending_saves:
         return
 
@@ -163,7 +167,7 @@ async def _flush_channel_saves():
 
         logger.debug(f"Flushed {len(to_save)} channel save(s) to disk")
 
-    except Exception:
+    except (OSError, json.JSONDecodeError, ValueError):
         logger.exception("Failed to flush channel saves")
     finally:
         # If more saves came in during the flush, schedule another pass
@@ -192,7 +196,7 @@ def load_last_playlists() -> Dict[int, str]:
 
     try:
         if os.path.exists(PLAYLIST_STORAGE_FILE):
-            with open(PLAYLIST_STORAGE_FILE, 'r') as f:
+            with open(PLAYLIST_STORAGE_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 # Convert string keys back to integers (JSON stores keys as strings)
                 _playlist_cache = {int(guild_id): playlist_id for guild_id, playlist_id in data.items()}
@@ -233,8 +237,8 @@ def save_last_playlist(guild_id: int, playlist_id: str) -> None:
             _playlist_cache[guild_id] = playlist_id
             mark_playlist_dirty(guild_id)
 
-    except Exception as e:
-        logger.warning(f"Could not save playlist storage: {e}")
+    except (OSError, json.JSONDecodeError, ValueError) as e:
+        logger.exception("Could not save playlist storage: %s", e)
 
 
 def mark_playlist_dirty(guild_id: int):
@@ -253,14 +257,18 @@ def mark_playlist_dirty(guild_id: int):
         _last_playlist_save_task = asyncio.create_task(_flush_playlist_saves())
 
 
-async def _flush_playlist_saves():
+async def _flush_playlist_saves(immediate: bool = False):
     """
     Flush all pending playlist saves to disk after a 10-second delay.
 
     This async batch save operation reduces I/O overhead by writing
     multiple playlist changes in a single filesystem operation.
+
+    Args:
+        immediate: If True, flush immediately without delay (for shutdown)
     """
-    await asyncio.sleep(10)
+    if not immediate:
+        await asyncio.sleep(10)
     if not _pending_playlist_saves:
         return
 
@@ -284,10 +292,21 @@ async def _flush_playlist_saves():
 
         logger.debug(f"Flushed {len(to_save)} playlist save(s) to disk")
 
-    except Exception:
+    except (OSError, json.JSONDecodeError, ValueError):
         logger.exception("Failed to flush playlist saves")
     finally:
         # If more saves came in during the flush, schedule another pass
         if _pending_playlist_saves:
             global _last_playlist_save_task
             _last_playlist_save_task = asyncio.create_task(_flush_playlist_saves())
+
+
+async def flush_all_immediately():
+    """
+    Immediately flush all pending saves to disk without delay.
+
+    This should be called during bot shutdown to ensure no data is lost.
+    Flushes both channel and playlist persistence.
+    """
+    await _flush_channel_saves(immediate=True)
+    await _flush_playlist_saves(immediate=True)

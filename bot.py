@@ -95,7 +95,7 @@ bot = commands.Bot(
 from core.player import get_player, players
 from systems.watchdog import playback_watchdog, alone_watchdog
 from utils.discord_helpers import safe_disconnect, update_presence
-from utils.persistence import load_last_channels
+from utils.persistence import load_last_channels, flush_all_immediately
 
 # Global watchdog tasks
 _playback_watchdog_task = None
@@ -289,6 +289,13 @@ async def shutdown_bot():
             await player.shutdown()
         except Exception as e:
             logger.error(f"Guild {guild_id}: Error during shutdown: {e}")
+
+    # Flush all pending persistence saves immediately
+    logger.info("Flushing persistence to disk...")
+    try:
+        await flush_all_immediately()
+    except Exception as e:
+        logger.error(f"Error flushing persistence: {e}")
 
     # Clear bot presence
     await update_presence(bot, None)

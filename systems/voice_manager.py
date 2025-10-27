@@ -70,10 +70,9 @@ class VoiceManager:
         """
         self.guild_id = guild_id
 
-        # Auto-pause state tracking
+        # Auto-pause state tracking (uses monotonic time for immunity to clock changes)
         self._alone_since: Optional[float] = None
         self._was_playing_before_alone: bool = False
-        self._last_connect_time: Optional[float] = None
 
         # References (set by player)
         self.voice_client: Optional[disnake.VoiceClient] = None
@@ -192,7 +191,7 @@ class VoiceManager:
             return None
 
         is_alone = self.is_alone_in_channel()
-        current_time = time.time()
+        current_time = time.monotonic()
 
         if is_alone:
             # Bot is alone

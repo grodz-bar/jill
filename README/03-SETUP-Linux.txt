@@ -17,6 +17,11 @@ Install required packages:
 2. Install Python and dependencies:
     sudo apt install -y python3 python3-pip python3-venv ffmpeg git
 
+   NOTE: On some older distros (Debian 10, Ubuntu 18.04), the venv module
+   is packaged separately. If you get "No module named venv", install it:
+       sudo apt install -y python3.11-venv
+   (Replace 3.11 with your Python version)
+
 Verify Python version:
 
 1. Check Python version:
@@ -26,11 +31,29 @@ Verify Python version:
 NOTE: If your version is too old, you may need to install a newer Python version.
 
 ================================================================================
-STEP 2: GET DISCORD BOT TOKEN
+STEP 2: GET DISCORD BOT TOKEN AND SET PERMISSIONS
 ================================================================================
 
 See '02-Getting-Discord-Token.txt' for instructions on creating a Discord bot
 and getting your token. You will need this later.
+
+REQUIRED DISCORD PERMISSIONS:
+-----------------------------
+When inviting the bot to your server, ensure it has these permissions:
+
+Voice Permissions:
+- Connect          (Join voice channels)
+- Speak            (Play audio in voice channels)
+
+Text Permissions:
+- View Channel     (See text channels)
+- Send Messages    (Send bot responses)
+- Manage Messages  (Delete old bot/command messages for cleanup)
+- Read Message History (Scan channel history for cleanup)
+
+NOTE: Without "Manage Messages", the bot can still function but auto-cleanup
+features will only delete the bot's own messages, not user commands or other
+bots' messages.
 
 ================================================================================
 STEP 3: DOWNLOAD BOT (if you somehow haven't)
@@ -82,15 +105,16 @@ If you prefer to set up manually, follow these steps:
 
 1. Create virtual environment: python3 -m venv venv
 2. Activate virtual environment: source venv/bin/activate
-3. Install dependencies: python3 -m pip install -r requirements.txt
-4. Create .env file in the bot folder:
+3. Upgrade pip and wheel (recommended): python3 -m pip install -U pip wheel
+4. Install dependencies: python3 -m pip install -r requirements.txt
+5. Create .env file in the bot folder:
    - Run: nano .env
    - Add: DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN
    - (Optional) Add: MUSIC_FOLDER=path/to/music (blank uses default: music/ folder)
    - Save and exit (Ctrl+X, Y, Enter)
-5. Deactivate venv: deactivate
-6. Edit the jill/scripts/linux_run_bot.sh file to match your installation
-7. Proceed to STEP 5 of this setup guide
+6. Deactivate venv: deactivate
+7. Edit the jill/scripts/linux_run_bot.sh file to match your installation
+8. Proceed to STEP 5 of this setup guide
 
 ================================================================================
 STEP 5: ADD YOUR MUSIC FILES (If Needed)

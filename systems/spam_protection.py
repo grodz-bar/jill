@@ -30,6 +30,7 @@ LAYER 5: Post-Execution Cooldowns - Prevents rapid re-execution
 
 import asyncio
 import time
+from time import monotonic as _now
 import logging
 from typing import Optional, Callable, Awaitable, Dict, Any
 
@@ -122,7 +123,7 @@ class SpamProtector:
         if not SPAM_PROTECTION_ENABLED:
             return False
 
-        current_time = time.time()
+        current_time = _now()
         last_time = self._user_last_command.get(user_id, 0)
 
         if current_time - last_time < USER_COMMAND_SPAM_THRESHOLD:
@@ -150,7 +151,7 @@ class SpamProtector:
 
     def _cleanup_user_tracking(self):
         """Remove old user tracking data to prevent memory leaks."""
-        current_time = time.time()
+        current_time = _now()
         cutoff_time = current_time - 3600  # Remove users inactive for 1 hour
 
         # Batch remove old entries
@@ -173,7 +174,7 @@ class SpamProtector:
             return
 
         # Only send if enough time has passed since last warning
-        current_time = time.time()
+        current_time = _now()
         if current_time - self._last_spam_warning_time < SPAM_WARNING_COOLDOWN:
             return
 
@@ -219,7 +220,7 @@ class SpamProtector:
         if not SPAM_PROTECTION_ENABLED:
             return False
 
-        current_time = time.time()
+        current_time = _now()
 
         if current_time - self._last_queue_time < GLOBAL_RATE_LIMIT:
             return True  # Rate limited
@@ -267,7 +268,7 @@ class SpamProtector:
 
         # Check post-execution cooldown (LAYER 5)
         last_time = self._last_execute.get(command_name, 0)
-        current_time = time.time()
+        current_time = _now()
 
         if current_time - last_time < cooldown:
             logger.debug(f"Guild {self.guild_id}: {command_name} on cooldown")
@@ -294,7 +295,7 @@ class SpamProtector:
             t = asyncio.create_task(self.queue_command(execute_func))
             self._aux_tasks.add(t)
             t.add_done_callback(lambda task: self._aux_tasks.discard(task))
-            self._last_execute[command_name] = time.time()
+            self._last_execute[command_name] = _now()
             self._spam_counts[command_name] = 0
             self._spam_warned[command_name] = False
 

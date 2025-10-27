@@ -18,7 +18,7 @@
 """
 jill Music Bot
 ========================================================
-VERSION: 0.9.9
+VERSION: 1.0.0
 ========================================================
 
 A Discord music bot built using the disnake API.
@@ -136,7 +136,7 @@ async def on_ready():
     print("="*60 + "\n")
     
     logger.info(f'Bot connected as {bot.user}')
-    logger.info('Jill v0.9.9 - Copyright (C) 2025 grodz-bar')
+    logger.info('Jill v1.0.0 - Copyright (C) 2025 grodz-bar')
     logger.info('Licensed under GPL 3.0 - See LICENSE.md for details')
     logger.info("Press Ctrl+C or send SIGTERM to shutdown gracefully")
 

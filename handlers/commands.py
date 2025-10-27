@@ -423,9 +423,10 @@ def setup(bot):
 
         prev_track = player.go_to_previous()
         if prev_track:
-            # Queue via spam_protector for consistency with other playback transitions
+            # Queue via spam_protector with priority for consistency with internal playback operations
             await player.spam_protector.queue_command(
-                lambda: _play_current(ctx.guild.id, bot)
+                lambda: _play_current(ctx.guild.id, bot),
+                priority=True
             )
         else:
             await player.cleanup_manager.send_with_ttl(

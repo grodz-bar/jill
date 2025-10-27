@@ -28,6 +28,7 @@ Both systems operate independently for redundancy and robustness.
 import asyncio
 import bisect
 import time
+from time import monotonic as _now
 import logging
 from datetime import datetime, timedelta
 from typing import Optional, List, Tuple
@@ -183,7 +184,7 @@ class CleanupManager:
         if not TTL_CLEANUP_ENABLED:
             return
 
-        current_time = time.time()
+        current_time = _now()
         messages_to_delete = []
         remaining_messages = []
 
@@ -226,7 +227,7 @@ class CleanupManager:
         # Run initial cleanup
         if self.text_channel and self._last_history_cleanup == 0:
             await self.cleanup_channel_history()
-            self._last_history_cleanup = time.time()
+            self._last_history_cleanup = _now()
 
         while True:
             try:
@@ -234,7 +235,7 @@ class CleanupManager:
                 await asyncio.sleep(HISTORY_CLEANUP_INTERVAL)
 
                 await self.cleanup_channel_history()
-                self._last_history_cleanup = time.time()
+                self._last_history_cleanup = _now()
 
             except asyncio.CancelledError:
                 # Task was cancelled during shutdown - exit cleanly
@@ -266,7 +267,7 @@ class CleanupManager:
             other_bot_messages = []
 
             # Build set of message IDs currently tracked by TTL system (with unexpired TTL)
-            current_time = time.time()
+            current_time = _now()
             ttl_tracked_ids = {
                 msg.id for msg, delete_time in self._message_cleanup_queue
                 if delete_time > current_time  # Only unexpired messages
@@ -313,8 +314,8 @@ class CleanupManager:
             if deleted_count > 0:
                 logger.debug(f"Guild {self.guild_id}: History cleanup removed {deleted_count} messages")
 
-        except Exception as e:
-            logger.debug(f"Guild {self.guild_id}: History cleanup failed (non-critical): {e}")
+        except Exception:
+            logger.exception(f"Guild {self.guild_id}: History cleanup failed (non-critical)")
 
     # =========================================================================
     # TTL Scheduling (Public API)
@@ -333,7 +334,7 @@ class CleanupManager:
         if not message or not (AUTO_CLEANUP_ENABLED and TTL_CLEANUP_ENABLED):
             return
 
-        delete_time = time.time() + ttl_seconds
+        delete_time = _now() + ttl_seconds
 
         # Binary search insertion (keeps queue sorted by delete_time)
         # Use bisect_right to maintain FIFO order for messages with same delete_time
@@ -502,7 +503,7 @@ class CleanupManager:
         try:
             await asyncio.sleep(SPAM_CLEANUP_DELAY)
             await self.cleanup_channel_history()
-            self._last_history_cleanup = time.time()
+            self._last_history_cleanup = _now()
 
             logger.debug(f"Guild {self.guild_id}: Spam cleanup completed")
 

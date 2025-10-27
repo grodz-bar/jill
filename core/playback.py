@@ -23,6 +23,7 @@ Core music playback functionality including track playing, callbacks, and queue 
 
 import asyncio
 import time
+from time import monotonic as _now
 import logging
 from dataclasses import dataclass, field
 from itertools import count
@@ -48,7 +49,7 @@ class PlaybackSession:
 
     id: int = field(default_factory=lambda: next(_SESSION_IDS))
     track_id: Optional[int] = None
-    started_at: float = field(default_factory=time.time)
+    started_at: float = field(default_factory=_now)
     cancelled: bool = False
 
     def cancel(self) -> None:
@@ -228,7 +229,7 @@ async def _play_current(guild_id: int, bot) -> None:
 
             # Anti-spam: Prevent rapid-fire callbacks
             # Always read from player attribute to avoid stale closure values
-            current_time = time.time()
+            current_time = _now()
             last_callback_time = getattr(player, '_last_callback_time', 0)
             if current_time - last_callback_time < CALLBACK_MIN_INTERVAL:
                 logger.warning(f"Guild {guild_id}: Callback too quick, skipping")
@@ -253,7 +254,7 @@ async def _play_current(guild_id: int, bot) -> None:
         player.state = PlaybackState.PLAYING
 
         # Update watchdog tracking
-        player._last_track_start = time.time()
+        player._last_track_start = _now()
         player._last_track_id = track.track_id
 
         logger.debug(f"Guild {guild_id}: Now playing: {track.display_name}")
@@ -269,13 +270,13 @@ async def _play_current(guild_id: int, bot) -> None:
         # Update bot presence
         await update_presence(bot, track.display_name)
 
-    except Exception:
+    except Exception as e:
         logger.exception("Guild %s error in _play_current", guild_id)
         if audio_source:
             try:
                 audio_source.cleanup()
-            except (OSError, RuntimeError, AttributeError) as e:
-                logger.debug("Guild %s: cleanup after exception failed: %s", guild_id, e, exc_info=True)
+            except (OSError, RuntimeError, AttributeError) as cleanup_err:
+                logger.debug("Guild %s: cleanup after exception failed: %s", guild_id, cleanup_err)
         vc = player.voice_client
         if "Bad file descriptor" in str(e) or not (vc and vc.is_connected()):
             # Close connection to avoid dangling references

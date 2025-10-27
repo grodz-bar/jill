@@ -4,13 +4,9 @@ Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.1
 
 ## Agent Interaction Preferences
 
-- Audience: novice.
-- Max 200 words.
-- Format: 
-**Answer** (1–3 sentences) → **Why** (1–3 sentences) → **How** (3–5 bullets or tiny code) → **Next** (Short recommendation).
-- Note defaults, side effects, risks, in one line.
-- Prefer stdlib; minimal deps.
-- If unsure: “Unknown” + 1 quick test.
+- Assume novice audience, keep responses under 200 words
+- Format: Answer → Why → How → Next steps
+- Note risks/side-effects. Prefer stdlib over dependencies
 
 ## File Map (Where to Look)
 
@@ -19,8 +15,7 @@ Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.1
 - `messages.py` — all user-facing text
 - `aliases.py` — command aliases
 - `paths.py` — file paths
-- `timing.py` — all timing constants (TTLs, cooldowns, debounce). Message TTLs still
-feed `systems.cleanup.CleanupManager` even when embeds update in place.
+- `timing.py` — all timing constants (TTLs, cooldowns, debounce). TTLs still schedule cleanup even when smart message management edits in place.
 
 **Implementation:**
 - `bot.py` — entry point, event handlers, watchdog setup
@@ -33,29 +28,12 @@ feed `systems.cleanup.CleanupManager` even when embeds update in place.
 - `systems/voice_manager.py` — auto-pause/disconnect/resume
 - `systems/watchdog.py` — playback hang detection
 - `utils/discord_helpers.py` — safe Discord wrappers
-- `utils/persistence.py` — channel storage, playlist persistence. Creates directories atomically.
+- `utils/persistence.py` — channel/playlist persistence. Reference for safe pattern. See module docstring.
 - `utils/context_managers.py` — suppress_callbacks (cancels playback session), reconnecting_state
 
-## Command Structure
+## Commands
 
-**Context-Aware Commands** (do different things based on arguments):
-- `!tracks` → show tracks in current playlist
-- `!tracks [name/number]` → switch to different playlist
-- `!play` → start/resume playback
-- `!play [number/name]` → jump to specific track
-- `!shuffle` → toggle shuffle mode on/off
-
-**View Commands:**
-- `!queue` → show now playing + upcoming tracks
-- `!playlists` → show all available playlists
-
-**Control Commands:**
-- `!pause`, `!skip`, `!stop`, `!previous` → playback controls
-
-**Aliases:**
-- All base commands have aliases in `config/aliases.py`
-- Example: `!playlist`, `!library`, `!album` all map to `!tracks`
-- Users can customize aliases without touching command implementations
+All user commands implemented in `handlers/commands.py`. Context-aware (e.g., `!play` resumes OR jumps to track). Aliases in `config/aliases.py`.
 
 ## Critical Rules (DO NOT BREAK)
 
@@ -65,6 +43,15 @@ feed `systems.cleanup.CleanupManager` even when embeds update in place.
 - Persistence: `flush_all_immediately()` ensures no data loss on shutdown
 - Never use blocking operations in shutdown sequence
 - All subsystems must handle cancellation gracefully
+
+**Persistence safety pattern (CRITICAL):**
+- In-memory cache is source of truth, not disk files
+- Load from disk ONLY when cache is empty (on first access)
+- During flush/save: serialize from cache, NEVER re-read from disk
+- Why: If file corrupts between startup and flush, re-reading wipes cache and loses all data
+- Pattern for new persistence: `if not _cache_loaded: load(); data = _cache.copy(); write(data)`
+- See `utils/persistence.py` for reference implementation (channels/playlists)
+- Atomic writes: use tempfile + os.replace() to prevent partial writes
 
 **Never merge/disable dual cleanup systems:**
 - TTL cleanup + history scan run independently (redundancy by design)
@@ -87,8 +74,6 @@ feed `systems.cleanup.CleanupManager` even when embeds update in place.
 - Spam reconnect attempts (rate limit safety)
 
 **File safety:** Only `.opus` files from `MUSIC_FOLDER`, prevent path traversal
-
-**Version updates:** Remind and then ask user about updating the two version constants in `bot.py`
 
 ## Documentation
 

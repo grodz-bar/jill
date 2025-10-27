@@ -25,6 +25,7 @@ All functions gracefully handle None values and Discord API errors.
 import disnake
 import logging
 import time
+from time import monotonic as _now
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -154,7 +155,7 @@ async def safe_voice_state_change(guild: disnake.Guild, channel: disnake.VoiceCh
     try:
         await guild.change_voice_state(channel=channel, self_deaf=self_deaf)
         return True
-    except Exception as e:
+    except (disnake.ClientException, disnake.HTTPException) as e:
         logger.debug("Voice state change failed (non-critical): %s", e)
         return False
 
@@ -178,7 +179,7 @@ async def update_presence(bot, status_text: Optional[str]) -> bool:
     """
     global _last_presence_update, _current_presence_text
 
-    current_time = time.time()
+    current_time = _now()
 
     # Skip if same text and within throttle window
     if status_text == _current_presence_text and current_time - _last_presence_update < 10:

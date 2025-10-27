@@ -16,10 +16,42 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 """
-Channel Persistence System
+Persistence System - Reference Implementation
 
-Manages saving/loading the last used text channel per guild to persistent storage.
-Allows cleanup features to resume in the correct channel after bot restart.
+Manages saving/loading guild state (channels, playlists) to persistent JSON storage.
+Allows bot to resume state after restart without data loss.
+
+CRITICAL SAFETY PATTERN (MUST FOLLOW FOR ALL PERSISTENCE):
+
+    1. In-memory cache is the SOURCE OF TRUTH, not disk files
+    2. Load from disk ONLY when cache is empty (first access)
+    3. During flush/save: serialize from cache, NEVER re-read from disk
+
+    WHY: If the file becomes corrupted between startup and flush (disk error,
+    manual edit, etc.), re-reading the file would wipe the in-memory cache,
+    causing permanent data loss for all guilds.
+
+CORRECT PATTERN (see _flush_channel_saves and _write_playlists_to_disk):
+
+    if not _cache_loaded:
+        load_from_disk()  # Populate cache from file (only if empty)
+    data = _cache.copy()  # Serialize from cache (source of truth)
+    atomic_write(data)     # Write to disk with tempfile + os.replace()
+
+INCORRECT PATTERN (DO NOT USE):
+
+    data = load_from_disk()  # ❌ DANGEROUS: Could wipe cache if file corrupted
+    for key in pending:
+        data[key] = _cache[key]  # ❌ Partial update, loses other guilds
+    write(data)
+
+ADDITIONAL SAFETY FEATURES:
+    - Atomic writes: tempfile + os.replace() prevents partial writes
+    - Batch saves: 10-second delay reduces filesystem I/O
+    - Graceful degradation: Corrupted files default to empty dict (log warning)
+    - Shutdown flush: flush_all_immediately() ensures no data loss on exit
+
+This file serves as the reference implementation for any future persistence needs.
 """
 
 import os
@@ -152,10 +184,12 @@ async def _flush_channel_saves(immediate: bool = False):
     _pending_saves.clear()
 
     try:
-        data = load_last_channels()
-        for gid in to_save:
-            if gid in _channel_cache:
-                data[gid] = _channel_cache[gid]
+        # Ensure cache is loaded, then serialize entire cache from memory.
+        # This prevents data loss if the file becomes corrupted between startup and flush:
+        # re-reading a corrupted file would wipe _channel_cache, losing all guilds.
+        if not _cache_loaded:
+            load_last_channels()
+        data = _channel_cache.copy()
 
         # Atomic write: write to temp file then replace
         import tempfile
@@ -300,10 +334,12 @@ def _write_playlists_to_disk(guild_ids: Iterable[int]) -> None:
     if not guild_ids:
         return
 
-    data = load_last_playlists()
-    for gid in guild_ids:
-        if gid in _playlist_cache:
-            data[gid] = _playlist_cache[gid]
+    # Ensure cache is loaded, then serialize entire cache from memory.
+    # This prevents data loss if the file becomes corrupted between startup and flush:
+    # re-reading a corrupted file would wipe _playlist_cache, losing all guilds.
+    if not _playlist_cache_loaded:
+        load_last_playlists()
+    data = _playlist_cache.copy()
 
     # Atomic write: write to temp file then replace
     import tempfile

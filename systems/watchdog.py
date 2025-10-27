@@ -25,6 +25,7 @@ Background monitoring tasks for detecting and recovering from edge cases:
 
 import asyncio
 import time
+from time import monotonic as _now
 import logging
 from typing import Dict
 
@@ -82,7 +83,7 @@ async def playback_watchdog(bot, players: Dict[int, 'MusicPlayer']):
                 if state != PlaybackState.PLAYING:
                     continue
 
-                current_time = time.time()
+                current_time = _now()
                 current_track = player.now_playing
 
                 # Check if stuck on same track

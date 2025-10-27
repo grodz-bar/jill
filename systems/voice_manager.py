@@ -125,8 +125,6 @@ class VoiceManager:
         except (disnake.ClientException, RuntimeError):
             return PlaybackState.IDLE
 
-        return PlaybackState.IDLE
-
     # =========================================================================
     # Alone Detection
     # =========================================================================

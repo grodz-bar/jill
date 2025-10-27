@@ -339,6 +339,17 @@ class CleanupManager:
         # Wake up TTL worker
         self._cleanup_event.set()
 
+    def _remove_scheduled_deletion(self, message: Optional[disnake.Message]) -> None:
+        """Remove all queued TTL entries for the provided message."""
+        if not message:
+            return
+
+        self._message_cleanup_queue = [
+            (queued_msg, delete_time)
+            for queued_msg, delete_time in self._message_cleanup_queue
+            if queued_msg.id != message.id
+        ]
+
     async def send_with_ttl(
         self,
         channel: Optional[disnake.TextChannel],
@@ -392,11 +403,7 @@ class CleanupManager:
             return
 
         # Remove from cleanup queue
-        self._message_cleanup_queue = [
-            (msg, delete_time)
-            for msg, delete_time in self._message_cleanup_queue
-            if msg.id != self._last_now_playing_msg.id
-        ]
+        self._remove_scheduled_deletion(self._last_now_playing_msg)
 
         # Delete immediately
         await safe_delete_message(self._last_now_playing_msg)
@@ -438,6 +445,7 @@ class CleanupManager:
 
                     # Update TTL
                     if TTL_CLEANUP_ENABLED:
+                        self._remove_scheduled_deletion(self._last_now_playing_msg)
                         await self.schedule_message_deletion(
                             self._last_now_playing_msg,
                             MESSAGE_TTL['now_serving']

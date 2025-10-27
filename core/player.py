@@ -476,6 +476,10 @@ class MusicPlayer:
         if voice_client and voice_client.is_connected():
             try:
                 if voice_client.is_playing() or voice_client.is_paused():
+                    # Cancel the session token before the manual stop so the
+                    # playback callback bails out when it wakes up. This keeps
+                    # the behavior identical to using suppress_callbacks()
+                    # without the extra context manager.
                     self.cancel_active_session()
                     voice_client.stop()
             except disnake.ClientException as e:

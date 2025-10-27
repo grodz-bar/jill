@@ -2,6 +2,16 @@
 
 Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.11+, `python -m pip install -r requirements.txt`)
 
+## Agent Interaction Preferences
+
+- Audience: novice.
+- Max 120 words.
+- Format: **Why** (1–2 sentences) → **How** (3–5 bullets or tiny code) → **Next** (1 action).
+- Explain why + how; no fluff.
+- Note defaults, side effects, risks, rollback in one line.
+- Prefer stdlib; minimal deps.
+- If unsure: “Unknown” + 1 quick test.
+
 ## File Map (Where to Look)
 
 **Config** (`/config/` - user customization only):

@@ -1,4 +1,4 @@
-# Copyright (C) 2025 grodz-bar
+# Copyright (C) 2025 grodz
 #
 # This file is part of Jill.
 #
@@ -98,7 +98,7 @@ async def playback_watchdog(bot, players: Dict[int, 'MusicPlayer']):
                             # Manually queue next track since we suppressed the callback (priority=True for internal commands)
                             from core.playback import _play_next
                             await player.spam_protector.queue_command(
-                                lambda gid=guild_id: _play_next(gid, bot, players),
+                                lambda gid=guild_id: _play_next(gid, bot),
                                 priority=True
                             )
 

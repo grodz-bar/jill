@@ -32,7 +32,7 @@ See '02-Getting-Discord-Token.txt' for instructions on creating a Discord bot
 and getting your token. You will need this later.
 
 ================================================================================
-STEP 3: DOWNLOAD BOT
+STEP 3: DOWNLOAD BOT (if you somehow haven't)
 ================================================================================
 
 Download the bot to your system:
@@ -50,84 +50,38 @@ Method 2 - Using Git:
 3. Clone the repository:
     git clone https://github.com/grodz-bar/jill.git jill
 
-Your directory structure should be:
-
-    C:\jill\
-    ├── bot.py
-    ├── requirements.txt
-    ├── /scripts/
-    │   ├── win_setup.bat
-    │   ├── win_run_bot.bat
-    │   ├── linux_setup.sh
-    │   └── linux_run_bot.sh
-    ├── /config/ (configuration folder)
-    │   ├── __init__.py
-    │   ├── features.py
-    │   ├── messages.py
-    │   ├── timing.py
-    │   ├── paths.py
-    │   └── aliases.py
-    ├── /handlers/ (jill's code)
-    ├── /core/ (jill's code)
-    ├── /systems/ (jill's code)
-    ├── /utils/ (jill's code)
-    ├── /venv/ (created during setup - virtual environment)
-    ├── .env (created during setup - bot configuration)
-    ├── /README/ (documentation folder)
-    │   ├── 01-README.txt
-    │   ├── 02-Getting-Discord-Token.txt
-    │   ├── 03-SETUP-Windows.txt
-    │   ├── 03-SETUP-Linux.txt
-    │   ├── 04-Converting-To-Opus.txt
-    │   ├── 05-Files.txt
-    │   └── 06-troubleshooting.txt
-    └── /music/
-        ├── 01 - Track Name.opus
-        ├── 02 - Track Name.opus
-        └── ...
-        │   # OR if you have multiple playlists:
-        ├── 01 - Album Name/
-        │   ├── 01 - Track Name.opus
-        │   └── 02 - Track Name.opus
-        ├── 02 - OST/
-        │   └── 01 - Track Name.opus
-        └── ...
+NOTE: You can extract jill into any folder you want, but this guide assumes
+you've placed it in C:\jill\ , change instructions to fit your use case.
 
 ================================================================================
 STEP 4: RUN SETUP WIZARD (RECOMMENDED)
 ================================================================================
 
-The setup wizard will guide you through configuration in just a few minutes.
-
-BEFORE STARTING THE WIZARD, make sure you have ready:
-- Your Discord bot token (from Step 2)
-- Python 3.11+ installed (required for wizard to run)
-- If you want to convert audio files: FFmpeg installed (see 04-Converting-To-Opus.txt)
-- If you want to convert audio files: Path to your source music folder with audio files
-- Optional: Music already converted to .opus format
-
-The wizard will handle everything else automatically!
-
-OPTION A - Use Setup Wizard (Fast & Easy):
-1. Navigate to C:\jill\ in File Explorer
-2. Double-click "scripts\win_setup.bat"
-3. Follow the interactive prompts:
-   - Confirm what the setup will do
-   - Enter your Discord bot token (from Step 2)
-   - Choose music folder path or press Enter for default
-   - Optionally convert audio files to .opus format
-4. Setup will complete automatically
-
 The wizard will automatically:
 - Create a virtual environment
 - Install required Python packages
-- Create your .env configuration file
+- Generate your .env configuration file
 - Create the music folder if it doesn't exist
-- Optionally convert your audio files to .opus (with folder structure preservation)
+- Optionally convert your audio files to .opus
 
-SKIP TO: If you used the setup wizard, go directly to STEP 5 to run your bot!
+BEFORE STARTING THE WIZARD, make sure you have ready:
+- Your Discord bot token (from Step 2)
+- Python 3.11 or newer installed
+- FFmpeg installed (see "INSTALL FFMPEG:" in 04-Converting-To-Opus.txt)
+- Your local music files
 
-OPTION B - Manual Setup (Advanced):
+Use Setup Wizard:
+
+1. Navigate to C:\jill\scripts\ in File Explorer
+2. Double-click "win_setup.bat"
+3. Follow the interactive prompts
+4. Setup will complete automatically
+5. Proceed to STEP 5 of this setup guide
+
+================================================================================
+ALTERNATIVE STEP 4: MANUAL SETUP
+================================================================================
+
 If you prefer to set up manually, follow these steps:
 
 1. Open Command Prompt
@@ -139,16 +93,20 @@ If you prefer to set up manually, follow these steps:
    - Create a file named ".env" (including the dot)
    - Add: DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN
    - (Optional) Add: MUSIC_FOLDER=C:\jill\music\ (leave blank to use default: music\ folder)
-7. Continue to STEP 5
-
-NOTE: You can exit the setup wizard at any time (Ctrl+C) and continue with manual setup.
+7. Proceed to STEP 5 of this setup guide
 
 ================================================================================
 STEP 5: ADD YOUR MUSIC FILES (If Needed)
 ================================================================================
 
-If you didn't use the setup wizard's conversion feature, you'll need to add .opus files 
-to your music folder.
+Convert your files to .opus by following the 04-Converting-To-Opus.txt guide.
+
+EVEN if you used the WIZARD (win_setup.bat) you need to make sure your .opus
+music files follow the naming format described below.
+
+NOTE: This step only talks about music files, but if you're using PLAYLISTS
+(as in, subfolders inside your jill music folder), it is HIGHLY recommended
+that you use the same naming format described below in those as well.
 
 FILE NAMING FORMAT:
 -------------------------------
@@ -182,7 +140,8 @@ The bot will:
 - Use track numbers for !play commands (!play 5 plays the 5th track)
 - Use track name for !play commands (!play Dawn Approaches)
 
-NOTE: See 04-Converting-To-Opus.txt for help converting audio files.
+NOTE: On Windows, I use the PowerRename tool from Microsoft PowerToys
+to batch rename all my files.
 
 ================================================================================
 STEP 6: RUN THE BOT
@@ -195,11 +154,6 @@ You should see:
 - "Bot connected as YourBot#1234"
 - "Music folder found: C:\jill\music"
 - List of loaded tracks (or message if folder is empty)
-
-Test in Discord:
-1. Invite bot to your server (see '02-Getting-Discord-Token.txt')
-2. Join a voice channel
-3. Type !play to start music
 
 To stop the bot, press Ctrl+C in the console window.
 

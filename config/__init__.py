@@ -1,5 +1,5 @@
 """
-Jill Discord Bot Configuration Package
+Jill Configuration Package
 
 This package contains all configuration settings organized by category.
 Importing this package provides access to all configuration constants.

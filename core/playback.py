@@ -1,4 +1,4 @@
-# Copyright (C) 2025 grodz-bar
+# Copyright (C) 2025 grodz
 #
 # This file is part of Jill.
 #
@@ -78,7 +78,7 @@ from utils.discord_helpers import (
 from utils.context_managers import suppress_callbacks
 
 
-async def _play_current(guild_id: int, bot, players: dict) -> None:
+async def _play_current(guild_id: int, bot) -> None:
     """
     Play the current track (whatever is in now_playing).
 
@@ -88,7 +88,6 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
     Args:
         guild_id: Guild to play in
         bot: Bot instance
-        players: Dict of guild_id → MusicPlayer
 
     Side effects:
         - Starts playback via voice_client.play()
@@ -133,7 +132,7 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
     if not track.opus_path.exists():
         logger.error(f"Guild {guild_id}: Track file missing: {track.opus_path}")
         # Skip to next track (priority=True to ensure internal commands aren't dropped)
-        await player.spam_protector.queue_command(lambda: _play_next(guild_id, bot, players), priority=True)
+        await player.spam_protector.queue_command(lambda: _play_next(guild_id, bot), priority=True)
         return
 
     # Create a playback session token so stale callbacks can be ignored safely.
@@ -145,8 +144,8 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
         vc = player.voice_client
         is_playing = vc.is_playing() if vc else False
         is_paused = vc.is_paused() if vc else False
-    except Exception as e:
-        logger.warning(f"Guild {guild_id}: Voice client state check failed: {e}")
+    except (AttributeError, RuntimeError) as e:
+        logger.debug("Guild %s: Voice client state probe failed: %s", guild_id, e)
         is_playing = False
         is_paused = False
 
@@ -167,7 +166,8 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
                     vc = player.voice_client
                     if vc and not vc.is_playing() and not vc.is_paused():
                         break
-                except Exception:
+                except Exception as e:
+                    logger.debug("Guild %s: settle check failed (ignored): %s", guild_id, e)
                     break
 
     # Small delay to let voice client settle
@@ -200,9 +200,10 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
             if audio_source:
                 try:
                     audio_source.cleanup()
-                except Exception:
-                    pass
-                audio_source = None
+                except Exception as e:
+                    logger.debug("Guild %s: audio_source.cleanup() failed: %s", guild_id, e)
+                finally:
+                    audio_source = None
 
             # Don't advance if reconnecting
             if player._is_reconnecting:
@@ -232,16 +233,12 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
                 logger.warning(f"Guild {guild_id}: Callback too quick, skipping")
                 return
 
-            # CRITICAL: Update BOTH the player attribute AND the closure variable.
-            # Bug fix: Previously only updated local `_last_callback_time`, which meant
-            # the anti-spam timer never persisted between playback sessions. Each new
-            # track started with stale timestamp, making rapid callbacks possible.
+            # CRITICAL: Update player attribute so future callbacks see the latest timestamp.
             player._last_callback_time = current_time
-            _last_callback_time = current_time
 
             # Queue the next track (priority=True to ensure internal commands aren't dropped)
             asyncio.run_coroutine_threadsafe(
-                player.spam_protector.queue_command(lambda: _play_next(guild_id, bot, players), priority=True),
+                player.spam_protector.queue_command(lambda: _play_next(guild_id, bot), priority=True),
                 bot.loop
             )
 
@@ -265,7 +262,7 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
         new_content = MESSAGES['now_serving'].format(drink=drink, track=sanitize_for_format(track.display_name))
 
         # Use cleanup manager's smart message handling
-        await player.cleanup_manager.update_now_playing_message(new_content, player.voice_client)
+        await player.cleanup_manager.update_now_playing_message(new_content)
 
         # Update bot presence
         await update_presence(bot, track.display_name)
@@ -275,8 +272,8 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
         if audio_source:
             try:
                 audio_source.cleanup()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Guild %s: cleanup after exception failed: %s", guild_id, e)
         vc = player.voice_client
         if "Bad file descriptor" in str(e) or not (vc and vc.is_connected()):
             player.voice_client = None
@@ -286,7 +283,7 @@ async def _play_current(guild_id: int, bot, players: dict) -> None:
         player._suppress_callback = False
 
 
-async def _play_next(guild_id: int, bot, players: dict) -> None:
+async def _play_next(guild_id: int, bot) -> None:
     """
     Advance queue to next track and play it.
 
@@ -297,16 +294,15 @@ async def _play_next(guild_id: int, bot, players: dict) -> None:
     Args:
         guild_id: Guild to advance queue in
         bot: Bot instance
-        players: Dict of players
     """
     from core.player import get_player
     player = await get_player(guild_id, bot, bot.user.id)
     next_track = player.advance_to_next()
     if next_track:
-        await _play_current(guild_id, bot, players)
+        await _play_current(guild_id, bot)
 
 
-async def _play_first(guild_id: int, bot, players: dict) -> None:
+async def _play_first(guild_id: int, bot) -> None:
     """
     Start playback from beginning.
 
@@ -316,7 +312,6 @@ async def _play_first(guild_id: int, bot, players: dict) -> None:
     Args:
         guild_id: Guild to start playback in
         bot: Bot instance
-        players: Dict of players
     """
     from core.player import get_player
     player = await get_player(guild_id, bot, bot.user.id)
@@ -327,4 +322,4 @@ async def _play_first(guild_id: int, bot, players: dict) -> None:
     # Start from first track
     if player.upcoming:
         player.advance_to_next()
-        await _play_current(guild_id, bot, players)
+        await _play_current(guild_id, bot)

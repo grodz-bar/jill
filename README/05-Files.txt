@@ -13,7 +13,7 @@ The bot follows this directory structure:
     │   ├── win_setup.bat                 # Windows setup wizard
     │   ├── linux_setup.sh                # Linux setup wizard
     │   ├── win_run_bot.bat               # Windows launcher
-    │   └── linux_run_bot.sh             # Linux launcher
+    │   └── linux_run_bot.sh              # Linux launcher
     ├── .env                              # Bot configuration (created during setup)
     ├── /config/                          # Configuration folder (USER CUSTOMIZATION)
     │   ├── __init__.py                   # Python package marker
@@ -29,31 +29,31 @@ The bot follows this directory structure:
     ├── .env                              # Bot configuration (created during setup)
     ├── last_channels.json                # Channel persistence (auto-created, managed)
     ├── last_playlists.json               # Playlist persistence (auto-created, managed)
-    ├── /core/                            # Core music player (implementation)
+    ├── /core/                            # Core music player (jill's code)
     │   ├── __init__.py                   # Python package marker
     │   ├── player.py                     # MusicPlayer class
     │   ├── playback.py                   # Playback functions
     │   └── track.py                      # Track class and library loading
-    ├── /systems/                         # Specialized systems (implementation)
+    ├── /systems/                         # Specialized systems (jill's code)
     │   ├── __init__.py                   # Python package marker
     │   ├── spam_protection.py            # 5-layer spam protection
     │   ├── cleanup.py                    # Message cleanup (TTL + history)
     │   ├── voice_manager.py              # Voice operations & auto-pause
     │   └── watchdog.py                   # Playback monitoring
-    ├── /utils/                           # Utility helpers (implementation)
+    ├── /utils/                           # Utility helpers (jill's code)
     │   ├── __init__.py                   # Python package marker
     │   ├── discord_helpers.py            # Discord API helpers
     │   ├── persistence.py                # Channel persistence
     │   └── context_managers.py           # Context helpers
     ├── /README/                          # Documentation folder
-    │   ├── 01-README.txt                  # Main overview
+    │   ├── 01-README.txt                 # Main overview
     │   ├── 02-Getting-Discord-Token.txt  # Bot token guide
     │   ├── 03-SETUP-Windows.txt          # Windows setup guide
     │   ├── 03-SETUP-Linux.txt            # Linux setup guide
     │   ├── 04-Converting-To-Opus.txt     # Audio conversion guide
-    │   ├── 05-Files.txt                   # This file (reference)
+    │   ├── 05-Files.txt                  # This file (reference)
     │   └── 06-troubleshooting.txt        # Troubleshooting guide
-    └── /music/                           # Your music files go here
+    └── /music/                           # Default music folder location
         ├── 01 - Track Name.opus
         ├── 02 - Track Name.opus
         └── ...
@@ -158,9 +158,7 @@ SETUP ORDER (Recommended):
 
 1. Read '01-README.txt' (get familiar with the bot)
 2. Follow '02-Getting-Discord-Token.txt' (get your bot token)
-3. Follow '03-SETUP-Linux.txt' or '03-SETUP-Windows.txt' (run the setup wizard)
-   - The wizard can convert your music automatically
-   - Or convert manually (see '04-Converting-To-Opus.txt')
+3. Follow '03-SETUP-Linux.txt' or '03-SETUP-Windows.txt'
 4. Run the bot
 
 ================================================================================

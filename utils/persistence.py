@@ -1,4 +1,4 @@
-# Copyright (C) 2025 grodz-bar
+# Copyright (C) 2025 grodz
 #
 # This file is part of Jill.
 #

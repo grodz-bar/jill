@@ -1,4 +1,4 @@
-# Copyright (C) 2025 grodz-bar
+# Copyright (C) 2025 grodz
 #
 # This file is part of Jill.
 #
@@ -26,6 +26,7 @@ Both systems operate independently for redundancy and robustness.
 """
 
 import asyncio
+import bisect
 import time
 import logging
 from datetime import datetime, timedelta
@@ -260,10 +261,10 @@ class CleanupManager:
             cutoff_dt = datetime.utcnow() - timedelta(seconds=CLEANUP_SAFE_AGE_THRESHOLD)
             other_bot_messages = []
 
-            # Build set of messages currently tracked by TTL system (with unexpired TTL)
+            # Build set of message IDs currently tracked by TTL system (with unexpired TTL)
             current_time = time.time()
-            ttl_tracked_messages = {
-                msg for msg, delete_time in self._message_cleanup_queue
+            ttl_tracked_ids = {
+                msg.id for msg, delete_time in self._message_cleanup_queue
                 if delete_time > current_time  # Only unexpired messages
             }
 
@@ -278,7 +279,7 @@ class CleanupManager:
                     continue
 
                 # Skip messages with active TTLs (managed by TTL system)
-                if message in ttl_tracked_messages:
+                if message.id in ttl_tracked_ids:
                     continue
 
                 # Bot's own messages
@@ -321,19 +322,18 @@ class CleanupManager:
             message: Message to delete (None is safe)
             ttl_seconds: Time to live in seconds
         """
-        if not message or not TTL_CLEANUP_ENABLED:
+        if not message or not (AUTO_CLEANUP_ENABLED and TTL_CLEANUP_ENABLED):
             return
 
         delete_time = time.time() + ttl_seconds
 
-        # Binary search insertion (keeps queue sorted)
-        insert_pos = 0
-        for i, (_, existing_time) in enumerate(self._message_cleanup_queue):
-            if existing_time <= delete_time:
-                insert_pos = i + 1
-            else:
-                break
-
+        # Binary search insertion (keeps queue sorted by delete_time)
+        # Use bisect_right to maintain FIFO order for messages with same delete_time
+        insert_pos = bisect.bisect_right(
+            self._message_cleanup_queue,
+            delete_time,
+            key=lambda x: x[1]  # Sort by delete_time (second element)
+        )
         self._message_cleanup_queue.insert(insert_pos, (message, delete_time))
 
         # Wake up TTL worker
@@ -404,8 +404,7 @@ class CleanupManager:
 
     async def update_now_playing_message(
         self,
-        content: str,
-        voice_client = None
+        content: str
     ) -> Optional[disnake.Message]:
         """
         Update or send "Now serving" message with smart management.
@@ -415,7 +414,6 @@ class CleanupManager:
 
         Args:
             content: Message content
-            voice_client: Voice client to check if playing (for protection)
 
         Returns:
             The message object (edited or new)
@@ -428,7 +426,7 @@ class CleanupManager:
             try:
                 # Check if message is buried
                 message_count = 0
-                async for msg in self.text_channel.history(
+                async for _ in self.text_channel.history(
                     limit=MESSAGE_BURIAL_CHECK_LIMIT,
                     after=self._last_now_playing_msg
                 ):
@@ -522,7 +520,7 @@ class CleanupManager:
                 try:
                     await self.text_channel.delete_messages(batch)
                     deleted_count += len(batch)
-                except Exception as e:
+                except (disnake.Forbidden, disnake.HTTPException) as e:
                     logger.debug(f"Guild {self.guild_id}: Bulk delete failed, fallback: {e}")
                     # Fallback to individual
                     for msg in batch:

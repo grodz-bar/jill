@@ -8,7 +8,7 @@ This file contains all timing-related settings organized by category.
 These control how fast/slow the bot responds and manages various operations.
 
 Changing some of these values can break things and make the bot more prone
-to spam and Discord's API rate-limiting, so be careful and test thoroughly.
+to spam and Discord's API rate-limiting, be careful and test thoroughly.
 """
 
 # =========================================================================================================
@@ -181,7 +181,6 @@ PLAYLISTS_SPAM_THRESHOLD = 4       # Times user can spam before warning
 VOICE_CONNECT_DELAY = 0.15               # Wait for Discord voice handshake (prevents crashes)
 VOICE_SETTLE_DELAY = 0.05                # Let voice settle between tracks (prevents audio glitches)
 VOICE_RECONNECT_DELAY = 0.30             # Wait during voice reconnection (prevents race conditions)
-                                         # Slightly higher delay (0.30) = safer reconnect on slower networks.
 VOICE_CONNECTION_MAX_WAIT = 0.5          # Max wait for voice connection (500ms)
 VOICE_CONNECTION_CHECK_INTERVAL = 0.05   # Check voice connection every 50ms
 FRAME_DURATION = 0.02                    # Opus frame duration (20ms) for graceful stops

@@ -1,4 +1,4 @@
-# Copyright (C) 2025 grodz-bar
+# Copyright (C) 2025 grodz
 #
 # This file is part of Jill.
 #
@@ -18,7 +18,7 @@
 """
 jill Music Bot
 ========================================================
-VERSION: 0.9.5
+VERSION: 0.9.9
 ========================================================
 
 A Discord music bot built using the disnake API.
@@ -136,7 +136,7 @@ async def on_ready():
     print("="*60 + "\n")
     
     logger.info(f'Bot connected as {bot.user}')
-    logger.info('Jill v0.9.5 - Copyright (C) 2025 grodz-bar')
+    logger.info('Jill v0.9.9 - Copyright (C) 2025 grodz-bar')
     logger.info('Licensed under GPL 3.0 - See LICENSE.md for details')
     logger.info("Press Ctrl+C or send SIGTERM to shutdown gracefully")
 

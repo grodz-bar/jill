@@ -1,12 +1,12 @@
 # Part of Jill - Licensed under GPL 3.0
 # See LICENSE.md for details
 
-"""
+r"""
 =========================================================================================================================
 Bot Messages - All text responses
 =========================================================================================================================
 
-This file contains all the bot's text output that users see.
+This file contains the bot's text output that users see.
 Customize these messages to change jill's personality and responses.
 
 =========================================================================================================================
@@ -32,8 +32,8 @@ CUSTOMIZATION TIPS:
 - Modify personality by changing the tone of messages
 - If you have your own custom server emojis, you can use them like this:
 
-1. Find what emoji you want to use and what its name is; you can see the emoji's name by hovering
-+ over it in the emoji selection menu.
+1. Find what emoji you want to use and what its name is; you can see the emoji's name by
+hovering over it in the emoji selection menu.
 
 2. Go to a text channel and type \:youremojiname: then hit Enter to send
 
@@ -69,7 +69,10 @@ MESSAGES = {
     'error_fight_me': "👺 Fight me.",
     'error_cant_connect': "❌ Can't join that channel: {error}",
     'error_invalid_track': "❌ Track #{number} doesn't exist. Library has {total} tracks.",
-    'error_track_not_found': "❌ Couldn't find a track matching '{query}'. Try !tracks to see all tracks.",
+    'error_track_not_found': "❌ '{query}'? Try !tracks to see what we have.",
+    'error_playlist_not_found': '❌ I ran out of \'{query}\'. Try `!playlists` to see the menu.',
+    'error_playlist_already_active': '😑 Already using that playlist.',
+    'error_no_playlists': '❌ No playlists found. Music must be in subfolders.',
     
     # ===================================================================================================================
     # FEATURE DISABLED - Messages for disabled features
@@ -92,8 +95,7 @@ MESSAGES = {
     # ===================================================================================================================
     # NAVIGATION - Track navigation and queue messages
     # ===================================================================================================================
-    # NOTE: I use invisible characters to align the text, here's one if you want to use it: "⠀"
-    # NOTE for ADDITIONAL QUEUE CUSTOMIZATION:
+    # I use invisible characters to align text when needed, here's one if you want to use it: "⠀"
     # To customize "upcoming tracks" indentation/spacing, see /handlers/commands.py (queue formatting)
 
     'previous_at_start': '😑 Already at the beginning!',
@@ -103,8 +105,8 @@ MESSAGES = {
     'queue_header': '╔════════════════════════════╗',
     'queue_footer': '╚════════════════════════════╝',
     'queue_now_playing': '⠀⠀🍸 Now Serving →',
-    'queue_last_played': '⠀⠀🍷 Last Served →',
-    'queue_up_next': '⠀⠀🍹 Coming Up:',
+    'queue_last_played': '⠀⠀🍷 Last Served: ',
+    'queue_up_next': '⠀⠀🍹 Coming Up: ',
     
     # ===================================================================================================================
     # SHUFFLE - Shuffle mode and organization messages
@@ -124,6 +126,7 @@ MESSAGES = {
     'spam_shuffle': '😵‍💫 Shuffle on, shuffle off, make up your mind!',
     'spam_play_jump': '😵‍💫 Hold on, let me find that track...',
     'spam_tracks': '😑 Alright, alright, here it is...',
+    'spam_playlists': '😒 Yeah, yeah, can you even read this fast?',
     
     # ===================================================================================================================
     # TRACKS - Track list and playlist management messages
@@ -141,10 +144,6 @@ MESSAGES = {
     'playlists_next_page': '\nUse `!playlists {next_page}` for next page.',
     'playlists_help': '\nUse `!list [number or name]` to switch playlists.',
     'playlist_switched': '✅ {message}',
-    'error_playlist_not_found': '❌ Couldn\'t find playlist \'{query}\'. Try `!playlists` to see all available.',
-    'error_playlist_already_active': '😑 Already using that playlist.',
-    'error_no_playlists': '❌ No playlists found. Music must be in subfolders.',
-    'spam_playlists': '😑 Yeah, yeah, here\'s the list again...',
         }
 
 # =======================================================================================================================

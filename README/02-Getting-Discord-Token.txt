@@ -6,7 +6,7 @@ STEP 1: CREATE APPLICATION
 ----------------------------------------------------------
 1. Go to: https://discord.com/developers/applications
 2. Click "New Application"
-3. Name it (e.g., "Music Bot")
+3. Name it (e.g., "jill music")
 4. Click "Create"
 
 STEP 2: CREATE BOT USER
@@ -14,6 +14,7 @@ STEP 2: CREATE BOT USER
 1. Click "Bot" in left sidebar
 2. Click "Add Bot"
 3. Confirm "Yes, do it!"
+NOTE: Sometime's it's auto-created.
 
 STEP 3: CONFIGURE BOT
 ----------------------------------------------------------
@@ -33,8 +34,8 @@ IMPORTANT: If your token is leaked, reset it immediately in the developer portal
 
 STEP 5: INVITE BOT TO SERVER
 ----------------------------------------------------------
-1. Click "OAuth2" → "URL Generator" in left sidebar
-2. Under "Scopes", select:
+1. Click "OAuth2" in left sidebar
+2. Find "OAuth2 URL Generator" and "Scopes", select:
    - bot
    - applications.commands
 

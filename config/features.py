@@ -1,18 +1,21 @@
 # Part of Jill - Licensed under GPL 3.0
 # See LICENSE.md for details
 
-"""
+r"""
 Feature Toggles
 
 This file contains feature switches and adjustments for the major bot behaviors.
 
 QUICK GUIDE:
-- Set to True = feature enabled, False = feature disabled
+- True = feature enabled, False = feature disabled
 - Restart bot after changes:
   * Linux: sudo systemctl restart jill.service
-  * Windows: Stop bot (Ctrl+C) and restart it
+  * Windows: Stop bot (Ctrl+C) and restart it / Restart your Task Scheduler task/process
 - Most features work independently (no dependencies)
 - WARNING: Keep SPAM_PROTECTION_ENABLED = True (prevents API rate limits)
+
+To change the bot profile picture/banner/etc, do it on the developer portal:
+https://discord.com/developers/applications
 
 """
 
@@ -32,8 +35,7 @@ QUICK GUIDE:
 # CHANNEL PERSISTENCE:
 # The bot remembers which text channel to clean up per server. Any command (not just !play)
 # updates the active channel. On bot restart, cleanup workers automatically resume on the
-# saved channels - no command needed! Channel data is stored in last_channels.json and
-# managed transparently.
+# saved channel. Channel data is stored in last_channels.json and managed transparently.
 
 DELETE_OTHER_BOTS = False          # Delete other bots' messages as well during cleanup
                                    # False = only delete jill's messages (and user !commands)
@@ -59,7 +61,7 @@ TTL_CLEANUP_ENABLED = True         # Auto-delete messages after TTL expires
 # - Bot processes commands one at a time (prevents conflicts)
 # - Bot adds cooldowns after commands finish (prevents rapid re-execution)
 #
-# This keeps the bot stable and prevents abuse while being user-friendly.
+# This keeps the bot stable and prevents abuse.
 
 SPAM_PROTECTION_ENABLED = True     # CRITICAL: Prevents API rate limits
                                    # False = NO PROTECTION (can break bot!)
@@ -125,7 +127,8 @@ VOICE_RECONNECT_ENABLED = True     # Auto-reconnect on voice errors
 # Bot Status (online indicator color)
 # Options: 'online' (green), 'dnd' (red), 'idle' (yellow), 'invisible' (gray/offline)
 # Note: 'invisible' makes bot appear offline but still functional
-BOT_STATUS = 'dnd'                 # Default: 'dnd' (do not disturb - red status)
+
+BOT_STATUS = 'dnd'
 
 # =========================================================================================================
 # FUTURE FEATURES (WIP)
@@ -136,6 +139,6 @@ BOT_STATUS = 'dnd'                 # Default: 'dnd' (do not disturb - red status
 #VOLUME_CONTROL_ENABLED = False     # Enable volume control commands
 
 # NOTE: Volume control unlikely to be implemented since it causes so many freaking issues,
-# but maybe as I'll add the feature and a toggle for the people that wanna risk it.
+# but maybe I'll add the feature as a toggle for the people that wanna risk it.
 
 

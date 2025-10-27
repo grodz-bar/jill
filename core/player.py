@@ -1,4 +1,4 @@
-# Copyright (C) 2025 grodz-bar
+# Copyright (C) 2025 grodz
 #
 # This file is part of Jill.
 #
@@ -358,7 +358,7 @@ class MusicPlayer:
                 if isinstance(channel, disnake.TextChannel):
                     self.set_text_channel(channel)
                     logger.info(f"Guild {self.guild_id}: Restored channel {channel.name}")
-            except Exception as e:
+            except (disnake.NotFound, disnake.Forbidden, disnake.HTTPException) as e:
                 logger.debug(f"Guild {self.guild_id}: Could not restore channel: {e}")
 
     def set_voice_client(self, voice_client: Optional[disnake.VoiceClient]):
@@ -478,8 +478,8 @@ class MusicPlayer:
                 if voice_client.is_playing() or voice_client.is_paused():
                     self.cancel_active_session()
                     voice_client.stop()
-            except Exception as e:
-                logger.debug(f"Guild {self.guild_id}: Could not stop playback during playlist switch: {e}")
+            except disnake.ClientException as e:
+                logger.debug("Guild %s: stop during playlist switch failed: %s", self.guild_id, e)
 
         # Clear playback state
         self.played.clear()

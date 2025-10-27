@@ -42,6 +42,15 @@ if errorlevel 1 (
 echo Found Python:
 echo %PYTHON_VERSION%
 echo.
+python -c "import sys; sys.exit(0 if sys.version_info[:2] >= (3,11) else 1)" 2>nul
+if errorlevel 1 (
+    echo ERROR: Python 3.11 or newer is required. Found: %PYTHON_VERSION%
+    echo Please upgrade Python and try again.
+    echo.
+    pause
+    exit /b 1
+)
+echo.
 
 echo ========================================
 echo What This Setup Will Do
@@ -178,7 +187,7 @@ if "%MUSIC_PATH%"=="" (
     set "MUSIC_PATH=music"
     set "DEFAULT_PATH=1"
 ) else (
-    set "MUSIC_PATH=%MUSIC_PATH:"=%"
+    set "MUSIC_PATH=!MUSIC_PATH:"=!"
 )
 
 if not "%MUSIC_PATH:~-1%"=="\" set "MUSIC_PATH=%MUSIC_PATH%\"
@@ -263,6 +272,10 @@ echo.
 echo -------- Step 1: Choose the audio format --------
 set /p "FILE_FORMAT=What audio format are your files? (mp3/flac/wav/m4a/other): "
 if "%FILE_FORMAT%"=="" set "FILE_FORMAT=mp3"
+if /i "%FILE_FORMAT%"=="other" (
+    set /p "FILE_FORMAT=Enter the file extension (without dot): "
+)
+for /f "tokens=1" %%A in ("!FILE_FORMAT!") do set "FILE_FORMAT=%%~A"
 echo.
 timeout /t 1 /nobreak >nul
 echo -------- Step 2: Tell us where the originals live --------
@@ -282,7 +295,7 @@ if "%SOURCE_FOLDER%"=="" (
 )
 timeout /t 1 /nobreak >nul
 
-set "SOURCE_FOLDER=%SOURCE_FOLDER:"=%"
+set "SOURCE_FOLDER=!SOURCE_FOLDER:"=!"
 if not "%SOURCE_FOLDER:~-1%"=="\" set "SOURCE_FOLDER=%SOURCE_FOLDER%\"
 
 set "SOURCE_IS_DEST=false"
@@ -346,7 +359,9 @@ for /r "%SOURCE_FOLDER%" %%f in (*.%FILE_FORMAT%) do (
     for %%I in ("!DEST_PATH!") do set "DEST_DIR=%%~dpI"
     if not exist "!DEST_DIR!" mkdir "!DEST_DIR!" >nul 2>&1
     for %%I in ("!DEST_PATH!") do set "DEST_FILE=%%~dpnI"
-    ffmpeg -i "%%f" -c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20 "!DEST_FILE!.opus" -loglevel error -n
+    set "FFMPEG_ARGS=-c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20"
+    if /i "!FILE_FORMAT!"=="opus" set "FFMPEG_ARGS=-c copy"
+    ffmpeg -i "%%f" !FFMPEG_ARGS! "!DEST_FILE!.opus" -loglevel error -n < nul
     if errorlevel 1 (
         echo WARNING: Failed to convert: %%f
     ) else (
@@ -384,7 +399,13 @@ set /p "DELETE_CONFIRM=Are you sure? Type 'yes' to confirm: "
 if /i "!DELETE_CONFIRM!"=="yes" (
     timeout /t 1 /nobreak >nul
     echo Deleting original files...
-    for /r "%SOURCE_FOLDER%" %%f in (*.%FILE_FORMAT%) do del "%%f" /f /q
+    for /r "%SOURCE_FOLDER%" %%f in (*.%FILE_FORMAT%) do (
+        set "CURRENT_FILE=%%f"
+        set "REL_PATH=!CURRENT_FILE:%SOURCE_BASE%=!"
+        set "DEST_PATH=!MUSIC_PATH!!REL_PATH!"
+        for %%I in ("!DEST_PATH!") do set "DEST_FILE=%%~dpnI"
+        if exist "!DEST_FILE!.opus" del "%%f" /f /q
+    )
     timeout /t 1 /nobreak >nul
     echo Original files deleted.
     timeout /t 2 /nobreak >nul
@@ -408,13 +429,14 @@ echo Creating Configuration
 echo ========================================
 echo.
 
+set "DEFAULT_PATH_VALUE=%DEFAULT_PATH%"
 set "BOT_TOKEN_ESC=%BOT_TOKEN%"
 set "MUSIC_PATH_ESC=%MUSIC_PATH%"
-set "DEFAULT_PATH_VALUE=%DEFAULT_PATH%"
-setlocal DisableDelayedExpansion
->".env" echo DISCORD_BOT_TOKEN=%BOT_TOKEN_ESC%
-if "%DEFAULT_PATH_VALUE%"=="0" >>".env" echo MUSIC_FOLDER=%MUSIC_PATH_ESC%
-endlocal
+powershell -NoProfile -Command ^
+  "$ErrorActionPreference='Stop';" ^
+  "$lines = @('DISCORD_BOT_TOKEN=' + $env:BOT_TOKEN_ESC);" ^
+  "if ($env:DEFAULT_PATH_VALUE -eq '0') { $lines += 'MUSIC_FOLDER=' + $env:MUSIC_PATH_ESC }" ^
+  "Set-Content -Path '.env' -Value $lines -Encoding ASCII"
 
 if "%DEFAULT_PATH%"=="1" (
     echo Using default music folder: music\ ^(inside Jill's folder^)

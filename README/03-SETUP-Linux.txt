@@ -4,7 +4,7 @@ LINUX SETUP GUIDE
 
 This guide works for:
 - Debian/Ubuntu Linux
-- Raspberry Pi OS (formerly Raspbian)
+- Raspberry Pi OS
 
 ================================================================================
 STEP 1: SYSTEM REQUIREMENTS
@@ -33,7 +33,7 @@ See '02-Getting-Discord-Token.txt' for instructions on creating a Discord bot
 and getting your token. You will need this later.
 
 ================================================================================
-STEP 3: DOWNLOAD BOT
+STEP 3: DOWNLOAD BOT (if you somehow haven't)
 ================================================================================
 
 Download the bot to your home directory:
@@ -49,75 +49,35 @@ Method 2 - Using Git:
 2. Clone the repository:
     git clone https://github.com/grodz-bar/jill.git jill
 
-Your directory structure should be:
-
-    ~/jill/
-    ├── bot.py
-    ├── requirements.txt
-    ├── /scripts/
-    │   ├── win_setup.bat
-    │   ├── win_run_bot.bat
-    │   ├── linux_setup.sh
-    │   └── linux_run_bot.sh
-    ├── /config/ (configuration folder)
-    │   ├── __init__.py
-    │   ├── features.py
-    │   ├── messages.py
-    │   ├── timing.py
-    │   ├── paths.py
-    │   └── aliases.py
-    ├── /handlers/ (jill's code)
-    ├── /core/ (jill's code)
-    ├── /systems/ (jill's code)
-    ├── /utils/ (jill's code)
-    ├── /venv/ (created during setup - virtual environment)
-    ├── .env (created during setup - bot configuration)
-    ├── /README/ (documentation folder)
-    │   ├── 01-README.txt
-    │   ├── 02-Getting-Discord-Token.txt
-    │   ├── 03-SETUP-Windows.txt
-    │   ├── 03-SETUP-Linux.txt
-    │   ├── 04-Converting-To-Opus.txt
-    │   ├── 05-Files.txt
-    │   └── 06-troubleshooting.txt
-    └── /music/
-        ├── 01 - Track Name.opus
-        ├── 02 - Track Name.opus
-        └── ...
-        │   # OR if you have multiple playlists:
-        ├── 01 - Album Name/
-        │   ├── 01 - Track Name.opus
-        │   └── 02 - Track Name.opus
-        ├── 02 - OST/
-        │   └── 01 - Track Name.opus
-        └── ...
+NOTE: You can extract jill into any folder you want, but this guide assumes
+you've placed it in ~/jill/ , change instructions to fit your use case.
 
 ================================================================================
 STEP 4: RUN SETUP WIZARD (RECOMMENDED)
 ================================================================================
 
-The setup wizard will guide you through configuration in just a few minutes.
+The wizard will automatically:
+- Create a virtual environment (venv) inside the bot folder
+- Install required Python packages
+- Generate your .env configuration file
+- Create the music folder if it doesn't exist
+- Optionally convert your audio files to .opus
+- Make scripts/linux_run_bot.sh executable
 
 BEFORE STARTING THE WIZARD, make sure you have ready:
 - Your Discord bot token (from Step 2)
 - Your local music files
 
-OPTION A - Use Setup Wizard (Fast & Easy):
+Use Setup Wizard:
 1. Navigate to bot directory: cd ~/jill
 2. Make setup script executable: chmod +x scripts/linux_setup.sh
 3. Run the setup wizard: ./scripts/linux_setup.sh
+4. Proceed to STEP 5 of this setup guide
 
-The wizard will automatically:
-- Create a virtual environment (venv) inside the bot folder
-- Install required Python packages
-- Create your .env configuration file
-- Create the music folder if it doesn't exist
-- Optionally convert your audio files to .opus (with folder structure preservation)
-- Make scripts/linux_run_bot.sh executable
+================================================================================
+ALTERNATIVE STEP 4: MANUAL SETUP
+================================================================================
 
-SKIP TO: If you used the setup wizard, go directly to STEP 5 to run your bot!
-
-OPTION B - Manual Setup:
 If you prefer to set up manually, follow these steps:
 
 1. Create virtual environment: python3 -m venv venv
@@ -126,18 +86,24 @@ If you prefer to set up manually, follow these steps:
 4. Create .env file in the bot folder:
    - Run: nano .env
    - Add: DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN
-   - (Optional) Add: MUSIC_FOLDER=path/to/music (leave blank to use default: music/ folder)
+   - (Optional) Add: MUSIC_FOLDER=path/to/music (blank uses default: music/ folder)
    - Save and exit (Ctrl+X, Y, Enter)
 5. Deactivate venv: deactivate
-6. Continue to STEP 5
+6. Edit the jill/scripts/linux_run_bot.sh file to match your installation
+7. Proceed to STEP 5 of this setup guide
 
 ================================================================================
 STEP 5: ADD YOUR MUSIC FILES (If Needed)
 ================================================================================
-WARNING: Even if you used the wizard you'll need to make sure your .opus music
-file naming follows the format convention bellow.
 
-NOTE: See 04-Converting-To-Opus.txt for help converting audio files.
+Convert your files to .opus by following the 04-Converting-To-Opus.txt guide.
+
+EVEN if you used the WIZARD (linux_setup.sh) you need to make sure your .opus
+music files follow the naming format described below.
+
+NOTE: This step only talks about music files, but if you're using PLAYLISTS
+(as in, subfolders inside your jill music folder), it is HIGHLY recommended
+that you use the same naming format described below in those as well.
 
 FILE NAMING FORMAT:
 -------------------------------
@@ -178,7 +144,7 @@ quickly. On Windows, PowerRename works well.
 STEP 6: RUN THE BOT
 ================================================================================
 
-1. Navigate to bot directory (if not already there):
+1. Navigate to bot directory:
     cd ~/jill
 2. Run the bot:
     ./scripts/linux_run_bot.sh
@@ -187,11 +153,6 @@ You should see:
 - "Bot connected as YourBot#1234"
 - "Music folder found: /home/example/jill/music"
 
-Test in Discord:
-1. Invite bot to your server (see '02-Getting-Discord-Token.txt')
-2. Join a voice channel
-3. Type !play to start music
-
 To stop the bot, press Ctrl+C in the terminal.
 
 ================================================================================
@@ -199,17 +160,13 @@ STEP 7: AUTO-START WITH SYSTEMD (OPTIONAL BUT RECOMMENDED)
 ================================================================================
 NOTE: Do this so bot will start automatically after a machine boot.
 
-Using the included script:
-
-1. Make sure it is executable:
+1. Make sure our run bot script is executable:
     chmod +x ~/jill/scripts/linux_run_bot.sh
 
-Create systemd service file:
-
-2. Open nano with sudo:
+2. Create systemd service file:
     sudo nano /etc/systemd/system/jill.service
 	
-3. Add these lines:
+3. Add:
 ----------------------------------------------------------------
 [Unit]
 Description=Jill Discord Bot
@@ -229,7 +186,15 @@ RestartSec=10
 [Install]
 WantedBy=multi-user.target
 ----------------------------------------------------------------
+
+OPTIONAL: If you don't want to use the .env file (from the default setup),
+you can place these lines under [Service] instead:
+Environment="DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN"
+Environment="MUSIC_FOLDER=/home/YOUR-USERNAME/jill/music/"
+
 WARNING: REPLACE 'YOUR-USERNAME' with your actual username.
+
+NOTE: If you're storing Jill somewhere else edit the file to reflect that.
 
 4. Save and exit (Ctrl+X, Y, Enter in nano)
 
@@ -244,13 +209,6 @@ WARNING: REPLACE 'YOUR-USERNAME' with your actual username.
 	
 8. Check service status:
     sudo systemctl status jill.service
-
-OPTIONAL: If you don't want to use the .env file (default setup),
-you can place these lines under [Service] instead:
-Environment="DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN"
-Environment="MUSIC_FOLDER=/home/YOUR-USERNAME/jill/music/"
-
-NOTE: If you're storing Jill somewhere else edit the file to reflect that.
 
 ================================================================================
 CUSTOMIZATION

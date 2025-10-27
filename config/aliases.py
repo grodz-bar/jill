@@ -11,7 +11,9 @@ QUICK GUIDE:
 - Each alias can only be used ONCE across all commands
 - Aliases work with all parameter combinations (e.g., !play and !play 5)
 - Aliases are case-insensitive (!Play = !play = !PLAY)
-- Restart bot after changes: sudo systemctl restart jill.service (Linux)
+- Restart bot after changes:
+  * Linux: sudo systemctl restart jill.service
+  * Windows: Stop bot (Ctrl+C) and restart it / Restart your Task Scheduler task/process
 - Avoid reserved names: 'help', disnake commands, anything starting with '_'
 
 WARNING:
@@ -39,7 +41,7 @@ COMMAND_ALIASES = {
     'stop': ['leave', 'disconnect', 'dc', 'bye'],
     'previous': ['prev', 'back', 'ps'],
     'shuffle': ['mess', 'scramble', 'fix', 'organize'],
-    'tracks': ['playlist', 'album', 'library', 'songs', 'list', 'allsongs', 'fq', 'all', 'fullqueue', 'switch', 'useplaylist'],
+    'tracks': ['playlist', 'album', 'library', 'songs', 'list', 'allsongs', 'all', 'fullqueue'],
     'playlists': ['libraries', 'albums', 'lists', 'collections'],
     'help': ['commands', 'jill'],
 }
@@ -47,31 +49,48 @@ COMMAND_ALIASES = {
 def validate_command_aliases() -> None:
     """
     Validate that no alias is used for multiple commands.
-    
+
     Raises:
         ValueError: If duplicate aliases are found
-        
+
     Called on bot startup to catch configuration errors early.
     """
     # Track which command each alias belongs to (case-insensitive)
     alias_to_command = {}
+    base_commands = {c.lower() for c in COMMAND_ALIASES.keys()}
+    reserved_aliases = {"help"}  # Extend if needed
     duplicates = []
-    
+
     for command, aliases in COMMAND_ALIASES.items():
         for alias in aliases:
             alias_lower = alias.lower()
+
+            # Disallow alias matching any base command name
+            if alias_lower in base_commands:
+                duplicates.append(
+                    f"Alias '{alias}' under '{command}' conflicts with base command name '{alias_lower}'"
+                )
+                continue
+
+            # Enforce reserved names and simple patterns
+            if alias_lower in reserved_aliases or alias_lower.startswith("_"):
+                duplicates.append(
+                    f"Alias '{alias}' under '{command}' is reserved or invalid (reserved name or starts with '_')"
+                )
+                continue
+
             if alias_lower in alias_to_command:
                 duplicates.append(
                     f"Alias '{alias}' is used by both '{alias_to_command[alias_lower]}' and '{command}'"
                 )
             else:
                 alias_to_command[alias_lower] = command
-    
+
     if duplicates:
         error_msg = "COMMAND ALIAS CONFIGURATION ERROR:\n" + "\n".join(duplicates)
         logger.critical(error_msg)
         raise ValueError(error_msg)
-    
+
     logger.info(f"Command aliases validated: {len(alias_to_command)} total aliases configured")
 
 # Validate aliases on import (catches errors before bot starts)

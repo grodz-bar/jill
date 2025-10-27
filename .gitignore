@@ -49,6 +49,13 @@ $RECYCLE.BIN/
 
 # Music files
 music/
+songs/
+albums/
+audio/
+library/
+musicfiles/
+opus/
+audiofiles/
 *.opus
 *.mp3
 *.wav

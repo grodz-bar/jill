@@ -1,4 +1,4 @@
-# Copyright (C) 2025 grodz-bar
+# Copyright (C) 2025 grodz
 #
 # This file is part of Jill.
 #
@@ -18,7 +18,6 @@
 """
 All Bot Commands
 
-Comprehensive command implementations using the refactored architecture.
 All commands include spam protection and proper error handling.
 
 WARNING: USE THE "aliases.py" INSIDE THE "config" FOLDER TO CHANGE/ADD/REMOVE YOUR OWN
@@ -37,7 +36,7 @@ from disnake.ext import commands
 logger = logging.getLogger(__name__)
 
 # Import from our modules
-from core.player import get_player, players
+from core.player import get_player
 from core.playback import _play_current, _play_next, _play_first
 from core.track import has_playlist_structure
 from config.aliases import COMMAND_ALIASES
@@ -142,7 +141,7 @@ def setup(bot):
 
     @bot.command(name='play', aliases=COMMAND_ALIASES['play'])
     @commands.guild_only()
-    async def play_command(ctx, *, track_arg: str = None):
+    async def play_command(ctx, *, track_arg: str | None = None):
         """Play, resume, or jump to track by number or name."""
         player = await get_player(ctx.guild.id, bot, bot.user.id)
 
@@ -192,7 +191,7 @@ def setup(bot):
                     ctx.message
                 )
                 return
-            except Exception as e:
+            except Exception:
                 logger.exception("Guild %s: Unexpected connect error", ctx.guild.id)
                 await player.cleanup_manager.send_with_ttl(
                     player.text_channel,
@@ -231,7 +230,7 @@ def setup(bot):
         # Handle start playback
         if current_state == PlaybackState.IDLE:
             await player.spam_protector.queue_command(
-                lambda: _play_first(ctx.guild.id, bot, players)
+                lambda: _play_first(ctx.guild.id, bot)
             )
 
     async def _execute_play_jump(ctx, track_arg: str, bot):
@@ -267,7 +266,7 @@ def setup(bot):
 
         player.jump_to_track(track_index)
         await player.spam_protector.queue_command(
-            lambda: _play_current(ctx.guild.id, bot, players)
+            lambda: _play_current(ctx.guild.id, bot)
         )
 
     @bot.command(name='pause', aliases=COMMAND_ALIASES['pause'])
@@ -350,7 +349,7 @@ def setup(bot):
             with suppress_callbacks(player):
                 player.voice_client.stop()
             await player.spam_protector.queue_command(
-                lambda: _play_next(ctx.guild.id, bot, players)
+                lambda: _play_next(ctx.guild.id, bot)
             )
             await player.cleanup_manager.schedule_message_deletion(ctx.message, USER_COMMAND_TTL)
 
@@ -417,7 +416,7 @@ def setup(bot):
 
         prev_track = player.go_to_previous()
         if prev_track:
-            await _play_current(ctx.guild.id, bot, players)
+            await _play_current(ctx.guild.id, bot)
         else:
             await player.cleanup_manager.send_with_ttl(
                 player.text_channel,
@@ -548,14 +547,14 @@ def setup(bot):
         
         if player.played:
             track = player.played[-1]
-            msg += f"{MESSAGES['queue_last_played']} {track.display_name}\n"
-        
-        msg += f"{MESSAGES['queue_now_playing']} {player.now_playing.display_name}\n"
+            msg += f"{MESSAGES['queue_last_played']} {sanitize_for_format(track.display_name)}\n"
+
+        msg += f"{MESSAGES['queue_now_playing']} {sanitize_for_format(player.now_playing.display_name)}\n"
 
         if player.upcoming:
             msg += f"{MESSAGES['queue_up_next']}\n"
             for track in list(player.upcoming)[:QUEUE_DISPLAY_COUNT]:
-                msg += f"            • {track.display_name}\n"
+                msg += f"            • {sanitize_for_format(track.display_name)}\n"
 
         msg += f"{MESSAGES['queue_footer']}"
         
@@ -571,7 +570,7 @@ def setup(bot):
 
     @bot.command(name='tracks', aliases=COMMAND_ALIASES['tracks'])
     @commands.guild_only()
-    async def tracks_command(ctx, *, identifier: str = None):
+    async def tracks_command(ctx, *, identifier: str | None = None):
         """Show tracks in current playlist OR switch to different playlist."""
         player = await get_player(ctx.guild.id, bot, bot.user.id)
 
@@ -677,7 +676,7 @@ def setup(bot):
         if player.voice_client and player.voice_client.is_connected():
             try:
                 was_playing = player.voice_client.is_playing() or player.voice_client.is_paused()
-            except Exception as e:
+            except (disnake.ClientException, RuntimeError) as e:
                 logger.debug("Guild %s: voice state probe failed: %s", ctx.guild.id, e)
 
         # Switch playlist
@@ -694,7 +693,7 @@ def setup(bot):
             # Auto-play first track if music was playing before switch
             if was_playing and player.voice_client and player.voice_client.is_connected():
                 await player.spam_protector.queue_command(
-                    lambda: _play_first(ctx.guild.id, bot, players)
+                    lambda: _play_first(ctx.guild.id, bot)
                 )
         else:
             # Check error type

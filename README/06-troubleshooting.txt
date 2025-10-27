@@ -171,6 +171,11 @@ Linux:
 COMMON SOLUTIONS
 ================================================================================
 
+For persistent issues:
+- Check the bot.log file for detailed error messages
+- Verify all setup steps were completed correctly
+- Ensure your system meets the requirements
+
 If nothing else works:
 01. Restart the bot
 02. Restart your computer
@@ -182,10 +187,5 @@ If nothing else works:
 08. Ensure Python and dependencies are properly installed
 09. Try running the bot manually first before setting up auto-start
 10. Restart the Cosmos
-
-For persistent issues:
-- Check the bot.log file for detailed error messages
-- Verify all setup steps were completed correctly
-- Ensure your system meets the requirements
 
 ================================================================================

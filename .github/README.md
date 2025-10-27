@@ -1,67 +1,81 @@
-# 🍸 Jill — Cyberpunk Bartender Discord Music Bot
+# 🍸 Jill — A Cyberpunk Bartender Discord Music Bot
 
-Self-hosted, customizable Discord music bot for your local song library.
+A simple, robust Discord music bot that plays local **.opus** files that supports
+multiple playlists, auto-cleanup, song selection, spam protection, and more.
+
+---
+
+## About
+Built in a neon-lit feedback loop between me and AI coding agents. I prompted,
+stitched the pieces, and fine tuned behavior; the agents generated most of the
+raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 
 ---
 
 ## Features
-- Direct playback of local **.opus** files (no re-encoding)
-- Super customizable: change responses, commands, features, etc
-- Multiple playlists (organize music in subfolders, switch between them)
-- Protection against command spam with debounce + cooldowns
-- Easy to use queue, previous, skip, playlist switching, shuffle, etc
-- Smart message cleanup system to keep text channels tidy
+- Customization: rename commands, rewrite messages, flip features on or off, make it yours
+- Multiple playlists: you're using subfolders? now it's a playlist!
+- Spam protection: hammer it all you want, debounce, cooldowns, and limits keep it sane
+- Smart: jill reads the room, pauses when alone, cleans up after herself
+- Shuffle mode: toggle it on or off, she'll auto reshuffle as well!
+- Quick search: just say the song name or track number (works on playlists too!)
 
 ---
 
 ## Quick Start
 1. Download the bot
-2. Run the interactive setup:
-   - **Windows:** Double-click [`scripts/win_setup.bat`](../scripts/win_setup.bat)
-   - **Linux:** `chmod +x scripts/linux_setup.sh && ./scripts/linux_setup.sh` → [view script](../scripts/linux_setup.sh)
-3. Run the bot:
-   - **Windows:** Double-click [`scripts/win_run_bot.bat`](../scripts/win_run_bot.bat)
-   - **Linux:** `./scripts/linux_run_bot.sh` → [view script](../scripts/linux_run_bot.sh)
+2. Get a Discord bot token → **[02-Getting-Discord-Token.txt](../README/02-Getting-Discord-Token.txt)**
+3. Run the interactive setup:
+   - **Windows:** [`win_setup.bat`](../scripts/win_setup.bat)
+   - **Linux:**
+   - `chmod +x` [`scripts/linux_setup.sh`](../scripts/linux_setup.sh)
+   - [`./scripts/linux_setup.sh`](../scripts/linux_setup.sh)
+4. Run the bot:
+   - **Windows:** [`win_run_bot.bat`](../scripts/win_run_bot.bat)
+   - **Linux:** [`./linux_run_bot.sh`](../scripts/linux_run_bot.sh)
+5. Done. 
 
-## Docs
-- **Overview:** [01-README.txt](../README/01-README.txt)
-- **Get a Discord token:** [02-Getting-Discord-Token.txt](../README/02-Getting-Discord-Token.txt)
-- **Windows setup:** [03-SETUP-Windows.txt](../README/03-SETUP-Windows.txt)
-- **Linux setup:** [03-SETUP-Linux.txt](../README/03-SETUP-Linux.txt)
-- **Convert audio to Opus:** [04-Converting-To-Opus.txt](../README/04-Converting-To-Opus.txt)
-- **Files overview:** [05-Files.txt](../README/05-Files.txt)
-- **Troubleshooting:** [06-troubleshooting.txt](../README/06-troubleshooting.txt)
+- **Full Linux setup guide:** [03-SETUP-Linux.txt](../README/03-SETUP-Linux.txt)
+- **Full Windows setup guide:** [03-SETUP-Windows.txt](../README/03-SETUP-Windows.txt)
 
----
-
-## Commands (core)
+## Commands
 ```text
-!play [n]         # join/resume; or jump to track n
+!play             # start/resume playback
+!play [track]     # jump by number or name (!play 5 or !play lonely job)
 !pause            # pause
 !skip             # next track
 !previous         # previous track
 !stop             # disconnect/reset
-!queue            # show last/now/next
-!list [page]      # browse song list
-!playlists [page] # browse playlist library
-!playlist [name]  # switch to playlist
+!queue            # show the current queue
+!tracks           # show tracks in the current playlist
+!playlist [name]  # switch to a playlist (!playlist dome keeper)
+!playlists        # show all available playlists
 !shuffle          # toggle shuffle
-!unshuffle        # back to order
 !help             # show help
 ```
 
 ---
 
-## Config references
-- [`aliases.py`](../config/aliases.py) — command aliases
-- [`messages.py`](../config/messages.py) — messages
-- [`features.py`](../config/features.py) — features
-- [`timing.py`](../config/timing.py) — cooldowns/TTLs
+## Config
 
-> See the setup docs above for environment variables and service examples.
+- [`config/messages.py`](../config/messages.py) — Customize bot responses
+- [`config/features.py`](../config/features.py) — Turn features on/off
+- [`config/aliases.py`](../config/aliases.py) — Change command aliases
+
+---
+
+## Docs
+- **Overview:** [01-README.txt](../README/01-README.txt)
+- **Discord Token guide:** [02-Getting-Discord-Token.txt](../README/02-Getting-Discord-Token.txt)
+- **Windows setup guide:** [03-SETUP-Windows.txt](../README/03-SETUP-Windows.txt)
+- **Linux setup guide:** [03-SETUP-Linux.txt](../README/03-SETUP-Linux.txt)
+- **Converting to Opus guide:** [04-Converting-To-Opus.txt](../README/04-Converting-To-Opus.txt)
+- **Files overview:** [05-Files.txt](../README/05-Files.txt)
+- **Troubleshooting:** [06-troubleshooting.txt](../README/06-troubleshooting.txt)
 
 ---
 
 ## Notes
-- No telemetry whatsoever; playback is local.
-- Requires [Python 3.11+](https://www.python.org/downloads/) and [FFmpeg](https://ffmpeg.org/download.html).
+- Zero telemetry or spying
+- Requires [Python 3.11+](https://www.python.org/downloads/) and [FFmpeg](https://ffmpeg.org/download.html)
+- Built on the [Disnake](https://docs.disnake.dev) API

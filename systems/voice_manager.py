@@ -1,4 +1,4 @@
-# Copyright (C) 2025 grodz-bar
+# Copyright (C) 2025 grodz
 #
 # This file is part of Jill.
 #
@@ -102,7 +102,7 @@ class VoiceManager:
 
         try:
             return (voice_client.is_playing(), voice_client.is_paused())
-        except Exception as e:
+        except (disnake.ClientException, RuntimeError) as e:
             logger.debug(f"Voice state check failed: {e}")
             return None
 
@@ -123,7 +123,7 @@ class VoiceManager:
             if vc.is_playing():
                 return PlaybackState.PLAYING
 
-        except Exception:
+        except (disnake.ClientException, RuntimeError):
             return PlaybackState.IDLE
 
         return PlaybackState.IDLE

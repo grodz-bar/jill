@@ -558,6 +558,7 @@ if exist ".env.example" (
         timeout /t 2 /nobreak >nul
         echo.
     )
+)
 
 echo.
 timeout /t 1 /nobreak >nul

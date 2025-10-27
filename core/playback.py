@@ -199,8 +199,8 @@ async def _play_current(guild_id: int, bot) -> None:
             if audio_source:
                 try:
                     audio_source.cleanup()
-                except Exception as e:
-                    logger.debug("Guild %s: audio_source.cleanup() failed: %s", guild_id, e)
+                except (OSError, RuntimeError, AttributeError) as e:
+                    logger.debug("Guild %s: audio_source.cleanup() failed: %s", guild_id, e, exc_info=True)
                 finally:
                     audio_source = None
 
@@ -238,8 +238,9 @@ async def _play_current(guild_id: int, bot) -> None:
             player._last_callback_time = current_time
 
             # Queue the next track (priority=True to ensure internal commands aren't dropped)
+            # Bind guild_id in lambda to avoid late-binding surprises
             asyncio.run_coroutine_threadsafe(
-                player.spam_protector.queue_command(lambda: _play_next(guild_id, bot), priority=True),
+                player.spam_protector.queue_command(lambda gid=guild_id: _play_next(gid, bot), priority=True),
                 bot.loop
             )
 
@@ -268,15 +269,19 @@ async def _play_current(guild_id: int, bot) -> None:
         # Update bot presence
         await update_presence(bot, track.display_name)
 
-    except Exception as e:
-        logger.error(f'Guild {guild_id} error in _play_current: {e}', exc_info=True)
+    except Exception:
+        logger.exception("Guild %s error in _play_current", guild_id)
         if audio_source:
             try:
                 audio_source.cleanup()
-            except Exception as e:
-                logger.debug("Guild %s: cleanup after exception failed: %s", guild_id, e)
+            except (OSError, RuntimeError, AttributeError) as e:
+                logger.debug("Guild %s: cleanup after exception failed: %s", guild_id, e, exc_info=True)
         vc = player.voice_client
         if "Bad file descriptor" in str(e) or not (vc and vc.is_connected()):
+            # Close connection to avoid dangling references
+            if vc:
+                from utils.discord_helpers import safe_disconnect
+                await safe_disconnect(vc, force=True)
             player.voice_client = None
         if player._playback_session is session:
             player.cancel_active_session()

@@ -130,6 +130,11 @@ VOICE_RECONNECT_ENABLED = True     # Auto-reconnect on voice errors
 
 BOT_STATUS = 'dnd'
 
+# Validate BOT_STATUS at import time to catch typos early
+ALLOWED_BOT_STATUSES = {'online', 'dnd', 'idle', 'invisible'}
+if BOT_STATUS not in ALLOWED_BOT_STATUSES:
+    raise ValueError(f"Invalid BOT_STATUS '{BOT_STATUS}'. Allowed: {sorted(ALLOWED_BOT_STATUSES)}")
+
 # =========================================================================================================
 # FUTURE FEATURES (WIP)
 # =========================================================================================================

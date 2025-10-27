@@ -8,13 +8,12 @@ cd /d "%~dp0.." || (
     exit /b 1
 )
 
-if exist scripts\win_setup.bat (
-    REM Ensure we are really in project root by verifying requirements file
-    if not exist requirements.txt (
-        echo ERROR: Could not find requirements.txt in project root.
-        pause
-        exit /b 1
-    )
+REM Ensure we are in project root by verifying requirements file
+if not exist requirements.txt (
+    echo ERROR: Could not find requirements.txt in project root.
+    echo Tip: Run this from scripts\ or project root; it auto-switches to root.
+    pause
+    exit /b 1
 )
 
 echo ========================================
@@ -27,7 +26,6 @@ echo.
 
 REM STEP 0: PYTHON CHECK
 echo Checking for Python...
-for /f "tokens=*" %%p in ('python --version 2^>^&1') do set "PYTHON_VERSION=%%p"
 python --version >nul 2>&1
 if errorlevel 1 (
     echo.
@@ -39,17 +37,20 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Found Python:
-echo %PYTHON_VERSION%
-echo.
-python -c "import sys; sys.exit(0 if sys.version_info[:2] >= (3,11) else 1)" 2>nul
-if errorlevel 1 (
-    echo ERROR: Python 3.11 or newer is required. Found: %PYTHON_VERSION%
-    echo Please upgrade Python and try again.
-    echo.
-    pause
-    exit /b 1
+REM Parse Python version and enforce >= 3.11
+for /f "tokens=2 delims= " %%v in ('python -V 2^>^&1') do set "PY_VER=%%v"
+for /f "tokens=1-3 delims=." %%a in ("%PY_VER%") do (
+  set "PY_MAJ=%%a"
+  set "PY_MIN=%%b"
 )
+set /a PY_NUM=100*%PY_MAJ%+%PY_MIN%
+if %PY_NUM% LSS 311 (
+  echo.
+  echo ERROR: Python %PY_VER% detected. Please use Python 3.11+.
+  pause
+  exit /b 1
+)
+echo Found Python: %PY_VER%
 echo.
 
 echo ========================================
@@ -88,13 +89,13 @@ if exist "venv\" (
 )
 echo.
 
-if not exist "venv\Scripts\activate" (
+if not exist "venv\Scripts\activate.bat" (
     echo ERROR: Virtual environment activation script not found.
     echo Please delete the venv folder and rerun this setup.
     pause
     exit /b 1
 )
-call venv\Scripts\activate
+call "venv\Scripts\activate.bat"
 if errorlevel 1 (
     echo ERROR: Failed to activate virtual environment.
     pause
@@ -388,8 +389,13 @@ echo -------- Step 1: Choose the audio format --------
 set /p "FILE_FORMAT=What audio format are your files? (mp3/flac/wav/m4a/other): "
 if "%FILE_FORMAT%"=="" set "FILE_FORMAT=mp3"
 if /i "%FILE_FORMAT%"=="other" (
-    set /p "FILE_FORMAT=Enter the file extension (without dot): "
+    set "CUSTOM_EXT="
+    set /p "CUSTOM_EXT=Enter the file extension (without dot), e.g., aiff: "
+    if "!CUSTOM_EXT!"=="" set "CUSTOM_EXT=mp3"
+    set "FILE_FORMAT=!CUSTOM_EXT!"
 )
+REM Strip leading dot if present
+if "!FILE_FORMAT:~0,1!"=="." set "FILE_FORMAT=!FILE_FORMAT:~1!"
 for /f "tokens=1" %%A in ("!FILE_FORMAT!") do set "FILE_FORMAT=%%~A"
 echo.
 timeout /t 1 /nobreak >nul
@@ -565,6 +571,17 @@ goto :_AFTER_DELETE
 
 :_DO_DELETE
 echo.
+REM Extra safety checks before destructive delete
+if /i "!SOURCE_FOLDER!"=="!MUSIC_PATH!" (
+    echo NOTE: Source and destination are the same; only originals will be removed.
+)
+REM Check if source is a drive root (e.g., C:\, D:\)
+for %%D in ("!SOURCE_FOLDER!") do set "DRIVE_CHECK=%%~dD%%~pD"
+if "!DRIVE_CHECK:~-2!"==":\" (
+    echo WARNING: Source looks like a drive root (!DRIVE_CHECK!). Aborting delete.
+    timeout /t 3 /nobreak >nul
+    goto :_AFTER_DELETE
+)
 echo WARNING: This will permanently delete the original files from %SOURCE_FOLDER%
 echo.
 set /p "DELETE_CONFIRM=Are you sure? Type 'yes' to confirm: "

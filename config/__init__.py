@@ -7,6 +7,8 @@ Importing this package provides access to all configuration constants.
 Usage:
     from config import FEATURE_NAME, MESSAGE_NAME, etc.
 """
+# ruff: noqa: F401, F403, F405
+# Intentional aggregator module - star imports are by design
 
 # ===========================================================================================
 # Feature Configuration

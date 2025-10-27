@@ -191,9 +191,13 @@ class CleanupManager:
         for msg, delete_time in self._message_cleanup_queue:
             if current_time >= delete_time:
                 # CRITICAL: Don't delete "now serving" message if music is playing
-                if msg == self._last_now_playing_msg:
-                    # Check if protected (would need voice_client reference)
-                    # For now, keep in queue - will be handled by explicit delete
+                # Use ID comparison for consistency with freshly fetched Message instances
+                if self._last_now_playing_msg and msg.id == self._last_now_playing_msg.id:
+                    # Protection strategy: Keep now-playing message in TTL queue past expiry
+                    # rather than deleting immediately. This defers deletion until explicit
+                    # replacement (when next track plays) or manual cleanup. The message stays
+                    # visible to users while music plays, and TTL cleanup handles it when
+                    # the message reference is cleared or replaced.
                     remaining_messages.append((msg, delete_time))
                     continue
                 messages_to_delete.append(msg)
@@ -274,8 +278,12 @@ class CleanupManager:
                 before=cutoff_dt,
                 oldest_first=False
             ):
-                # Skip protected "now serving" message
-                if message == self._last_now_playing_msg:
+                # Skip protected "now serving" message (use ID comparison for consistency)
+                if self._last_now_playing_msg and message.id == self._last_now_playing_msg.id:
+                    continue
+
+                # Never delete pinned messages
+                if message.pinned:
                     continue
 
                 # Skip messages with active TTLs (managed by TTL system)

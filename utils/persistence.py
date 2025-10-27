@@ -160,6 +160,7 @@ async def _flush_channel_saves(immediate: bool = False):
         # Atomic write: write to temp file then replace
         import tempfile
         _dir = os.path.dirname(CHANNEL_STORAGE_FILE) or "."
+        os.makedirs(_dir, exist_ok=True)
         with tempfile.NamedTemporaryFile('w', delete=False, dir=_dir, encoding='utf-8') as _tmp:
             json.dump(data, _tmp, indent=2)
             _tmp_path = _tmp.name
@@ -285,6 +286,7 @@ async def _flush_playlist_saves(immediate: bool = False):
         # Atomic write: write to temp file then replace
         import tempfile
         _dir = os.path.dirname(PLAYLIST_STORAGE_FILE) or "."
+        os.makedirs(_dir, exist_ok=True)
         with tempfile.NamedTemporaryFile('w', delete=False, dir=_dir, encoding='utf-8') as _tmp:
             json.dump(data, _tmp, indent=2)
             _tmp_path = _tmp.name

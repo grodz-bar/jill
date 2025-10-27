@@ -110,6 +110,12 @@ def setup(bot):
 
         # Fuzzy name matching with similarity scoring
         identifier_lower = identifier.lower()
+
+        # Exact match fast-path (case-insensitive)
+        for t in player.library:
+            if t.display_name.lower() == identifier_lower:
+                return t.library_index
+
         matches = []
 
         # Find all tracks that contain the search term
@@ -417,7 +423,10 @@ def setup(bot):
 
         prev_track = player.go_to_previous()
         if prev_track:
-            await _play_current(ctx.guild.id, bot)
+            # Queue via spam_protector for consistency with other playback transitions
+            await player.spam_protector.queue_command(
+                lambda: _play_current(ctx.guild.id, bot)
+            )
         else:
             await player.cleanup_manager.send_with_ttl(
                 player.text_channel,
@@ -680,8 +689,8 @@ def setup(bot):
             except (disnake.ClientException, RuntimeError) as e:
                 logger.debug("Guild %s: voice state probe failed: %s", ctx.guild.id, e)
 
-        # Switch playlist
-        success, message = await player.switch_playlist(identifier, player.voice_client)
+        # Switch playlist (synchronous operation - no await needed)
+        success, message = player.switch_playlist(identifier, player.voice_client)
 
         if success:
             await player.cleanup_manager.send_with_ttl(

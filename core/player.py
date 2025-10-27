@@ -445,7 +445,7 @@ class MusicPlayer:
         )
         return best_match[2]
 
-    async def switch_playlist(self, identifier: str, voice_client=None) -> Tuple[bool, str]:
+    def switch_playlist(self, identifier: str, voice_client=None) -> Tuple[bool, str]:
         """
         Switch to a different playlist.
 
@@ -459,8 +459,8 @@ class MusicPlayer:
             Tuple of (success: bool, message: str)
 
         Examples:
-            success, msg = await player.switch_playlist("3")
-            success, msg = await player.switch_playlist("undertale")
+            success, msg = player.switch_playlist("3")
+            success, msg = player.switch_playlist("undertale")
         """
         # Find target playlist
         target_playlist = self.find_playlist_by_identifier(identifier)

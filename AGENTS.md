@@ -15,7 +15,7 @@ Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.1
 ## File Map (Where to Look)
 
 **Config** (`/config/` - user customization only):
-- `features.py` — toggles (shuffle, queue, cleanup, auto-pause)
+- `features.py` — toggles (shuffle, queue, cleanup, auto-pause). Validates BOT_STATUS at import.
 - `messages.py` — all user-facing text
 - `aliases.py` — command aliases
 - `paths.py` — file paths
@@ -25,15 +25,15 @@ feed `systems.cleanup.CleanupManager` even when embeds update in place.
 **Implementation:**
 - `bot.py` — entry point, event handlers, watchdog setup
 - `handlers/commands.py` — all commands
-- `core/player.py` — MusicPlayer, queue, shuffle
+- `core/player.py` — MusicPlayer, queue, shuffle. `switch_playlist()` is synchronous (no await).
 - `core/playback.py` — _play_current, _play_next, FFmpeg callbacks (session-guarded playback tokens)
 - `core/track.py` — Track class, library loading, playlist discovery
 - `systems/spam_protection.py` — 5-layer spam protection
-- `systems/cleanup.py` — dual cleanup (TTL + history scan)
+- `systems/cleanup.py` — dual cleanup (TTL + history scan). Protects now-playing and pinned messages.
 - `systems/voice_manager.py` — auto-pause/disconnect/resume
 - `systems/watchdog.py` — playback hang detection
 - `utils/discord_helpers.py` — safe Discord wrappers
-- `utils/persistence.py` — channel storage, playlist persistence
+- `utils/persistence.py` — channel storage, playlist persistence. Creates directories atomically.
 - `utils/context_managers.py` — suppress_callbacks (cancels playback session), reconnecting_state
 
 ## Command Structure

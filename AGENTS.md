@@ -5,10 +5,10 @@ Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.1
 ## Agent Interaction Preferences
 
 - Audience: novice.
-- Max 120 words.
-- Format: **Why** (1–2 sentences) → **How** (3–5 bullets or tiny code) → **Next** (1 action).
-- Explain why + how; no fluff.
-- Note defaults, side effects, risks, rollback in one line.
+- Max 200 words.
+- Format: 
+**Answer** (1–3 sentences) → **Why** (1–3 sentences) → **How** (3–5 bullets or tiny code) → **Next** (Short recommendation).
+- Note defaults, side effects, risks, in one line.
 - Prefer stdlib; minimal deps.
 - If unsure: “Unknown” + 1 quick test.
 

@@ -101,6 +101,45 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM Verify virtual environment is active
+for /f "tokens=*" %%p in ('python -c "import sys; print(sys.executable)" 2^>nul') do set "VENV_PYTHON=%%p"
+echo !VENV_PYTHON! | findstr /i "venv" >nul
+if errorlevel 1 (
+    echo WARNING: Virtual environment may not be activated properly.
+    echo Python is using: !VENV_PYTHON!
+    echo Expected path to contain 'venv'
+    echo.
+    echo The virtual environment appears to be corrupted or wasn't created correctly.
+    set /p "RECREATE_VENV=Delete and recreate the virtual environment? (Y/n): "
+    if /i not "!RECREATE_VENV!"=="n" (
+        echo.
+        echo Removing corrupted virtual environment...
+        rmdir /s /q venv
+        echo Creating fresh virtual environment...
+        python -m venv venv
+        if errorlevel 1 (
+            echo.
+            echo ERROR: Failed to create virtual environment
+            pause
+            exit /b 1
+        )
+        call venv\Scripts\activate
+        if errorlevel 1 (
+            echo ERROR: Failed to activate virtual environment.
+            pause
+            exit /b 1
+        )
+        echo Virtual environment recreated and activated successfully.
+    ) else (
+        echo Setup cancelled.
+        pause
+        exit /b 1
+    )
+)
+echo Virtual environment activated successfully.
+timeout /t 1 /nobreak >nul
+echo.
+
 echo Installing dependencies...
 python -m pip install --upgrade pip --quiet
 if errorlevel 1 (
@@ -127,7 +166,7 @@ echo.
 
 if exist ".env" (
     echo WARNING: .env file already exists.
-	echo.
+    echo.
     set /p "OVERWRITE=Do you want to overwrite it? (y/N): "
     for /f "tokens=1" %%A in ("!OVERWRITE!") do set "OVERWRITE=%%A"
     set "OVERWRITE=!OVERWRITE:~0,1!"
@@ -140,7 +179,7 @@ if exist ".env" (
     )
     echo.
     echo Overwriting existing .env file...
-	echo.
+    echo.
     timeout /t 2 /nobreak >nul
 )
 
@@ -157,6 +196,28 @@ if "%BOT_TOKEN%"=="" (
     echo ERROR: Bot token cannot be empty.
     echo Please enter your token.
     goto ASK_TOKEN
+)
+
+REM Validate token length (Discord tokens are typically 59+ characters)
+set "TOKEN_LEN=0"
+set "TOKEN_COPY=%BOT_TOKEN%"
+:COUNT_LOOP
+if defined TOKEN_COPY (
+    set "TOKEN_COPY=%TOKEN_COPY:~1%"
+    set /a TOKEN_LEN+=1
+    goto COUNT_LOOP
+)
+
+if %TOKEN_LEN% LSS 50 (
+    echo.
+    echo WARNING: Token seems unusually short ^(%TOKEN_LEN% characters^).
+    echo Discord bot tokens are typically 59+ characters long.
+    echo.
+    set /p "CONTINUE_TOKEN=Continue anyway? (y/N): "
+    if /i not "!CONTINUE_TOKEN!"=="y" (
+        echo.
+        goto ASK_TOKEN
+    )
 )
 echo.
 timeout /t 1 /nobreak >nul
@@ -204,7 +265,7 @@ if not exist "%MUSIC_PATH%" (
         timeout /t 2 /nobreak >nul
     )
 ) else (
-	timeout /t 1 /nobreak >nul
+    timeout /t 1 /nobreak >nul
     echo Music folder found: %MUSIC_PATH%
 )
 echo.
@@ -260,11 +321,6 @@ echo We'll copy your audio into Jill's music folder so she can play it.
 echo Destination (the folder you just configured): %MUSIC_PATH%
 echo Folder structure is preserved ^(subfolders become playlists^).
 echo.
-echo Quick steps this helper will walk you through:
-echo   1. Choose the file format we should look for.
-echo   2. Point to the folder that holds your existing audio.
-echo   3. We'll mirror that structure into %MUSIC_PATH% as .opus files.
-echo.
 timeout /t 1 /nobreak >nul
 
 :ASK_SOURCE_FOLDER
@@ -319,6 +375,28 @@ echo Destination: %MUSIC_PATH%
 echo Format: %FILE_FORMAT% ^> .opus
 echo Folder structure will be mirrored so playlists stay organized.
 echo.
+
+REM Check available disk space
+echo Checking available disk space...
+for /f "tokens=3" %%a in ('dir "%MUSIC_PATH%" ^| findstr /C:"bytes free"') do set "FREE_BYTES=%%a"
+set "FREE_BYTES=%FREE_BYTES:,=%"
+if defined FREE_BYTES (
+    set /a FREE_GB=%FREE_BYTES:~0,-9%
+    if not defined FREE_GB set "FREE_GB=0"
+    echo Available space at destination: !FREE_GB!GB
+    if !FREE_GB! LSS 1 (
+        echo WARNING: Less than 1GB available. Conversion may fail if you run out of space.
+        echo.
+        set /p "CONTINUE_SPACE=Continue anyway? (y/N): "
+        if /i not "!CONTINUE_SPACE!"=="y" (
+            echo Conversion cancelled.
+            timeout /t 2 /nobreak >nul
+            goto :EOF
+        )
+    )
+)
+echo.
+
 set /p "CONFIRM=Proceed with conversion? (Y/n): "
 if /i "%CONFIRM%"=="n" (
     echo Conversion cancelled.
@@ -352,32 +430,57 @@ echo.
 
 set "SOURCE_BASE=!SOURCE_FOLDER!"
 set "SUCCESSFUL=0"
+set "SKIPPED=0"
+set "FAILED=0"
+set "CURRENT_COUNT=0"
 for /r "%SOURCE_FOLDER%" %%f in (*.%FILE_FORMAT%) do (
+    set /a CURRENT_COUNT+=1
     set "CURRENT_FILE=%%f"
     set "REL_PATH=!CURRENT_FILE:%SOURCE_BASE%=!"
     set "DEST_PATH=!MUSIC_PATH!!REL_PATH!"
     for %%I in ("!DEST_PATH!") do set "DEST_DIR=%%~dpI"
-    if not exist "!DEST_DIR!" mkdir "!DEST_DIR!" >nul 2>&1
     for %%I in ("!DEST_PATH!") do set "DEST_FILE=%%~dpnI"
-    set "FFMPEG_ARGS=-c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20"
-    if /i "!FILE_FORMAT!"=="opus" set "FFMPEG_ARGS=-c copy"
-    ffmpeg -i "%%f" !FFMPEG_ARGS! "!DEST_FILE!.opus" -loglevel error -n < nul
-    if errorlevel 1 (
-        echo WARNING: Failed to convert: %%f
+    set "BASENAME=%%~nxf"
+
+    if not exist "!DEST_DIR!" mkdir "!DEST_DIR!" >nul 2>&1
+
+    REM Check if file already exists
+    if exist "!DEST_FILE!.opus" (
+        echo [!CURRENT_COUNT!/!FILE_COUNT!] Skipping ^(already exists^): !BASENAME!
+        set /a SKIPPED+=1
     ) else (
-        set /a SUCCESSFUL+=1
+        echo [!CURRENT_COUNT!/!FILE_COUNT!] Converting: !BASENAME!
+
+        REM Set FFmpeg args (removed -frame_duration for compatibility)
+        set "FFMPEG_ARGS=-c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20"
+        if /i "!FILE_FORMAT!"=="opus" set "FFMPEG_ARGS=-c copy"
+
+        ffmpeg -i "%%f" !FFMPEG_ARGS! "!DEST_FILE!.opus" -loglevel error -n < nul
+        if errorlevel 1 (
+            echo     ERROR: Failed to convert this file
+            set /a FAILED+=1
+        ) else (
+            set /a SUCCESSFUL+=1
+        )
     )
 )
 
 echo.
-echo Successfully converted !SUCCESSFUL! file(s).
+echo ========================================
+echo Conversion Summary
+echo ========================================
+echo Total files found: !FILE_COUNT!
+echo Successfully converted: !SUCCESSFUL!
+if !SKIPPED! GTR 0 echo Skipped ^(already exists^): !SKIPPED!
+if !FAILED! GTR 0 echo Failed: !FAILED!
+echo.
 timeout /t 2 /nobreak >nul
 
 set /p "DELETE_ORIGINALS=Delete original files after conversion? (y/N): "
 if /i "!DELETE_ORIGINALS!"=="y" (
     if /i "!FILE_FORMAT!"=="opus" (
         if /i "!SOURCE_IS_DEST!"=="true" (
-		    timeout /t 1 /nobreak >nul
+            timeout /t 1 /nobreak >nul
             echo.
             echo Skipping deletion: source and destination are the same folder and files are already .opus.
             timeout /t 2 /nobreak >nul
@@ -422,8 +525,8 @@ goto :EOF
 
 :AFTER_CONVERSION
 
-timeout /t 1 /nobreak >nul
 echo.
+timeout /t 1 /nobreak >nul
 echo ========================================
 echo Creating Configuration
 echo ========================================
@@ -449,14 +552,15 @@ if "%DEFAULT_PATH%"=="1" (
 echo.
 if exist ".env.example" (
     set /p "DELETE_EXAMPLE=Delete .env.example (no longer needed)? (Y/n): "
-    if /i not "%DELETE_EXAMPLE%"=="n" (
+    if /i not "!DELETE_EXAMPLE!"=="n" (
         del ".env.example" 2>nul
         echo .env.example deleted.
         timeout /t 2 /nobreak >nul
         echo.
     )
-)
 
+echo.
+timeout /t 1 /nobreak >nul
 echo ========================================
 echo SETUP COMPLETED - SAFE TO CLOSE SCRIPT
 echo ========================================
@@ -466,7 +570,7 @@ echo.
 if "%DEFAULT_PATH%"=="1" (
     echo Music folder: music\ - inside Jill's folder
     echo.
-    echo	Your bot folder is fully portable:
+    echo   Your bot folder is fully portable:
     echo   - Virtual environment: venv\ - inside Jill's folder
     echo   - Music folder: music\ - inside Jill's folder
 ) else (
@@ -476,8 +580,7 @@ if "%DEFAULT_PATH%"=="1" (
 )
 if "%CONVERSION_SUCCESS%"=="true" (
     echo.
-    echo Next step:
-    echo   1. Run scripts/win_run_bot.bat to start your bot.
+    echo Next step: Run scripts/win_run_bot.bat to start your bot.
 ) else (
     echo.
     echo Next steps:

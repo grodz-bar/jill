@@ -102,6 +102,43 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Verify virtual environment is active
+VENV_PYTHON=$(python -c "import sys; print(sys.executable)" 2>/dev/null)
+if [[ ! "$VENV_PYTHON" =~ "venv" ]]; then
+    echo "WARNING: Virtual environment may not be activated properly."
+    echo "Python is using: $VENV_PYTHON"
+    echo "Expected path to contain 'venv'"
+    echo ""
+    echo "The virtual environment appears to be corrupted or wasn't created correctly."
+    read -p "Delete and recreate the virtual environment? (Y/n): " RECREATE_VENV
+    if [[ ! "$RECREATE_VENV" =~ ^[Nn]$ ]]; then
+        echo ""
+        echo "Removing corrupted virtual environment..."
+        rm -rf venv
+        echo "Creating fresh virtual environment..."
+        if ! python3 -m venv venv; then
+            echo ""
+            echo "ERROR: Failed to create virtual environment"
+            read -p "Press Enter to exit..."
+            exit 1
+        fi
+        source venv/bin/activate
+        if [ $? -ne 0 ]; then
+            echo "ERROR: Failed to activate virtual environment."
+            read -p "Press Enter to exit..."
+            exit 1
+        fi
+        echo "Virtual environment recreated and activated successfully."
+    else
+        echo "Setup cancelled."
+        read -p "Press Enter to exit..."
+        exit 1
+    fi
+fi
+echo "Virtual environment activated successfully."
+sleep 1
+echo ""
+
 echo "Installing dependencies..."
 if ! python -m pip install --upgrade pip --quiet; then
     echo ""
@@ -156,6 +193,18 @@ while true; do
         echo "ERROR: Bot token cannot be empty."
         echo "Please enter your token."
     else
+        # Validate token format (Discord tokens are typically 59+ characters)
+        if [ ${#BOT_TOKEN} -lt 50 ]; then
+            echo ""
+            echo "WARNING: Token seems unusually short (${#BOT_TOKEN} characters)."
+            echo "Discord bot tokens are typically 59+ characters long."
+            echo ""
+            read -p "Continue anyway? (y/N): " CONTINUE_TOKEN
+            if [[ ! "$CONTINUE_TOKEN" =~ ^[Yy]$ ]]; then
+                echo ""
+                continue
+            fi
+        fi
         break
     fi
 done
@@ -220,25 +269,8 @@ echo ""
 echo "OPTIONAL STEP:"
 echo "--------------------------"
 CONVERSION_SUCCESS=false
-echo "Ready to convert and move your music files into $MUSIC_PATH as .opus files."
-echo ""
-echo "In this step, we'll:"
-echo "1. Scan a folder for music files"
-echo "2. Convert them to .opus"
-echo "3. Make sure they're inside the music folder you set for Jill"
-echo "4. Delete the pre-conversion music files (IF you want)"
-echo "Note: The subfolder structure will stay the exact same"
-echo ""
-echo ""
-read -p "Start the guided conversion now? (y/N): " CONVERT_FILES
-if [[ "$CONVERT_FILES" =~ ^[Yy]$ ]]; then
-    run_conversion
-else
-    echo "Skipping conversion."
-    sleep 2
-fi
 
-# Function for conversion
+# Function for conversion (defined before use)
 run_conversion() {
     echo ""
     echo "Checking for FFmpeg..."
@@ -265,11 +297,6 @@ run_conversion() {
         echo "We'll copy your audio into Jill's music folder so she can play it."
         echo "Destination (the folder you just configured): $MUSIC_PATH"
         echo "Folder structure is preserved (subfolders become playlists)."
-        echo ""
-        echo "Quick steps this helper will walk you through:"
-        echo "  1. Choose the file format we should look for."
-        echo "  2. Point to the folder that holds your existing audio."
-        echo "  3. We'll mirror that structure into $MUSIC_PATH as .opus files."
         echo ""
         sleep 1
 
@@ -338,6 +365,26 @@ run_conversion() {
     echo "Format: $FILE_FORMAT > .opus"
     echo "Folder structure will be mirrored so playlists stay organized."
     echo ""
+
+    # Check available disk space
+    echo "Checking available disk space..."
+    AVAILABLE_KB=$(df -P "$MUSIC_PATH" 2>/dev/null | awk 'NR==2 {print $4}')
+    if [ -n "$AVAILABLE_KB" ]; then
+        AVAILABLE_GB=$((AVAILABLE_KB / 1024 / 1024))
+        echo "Available space at destination: ${AVAILABLE_GB}GB"
+        if [ "$AVAILABLE_GB" -lt 1 ]; then
+            echo "WARNING: Less than 1GB available. Conversion may fail if you run out of space."
+            echo ""
+            read -p "Continue anyway? (y/N): " CONTINUE_SPACE
+            if [[ ! "$CONTINUE_SPACE" =~ ^[Yy]$ ]]; then
+                echo "Conversion cancelled."
+                sleep 2
+                return
+            fi
+        fi
+    fi
+    echo ""
+
     read -p "Proceed with conversion? (Y/n): " CONFIRM
     if [[ "$CONFIRM" =~ ^[Nn]$ ]]; then
         echo "Conversion cancelled."
@@ -369,18 +416,32 @@ run_conversion() {
     echo ""
 
     SUCCESSFUL=0
+    SKIPPED=0
+    FAILED=0
+    CURRENT_COUNT=0
     SOURCE_BASE="$SOURCE_FOLDER"
 
     while IFS= read -r -d '' file; do
+        ((CURRENT_COUNT++))
         CURRENT_FILE="$file"
         REL_PATH="${CURRENT_FILE#$SOURCE_BASE}"
         DEST_PATH="$MUSIC_PATH$REL_PATH"
         DEST_DIR="$(dirname "$DEST_PATH")"
         DEST_FILE="${DEST_PATH%.*}"
+        BASENAME="$(basename "$file")"
 
         mkdir -p "$DEST_DIR" 2>/dev/null || true
 
-        # Set ffmpeg args based on file format
+        # Check if file already exists
+        if [ -f "$DEST_FILE.opus" ]; then
+            echo "[$CURRENT_COUNT/$FILE_COUNT] Skipping (already exists): $BASENAME"
+            ((SKIPPED++))
+            continue
+        fi
+
+        echo "[$CURRENT_COUNT/$FILE_COUNT] Converting: $BASENAME"
+
+        # Set ffmpeg args based on file format (removed -frame_duration for compatibility)
         if [[ "${FILE_FORMAT,,}" == "opus" ]]; then
             FFMPEG_ARGS="-c copy"
         else
@@ -391,12 +452,24 @@ run_conversion() {
         if ffmpeg -i "$file" $FFMPEG_ARGS "$DEST_FILE.opus" -loglevel error -n < /dev/null 2>&1; then
             ((SUCCESSFUL++))
         else
-            echo "WARNING: Failed to convert: $file"
+            echo "    ERROR: Failed to convert this file"
+            ((FAILED++))
         fi
     done < <(find "$SOURCE_FOLDER" -type f -iname "*.$FILE_FORMAT" -print0)
 
     echo ""
-    echo "Successfully converted $SUCCESSFUL file(s)."
+    echo "========================================"
+    echo "Conversion Summary"
+    echo "========================================"
+    echo "Total files found: $FILE_COUNT"
+    echo "Successfully converted: $SUCCESSFUL"
+    if [ "$SKIPPED" -gt 0 ]; then
+        echo "Skipped (already exists): $SKIPPED"
+    fi
+    if [ "$FAILED" -gt 0 ]; then
+        echo "Failed: $FAILED"
+    fi
+    echo ""
     sleep 2
 
     read -p "Delete original files after conversion? (y/N): " DELETE_ORIGINALS
@@ -437,9 +510,23 @@ run_conversion() {
     CONVERSION_SUCCESS=true
 }
 
-# Call conversion if requested
+# Prompt user for conversion
+echo "Ready to convert and move your music files into $MUSIC_PATH as .opus files."
+echo ""
+echo "In this step, we'll:"
+echo "1. Scan a folder for music files"
+echo "2. Convert them to .opus"
+echo "3. Make sure they're inside the music folder you set for Jill"
+echo "4. Delete the pre-conversion music files (IF you want)"
+echo "Note: The subfolder structure will stay the exact same"
+echo ""
+echo ""
+read -p "Start the guided conversion now? (y/N): " CONVERT_FILES
 if [[ "$CONVERT_FILES" =~ ^[Yy]$ ]]; then
     run_conversion
+else
+    echo "Skipping conversion."
+    sleep 2
 fi
 
 sleep 1
@@ -476,6 +563,8 @@ if [ -f ".env.example" ]; then
     fi
 fi
 
+echo ""
+sleep 1
 echo "========================================"
 echo "SETUP COMPLETED - SAFE TO CLOSE SCRIPT"
 echo "========================================"
@@ -496,8 +585,7 @@ fi
 
 if [ "$CONVERSION_SUCCESS" = true ]; then
     echo ""
-    echo "Next step:"
-    echo "  1. Run scripts/linux_run_bot.sh to start your bot."
+    echo "Next step: Run scripts/linux_run_bot.sh to start your bot."
 else
     echo ""
     echo "Next steps:"

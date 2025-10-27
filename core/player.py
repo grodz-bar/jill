@@ -40,7 +40,13 @@ from systems.voice_manager import VoiceManager, PlaybackState
 from core.track import Track, load_library, Playlist, discover_playlists, has_playlist_structure
 from config.messages import DRINK_EMOJIS
 from config.timing import MAX_HISTORY
-from utils.persistence import load_last_channels, save_last_channel, load_last_playlists, save_last_playlist
+from utils.persistence import (
+    load_last_channels,
+    save_last_channel,
+    load_last_playlists,
+    save_last_playlist,
+    save_last_playlist_immediate,
+)
 
 
 class MusicPlayer:
@@ -156,7 +162,11 @@ class MusicPlayer:
             # If saved playlist not found, use first available
             if not playlist_to_load:
                 playlist_to_load = self.available_playlists[0]
-                logger.info(f"Guild {self.guild_id}: Saved playlist not found, using first available: {playlist_to_load.display_name}")
+                logger.info(
+                    f"Guild {self.guild_id}: Saved playlist not found, using first available: {playlist_to_load.display_name}"
+                )
+                # Persist fallback so future restarts load the existing playlist immediately
+                save_last_playlist_immediate(self.guild_id, playlist_to_load.playlist_id)
 
             self.current_playlist = playlist_to_load
             self.library, self.track_by_index = load_library(self.guild_id, playlist_to_load.playlist_path)

@@ -26,7 +26,7 @@ import os
 import json
 import asyncio
 import logging
-from typing import Dict
+from typing import Dict, Iterable
 
 logger = logging.getLogger(__name__)
 
@@ -278,20 +278,7 @@ async def _flush_playlist_saves(immediate: bool = False):
     _pending_playlist_saves.clear()
 
     try:
-        data = load_last_playlists()
-        for gid in to_save:
-            if gid in _playlist_cache:
-                data[gid] = _playlist_cache[gid]
-
-        # Atomic write: write to temp file then replace
-        import tempfile
-        _dir = os.path.dirname(PLAYLIST_STORAGE_FILE) or "."
-        os.makedirs(_dir, exist_ok=True)
-        with tempfile.NamedTemporaryFile('w', delete=False, dir=_dir, encoding='utf-8') as _tmp:
-            json.dump(data, _tmp, indent=2)
-            _tmp_path = _tmp.name
-        os.replace(_tmp_path, PLAYLIST_STORAGE_FILE)
-
+        _write_playlists_to_disk(to_save)
         logger.debug(f"Flushed {len(to_save)} playlist save(s) to disk")
 
     except (OSError, json.JSONDecodeError, ValueError):
@@ -301,6 +288,65 @@ async def _flush_playlist_saves(immediate: bool = False):
         if _pending_playlist_saves:
             global _last_playlist_save_task
             _last_playlist_save_task = asyncio.create_task(_flush_playlist_saves())
+
+
+def _write_playlists_to_disk(guild_ids: Iterable[int]) -> None:
+    """
+    Write playlist cache entries for the provided guilds to disk.
+
+    Args:
+        guild_ids: Iterable of guild IDs to write to disk
+    """
+    if not guild_ids:
+        return
+
+    data = load_last_playlists()
+    for gid in guild_ids:
+        if gid in _playlist_cache:
+            data[gid] = _playlist_cache[gid]
+
+    # Atomic write: write to temp file then replace
+    import tempfile
+    _dir = os.path.dirname(PLAYLIST_STORAGE_FILE) or "."
+    os.makedirs(_dir, exist_ok=True)
+    with tempfile.NamedTemporaryFile('w', delete=False, dir=_dir, encoding='utf-8') as _tmp:
+        json.dump(data, _tmp, indent=2)
+        _tmp_path = _tmp.name
+    os.replace(_tmp_path, PLAYLIST_STORAGE_FILE)
+
+
+def save_last_playlist_immediate(guild_id: int, playlist_id: str) -> None:
+    """
+    Persist the last used playlist ID for a guild without waiting.
+
+    This bypasses the normal 10-second batch delay and writes immediately
+    to disk. Use this for critical state changes like fallback playlist
+    selection where immediate persistence is required.
+
+    Args:
+        guild_id: Discord guild ID
+        playlist_id: Playlist identifier (folder name)
+    """
+    global _playlist_cache, _playlist_cache_loaded
+
+    try:
+        if not _playlist_cache_loaded:
+            load_last_playlists()
+
+        # Skip if already matches
+        if _playlist_cache.get(guild_id) == playlist_id:
+            return
+
+        _playlist_cache[guild_id] = playlist_id
+
+        # Remove from pending saves to avoid duplicate writes
+        _pending_playlist_saves.discard(guild_id)
+
+        # Write immediately to disk
+        _write_playlists_to_disk({guild_id})
+
+    except Exception:
+        logger.exception("Could not persist playlist storage immediately")
 
 
 async def flush_all_immediately():

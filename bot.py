@@ -159,8 +159,7 @@ async def on_ready():
 
             # Create/restore player (this starts cleanup workers automatically)
             player = await get_player(guild_id, bot, bot.user.id)
-            player.text_channel = text_channel
-            player.cleanup_manager.text_channel = text_channel
+            player.set_text_channel(text_channel)
 
             logger.info(f"Guild {guild_id}: Restored cleanup on channel #{text_channel.name}")
 

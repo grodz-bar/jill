@@ -601,7 +601,7 @@ echo ""
 # Show masked token (first 10 and last 5 characters)
 TOKEN_START="${BOT_TOKEN:0:10}"
 TOKEN_END="${BOT_TOKEN: -5}"
-echo "Bot Token: ${TOKEN_START}...${TOKEN_END}"
+echo "Bot Token: ${TOKEN_START}...${TOKEN_END} (partially hidden for security)"
 if [ "$DEFAULT_PATH" -eq 1 ]; then
     echo "Music Folder: music/ (default - inside Jill's folder)"
 else

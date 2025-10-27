@@ -622,7 +622,7 @@ echo.
 REM Show masked token (first 10 and last 5 characters)
 set "TOKEN_START=%BOT_TOKEN:~0,10%"
 set "TOKEN_END=%BOT_TOKEN:~-5%"
-echo Bot Token: %TOKEN_START%...%TOKEN_END%
+echo Bot Token: %TOKEN_START%...%TOKEN_END% ^(partially hidden for security^)
 if "%DEFAULT_PATH%"=="1" (
     echo Music Folder: music\ ^(default - inside Jill's folder^)
 ) else (
@@ -644,20 +644,27 @@ echo Creating Configuration
 echo ========================================
 echo.
 
-set "DEFAULT_PATH_VALUE=%DEFAULT_PATH%"
-set "BOT_TOKEN_ESC=%BOT_TOKEN%"
-set "MUSIC_PATH_ESC=%MUSIC_PATH%"
-powershell -NoProfile -Command ^
-  "$ErrorActionPreference='Stop';" ^
-  "$lines = @('DISCORD_BOT_TOKEN=' + $env:BOT_TOKEN_ESC);" ^
-  "if ($env:DEFAULT_PATH_VALUE -eq '0') { $lines += 'MUSIC_FOLDER=' + $env:MUSIC_PATH_ESC }" ^
-  "Set-Content -Path '.env' -Value $lines -Encoding ASCII"
+REM Create .env file using simple echo commands (more reliable than PowerShell)
+(
+    echo DISCORD_BOT_TOKEN=%BOT_TOKEN%
+) > .env
 
 if errorlevel 1 (
     echo.
-    echo ERROR: Failed to create .env file using PowerShell.
+    echo ERROR: Failed to create .env file.
     pause
     exit /b 1
+)
+
+REM Add MUSIC_FOLDER line only if using custom path
+if "%DEFAULT_PATH%"=="0" (
+    echo MUSIC_FOLDER=%MUSIC_PATH%>> .env
+    if errorlevel 1 (
+        echo.
+        echo ERROR: Failed to write MUSIC_FOLDER to .env file.
+        pause
+        exit /b 1
+    )
 )
 
 if not exist ".env" (

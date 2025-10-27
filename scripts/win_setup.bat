@@ -110,8 +110,10 @@ if errorlevel 1 (
     echo Expected path to contain 'venv'
     echo.
     echo The virtual environment appears to be corrupted or wasn't created correctly.
-    set /p "RECREATE_VENV=Delete and recreate the virtual environment? (Y/n): "
-    if /i not "!RECREATE_VENV!"=="n" (
+    echo.
+    echo WARNING: This will delete the existing venv folder.
+    set /p "RECREATE_VENV=Type 'yes' to delete and recreate: "
+    if /i "!RECREATE_VENV!"=="yes" (
         echo.
         echo Removing corrupted virtual environment...
         rmdir /s /q venv
@@ -208,6 +210,20 @@ if defined TOKEN_COPY (
     goto COUNT_LOOP
 )
 
+REM Validate token format (Discord tokens contain dots)
+echo %BOT_TOKEN% | findstr /C:"." >nul
+if errorlevel 1 (
+    echo.
+    echo WARNING: Token doesn't appear to be a valid Discord bot token.
+    echo Discord tokens typically contain dots ^(periods^).
+    echo.
+    set /p "CONTINUE_TOKEN=Continue anyway? (y/N): "
+    if /i not "!CONTINUE_TOKEN!"=="y" (
+        echo.
+        goto ASK_TOKEN
+    )
+)
+
 if %TOKEN_LEN% LSS 50 (
     echo.
     echo WARNING: Token seems unusually short ^(%TOKEN_LEN% characters^).
@@ -268,6 +284,20 @@ if not exist "%MUSIC_PATH%" (
     timeout /t 1 /nobreak >nul
     echo Music folder found: %MUSIC_PATH%
 )
+
+REM Test write permissions
+echo Testing write permissions...
+echo test > "%MUSIC_PATH%.write_test" 2>nul
+if errorlevel 1 (
+    echo WARNING: Cannot write to music folder: %MUSIC_PATH%
+    echo Please check folder permissions.
+    timeout /t 3 /nobreak >nul
+) else (
+    del "%MUSIC_PATH%.write_test" 2>nul
+    echo Write permissions OK.
+    timeout /t 1 /nobreak >nul
+)
+
 echo.
 timeout /t 1 /nobreak >nul
 echo.
@@ -310,6 +340,35 @@ if errorlevel 1 (
 )
 
 echo FFmpeg found.
+timeout /t 2 /nobreak >nul
+
+echo Checking FFmpeg capabilities...
+
+REM Check if FFmpeg has libopus encoder
+ffmpeg -codecs 2>nul | findstr /i "libopus" >nul 2>&1
+if errorlevel 1 (
+    echo.
+    echo ERROR: FFmpeg does not have libopus encoder support.
+    echo Please install a version of FFmpeg with libopus support.
+    echo See 03-SETUP-Windows.txt for more information.
+    echo.
+    echo Press any key to continue without conversion...
+    pause >nul
+    echo Skipping conversion.
+    timeout /t 2 /nobreak >nul
+    goto :EOF
+)
+echo FFmpeg has libopus encoder support.
+
+REM Check if FFmpeg supports -frame_duration parameter
+set "SUPPORTS_FRAME_DURATION=false"
+ffmpeg -h encoder=libopus 2>nul | findstr /i "frame_duration" >nul 2>&1
+if not errorlevel 1 (
+    set "SUPPORTS_FRAME_DURATION=true"
+    echo FFmpeg supports -frame_duration parameter ^(better Discord playback^).
+) else (
+    echo FFmpeg does not support -frame_duration parameter ^(will use defaults^).
+)
 timeout /t 2 /nobreak >nul
 
 :CONVERSION_GUIDE
@@ -427,6 +486,9 @@ echo Found !FILE_COUNT! %FILE_FORMAT% file(s).
 echo Starting conversion...
 echo This may take a while depending on the number of files.
 echo.
+echo NOTE: Files already converted to .opus will be skipped automatically.
+echo You can safely stop and resume conversion at any time.
+echo.
 
 set "SOURCE_BASE=!SOURCE_FOLDER!"
 set "SUCCESSFUL=0"
@@ -451,9 +513,16 @@ for /r "%SOURCE_FOLDER%" %%f in (*.%FILE_FORMAT%) do (
     ) else (
         echo [!CURRENT_COUNT!/!FILE_COUNT!] Converting: !BASENAME!
 
-        REM Set FFmpeg args (removed -frame_duration for compatibility)
-        set "FFMPEG_ARGS=-c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20"
-        if /i "!FILE_FORMAT!"=="opus" set "FFMPEG_ARGS=-c copy"
+        REM Set FFmpeg args (conditionally using -frame_duration for better Discord playback)
+        if /i "!FILE_FORMAT!"=="opus" (
+            set "FFMPEG_ARGS=-c copy"
+        ) else (
+            if "!SUPPORTS_FRAME_DURATION!"=="true" (
+                set "FFMPEG_ARGS=-c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20"
+            ) else (
+                set "FFMPEG_ARGS=-c:a libopus -b:a 256k -ar 48000 -ac 2"
+            )
+        )
 
         ffmpeg -i "%%f" !FFMPEG_ARGS! "!DEST_FILE!.opus" -loglevel error -n < nul
         if errorlevel 1 (
@@ -528,6 +597,32 @@ goto :EOF
 echo.
 timeout /t 1 /nobreak >nul
 echo ========================================
+echo Configuration Summary
+echo ========================================
+echo.
+echo The following settings will be saved to .env:
+echo.
+REM Show masked token (first 10 and last 5 characters)
+set "TOKEN_START=%BOT_TOKEN:~0,10%"
+set "TOKEN_END=%BOT_TOKEN:~-5%"
+echo Bot Token: %TOKEN_START%...%TOKEN_END%
+if "%DEFAULT_PATH%"=="1" (
+    echo Music Folder: music\ ^(default - inside Jill's folder^)
+) else (
+    echo Music Folder: %MUSIC_PATH%
+)
+echo.
+set /p "CONFIRM_CONFIG=Is this correct? (Y/n): "
+if /i "%CONFIRM_CONFIG%"=="n" (
+    echo.
+    echo Configuration cancelled. Please run the setup script again.
+    pause
+    exit /b 0
+)
+
+echo.
+timeout /t 1 /nobreak >nul
+echo ========================================
 echo Creating Configuration
 echo ========================================
 echo.
@@ -540,6 +635,20 @@ powershell -NoProfile -Command ^
   "$lines = @('DISCORD_BOT_TOKEN=' + $env:BOT_TOKEN_ESC);" ^
   "if ($env:DEFAULT_PATH_VALUE -eq '0') { $lines += 'MUSIC_FOLDER=' + $env:MUSIC_PATH_ESC }" ^
   "Set-Content -Path '.env' -Value $lines -Encoding ASCII"
+
+if errorlevel 1 (
+    echo.
+    echo ERROR: Failed to create .env file using PowerShell.
+    pause
+    exit /b 1
+)
+
+if not exist ".env" (
+    echo.
+    echo ERROR: .env file was not created successfully.
+    pause
+    exit /b 1
+)
 
 if "%DEFAULT_PATH%"=="1" (
     echo Using default music folder: music\ ^(inside Jill's folder^)

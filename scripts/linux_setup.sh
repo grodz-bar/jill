@@ -110,8 +110,10 @@ if [[ ! "$VENV_PYTHON" =~ "venv" ]]; then
     echo "Expected path to contain 'venv'"
     echo ""
     echo "The virtual environment appears to be corrupted or wasn't created correctly."
-    read -p "Delete and recreate the virtual environment? (Y/n): " RECREATE_VENV
-    if [[ ! "$RECREATE_VENV" =~ ^[Nn]$ ]]; then
+    echo ""
+    echo "WARNING: This will delete the existing venv folder."
+    read -p "Type 'yes' to delete and recreate: " RECREATE_VENV
+    if [[ "$RECREATE_VENV" == "yes" ]]; then
         echo ""
         echo "Removing corrupted virtual environment..."
         rm -rf venv
@@ -193,7 +195,20 @@ while true; do
         echo "ERROR: Bot token cannot be empty."
         echo "Please enter your token."
     else
-        # Validate token format (Discord tokens are typically 59+ characters)
+        # Validate token format (Discord tokens contain dots)
+        if [[ ! "$BOT_TOKEN" == *.* ]]; then
+            echo ""
+            echo "WARNING: Token doesn't appear to be a valid Discord bot token."
+            echo "Discord tokens typically contain dots (periods)."
+            echo ""
+            read -p "Continue anyway? (y/N): " CONTINUE_TOKEN
+            if [[ ! "$CONTINUE_TOKEN" =~ ^[Yy]$ ]]; then
+                echo ""
+                continue
+            fi
+        fi
+
+        # Validate token length (Discord tokens are typically 59+ characters)
         if [ ${#BOT_TOKEN} -lt 50 ]; then
             echo ""
             echo "WARNING: Token seems unusually short (${#BOT_TOKEN} characters)."
@@ -263,6 +278,19 @@ else
     sleep 1
     echo "Music folder found: $MUSIC_PATH"
 fi
+
+# Test write permissions
+echo "Testing write permissions..."
+if touch "$MUSIC_PATH.write_test" 2>/dev/null; then
+    rm -f "$MUSIC_PATH.write_test" 2>/dev/null
+    echo "Write permissions OK."
+    sleep 1
+else
+    echo "WARNING: Cannot write to music folder: $MUSIC_PATH"
+    echo "Please check folder permissions."
+    sleep 3
+fi
+
 echo ""
 sleep 1
 echo ""
@@ -287,6 +315,33 @@ run_conversion() {
     fi
 
     echo "FFmpeg found."
+    sleep 2
+
+    echo "Checking FFmpeg capabilities..."
+
+    # Check if FFmpeg has libopus encoder
+    if ! ffmpeg -codecs 2>/dev/null | grep -q "libopus"; then
+        echo ""
+        echo "ERROR: FFmpeg does not have libopus encoder support."
+        echo "Please install a version of FFmpeg with libopus support."
+        echo "See 03-SETUP-Linux.txt for more information."
+        echo ""
+        echo "Press any key to continue without conversion..."
+        read -n 1 -s
+        echo "Skipping conversion."
+        sleep 2
+        return
+    fi
+    echo "FFmpeg has libopus encoder support."
+
+    # Check if FFmpeg supports -frame_duration parameter
+    SUPPORTS_FRAME_DURATION=false
+    if ffmpeg -h encoder=libopus 2>/dev/null | grep -q "frame_duration"; then
+        SUPPORTS_FRAME_DURATION=true
+        echo "FFmpeg supports -frame_duration parameter (better Discord playback)."
+    else
+        echo "FFmpeg does not support -frame_duration parameter (will use defaults)."
+    fi
     sleep 2
 
     while true; do
@@ -358,61 +413,63 @@ run_conversion() {
             fi
             continue
         fi
-        break
-    done
 
-    echo "Destination: $MUSIC_PATH"
-    echo "Format: $FILE_FORMAT > .opus"
-    echo "Folder structure will be mirrored so playlists stay organized."
-    echo ""
+        echo "Destination: $MUSIC_PATH"
+        echo "Format: $FILE_FORMAT > .opus"
+        echo "Folder structure will be mirrored so playlists stay organized."
+        echo ""
 
-    # Check available disk space
-    echo "Checking available disk space..."
-    AVAILABLE_KB=$(df -P "$MUSIC_PATH" 2>/dev/null | awk 'NR==2 {print $4}')
-    if [ -n "$AVAILABLE_KB" ]; then
-        AVAILABLE_GB=$((AVAILABLE_KB / 1024 / 1024))
-        echo "Available space at destination: ${AVAILABLE_GB}GB"
-        if [ "$AVAILABLE_GB" -lt 1 ]; then
-            echo "WARNING: Less than 1GB available. Conversion may fail if you run out of space."
-            echo ""
-            read -p "Continue anyway? (y/N): " CONTINUE_SPACE
-            if [[ ! "$CONTINUE_SPACE" =~ ^[Yy]$ ]]; then
-                echo "Conversion cancelled."
-                sleep 2
-                return
+        # Check available disk space
+        echo "Checking available disk space..."
+        AVAILABLE_KB=$(df -P "$MUSIC_PATH" 2>/dev/null | awk 'NR==2 {print $4}')
+        if [ -n "$AVAILABLE_KB" ]; then
+            AVAILABLE_GB=$((AVAILABLE_KB / 1024 / 1024))
+            echo "Available space at destination: ${AVAILABLE_GB}GB"
+            if [ "$AVAILABLE_GB" -lt 1 ]; then
+                echo "WARNING: Less than 1GB available. Conversion may fail if you run out of space."
+                echo ""
+                read -p "Continue anyway? (y/N): " CONTINUE_SPACE
+                if [[ ! "$CONTINUE_SPACE" =~ ^[Yy]$ ]]; then
+                    echo "Conversion cancelled."
+                    sleep 2
+                    return
+                fi
             fi
         fi
-    fi
-    echo ""
-
-    read -p "Proceed with conversion? (Y/n): " CONFIRM
-    if [[ "$CONFIRM" =~ ^[Nn]$ ]]; then
-        echo "Conversion cancelled."
-        echo "Skipping conversion."
-        sleep 2
-        return
-    fi
-
-    # Count files
-    FILE_COUNT=$(find "$SOURCE_FOLDER" -type f -iname "*.$FILE_FORMAT" 2>/dev/null | wc -l)
-
-    if [ "$FILE_COUNT" -eq 0 ]; then
         echo ""
-        echo "No $FILE_FORMAT files found in: $SOURCE_FOLDER"
-        echo "Add your $FILE_FORMAT files to this folder and try again."
-        read -p "Would you like to try again? (Y/n): " TRY_AGAIN
-        if [[ "$TRY_AGAIN" =~ ^[Nn]$ ]]; then
+
+        read -p "Proceed with conversion? (Y/n): " CONFIRM
+        if [[ "$CONFIRM" =~ ^[Nn]$ ]]; then
+            echo "Conversion cancelled."
             echo "Skipping conversion."
             sleep 2
             return
         fi
-        run_conversion
-        return
-    fi
+
+        # Count files
+        FILE_COUNT=$(find "$SOURCE_FOLDER" -type f -iname "*.$FILE_FORMAT" 2>/dev/null | wc -l)
+
+        if [ "$FILE_COUNT" -eq 0 ]; then
+            echo ""
+            echo "No $FILE_FORMAT files found in: $SOURCE_FOLDER"
+            echo "Add your $FILE_FORMAT files to this folder and try again."
+            read -p "Would you like to try again? (Y/n): " TRY_AGAIN
+            if [[ "$TRY_AGAIN" =~ ^[Nn]$ ]]; then
+                echo "Skipping conversion."
+                sleep 2
+                return
+            fi
+            continue
+        fi
+        break
+    done
 
     echo "Found $FILE_COUNT $FILE_FORMAT file(s)."
     echo "Starting conversion..."
     echo "This may take a while depending on the number of files."
+    echo ""
+    echo "NOTE: Files already converted to .opus will be skipped automatically."
+    echo "You can safely stop and resume conversion at any time."
     echo ""
 
     SUCCESSFUL=0
@@ -441,11 +498,15 @@ run_conversion() {
 
         echo "[$CURRENT_COUNT/$FILE_COUNT] Converting: $BASENAME"
 
-        # Set ffmpeg args based on file format (removed -frame_duration for compatibility)
+        # Set ffmpeg args (conditionally using -frame_duration for better Discord playback)
         if [[ "${FILE_FORMAT,,}" == "opus" ]]; then
             FFMPEG_ARGS="-c copy"
         else
-            FFMPEG_ARGS="-c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20"
+            if [ "$SUPPORTS_FRAME_DURATION" = true ]; then
+                FFMPEG_ARGS="-c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20"
+            else
+                FFMPEG_ARGS="-c:a libopus -b:a 256k -ar 48000 -ac 2"
+            fi
         fi
 
         # Prevent ffmpeg from consuming stdin
@@ -532,6 +593,32 @@ fi
 sleep 1
 echo ""
 echo "========================================"
+echo "Configuration Summary"
+echo "========================================"
+echo ""
+echo "The following settings will be saved to .env:"
+echo ""
+# Show masked token (first 10 and last 5 characters)
+TOKEN_START="${BOT_TOKEN:0:10}"
+TOKEN_END="${BOT_TOKEN: -5}"
+echo "Bot Token: ${TOKEN_START}...${TOKEN_END}"
+if [ "$DEFAULT_PATH" -eq 1 ]; then
+    echo "Music Folder: music/ (default - inside Jill's folder)"
+else
+    echo "Music Folder: $MUSIC_PATH"
+fi
+echo ""
+read -p "Is this correct? (Y/n): " CONFIRM_CONFIG
+if [[ "$CONFIRM_CONFIG" =~ ^[Nn]$ ]]; then
+    echo ""
+    echo "Configuration cancelled. Please run the setup script again."
+    read -p "Press Enter to exit..."
+    exit 0
+fi
+
+sleep 1
+echo ""
+echo "========================================"
 echo "Creating Configuration"
 echo "========================================"
 echo ""
@@ -543,6 +630,20 @@ echo ""
         echo "MUSIC_FOLDER=$MUSIC_PATH"
     fi
 } > .env
+
+# Verify .env was created successfully
+if [ ! -f ".env" ]; then
+    echo ""
+    echo "ERROR: Failed to create .env file."
+    read -p "Press Enter to exit..."
+    exit 1
+fi
+
+# Set secure permissions on .env file (readable only by owner)
+chmod 600 .env 2>/dev/null || {
+    echo "WARNING: Could not set secure permissions on .env file."
+    echo "You may want to run: chmod 600 .env"
+}
 
 if [ "$DEFAULT_PATH" -eq 1 ]; then
     echo "Using default music folder: music/ (inside Jill's folder)"
@@ -562,6 +663,17 @@ if [ -f ".env.example" ]; then
         echo ""
     fi
 fi
+
+# Make the run bot script executable
+echo ""
+echo "Making run script executable..."
+if chmod +x scripts/linux_run_bot.sh 2>/dev/null; then
+    echo "scripts/linux_run_bot.sh is now executable."
+else
+    echo "WARNING: Could not make scripts/linux_run_bot.sh executable."
+    echo "You may need to run: chmod +x scripts/linux_run_bot.sh"
+fi
+sleep 1
 
 echo ""
 sleep 1

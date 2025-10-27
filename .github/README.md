@@ -24,12 +24,10 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 
 ## Quick Start
 1. Download the bot
-2. Get a Discord bot token → **[02-Getting-Discord-Token.txt](../README/02-Getting-Discord-Token.txt)**
+2. Get a Discord bot token → [02-Getting-Discord-Token.txt](../README/02-Getting-Discord-Token.txt)
 3. Run the interactive setup:
    - **Windows:** [`win_setup.bat`](../scripts/win_setup.bat)
-   - **Linux:**
-   - `chmod +x` [`scripts/linux_setup.sh`](../scripts/linux_setup.sh)
-   - [`./scripts/linux_setup.sh`](../scripts/linux_setup.sh)
+   - **Linux:** [`scripts/linux_setup.sh`](../scripts/linux_setup.sh)
 4. Run the bot:
    - **Windows:** [`win_run_bot.bat`](../scripts/win_run_bot.bat)
    - **Linux:** [`./linux_run_bot.sh`](../scripts/linux_run_bot.sh)
@@ -66,11 +64,11 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 
 ## Docs
 - **Overview:** [01-README.txt](../README/01-README.txt)
+- **Files overview:** [05-Files.txt](../README/05-Files.txt)
 - **Discord Token guide:** [02-Getting-Discord-Token.txt](../README/02-Getting-Discord-Token.txt)
 - **Windows setup guide:** [03-SETUP-Windows.txt](../README/03-SETUP-Windows.txt)
 - **Linux setup guide:** [03-SETUP-Linux.txt](../README/03-SETUP-Linux.txt)
 - **Converting to Opus guide:** [04-Converting-To-Opus.txt](../README/04-Converting-To-Opus.txt)
-- **Files overview:** [05-Files.txt](../README/05-Files.txt)
 - **Troubleshooting:** [06-troubleshooting.txt](../README/06-troubleshooting.txt)
 
 ---

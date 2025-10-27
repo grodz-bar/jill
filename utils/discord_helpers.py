@@ -166,6 +166,10 @@ async def update_presence(bot, status_text: Optional[str]) -> bool:
     """
     Update bot's Discord presence (status shown under bot name).
 
+    Uses atomic state update pattern: holds lock during entire operation
+    (dedupe check → API call → state update) to prevent race conditions
+    and ensure failed API calls don't block retries.
+
     Global throttling and deduplication to avoid spammy API calls.
     Uses BOT_STATUS from config/features.py for status indicator color.
 
@@ -176,6 +180,10 @@ async def update_presence(bot, status_text: Optional[str]) -> bool:
     Returns:
         bool: True if updated successfully, False otherwise
 
+    Thread Safety:
+        Lock held for entire operation. State only updated on success.
+        See AGENTS.md "Atomic state update pattern" for details.
+
     Example:
         update_presence(bot, "Hopes and Dreams")  # Shows "Listening to Hopes and Dreams"
     """
@@ -183,33 +191,36 @@ async def update_presence(bot, status_text: Optional[str]) -> bool:
 
     current_time = _now()
 
-    # Throttle/dedupe: set state under lock to block concurrent duplicates
+    # Hold lock for entire operation to prevent races and ensure atomicity
     async with _presence_lock:
+        # Deduplicate if same status and recent
         if status_text == _current_presence_text and current_time - _last_presence_update < 10:
             return True
-        # Optimistically update state before API call to prevent duplicate requests
-        _last_presence_update = current_time
-        _current_presence_text = status_text
 
-    try:
-        # Get configured status (online/dnd/idle/invisible)
-        status = _get_status_enum()
+        try:
+            # Get configured status (online/dnd/idle/invisible)
+            status = _get_status_enum()
 
-        if status_text:
-            await bot.change_presence(
-                activity=disnake.Activity(
-                    type=disnake.ActivityType.listening,
-                    name=status_text
-                ),
-                status=status
-            )
-        else:
-            await bot.change_presence(activity=None, status=status)
+            # Make API call while holding lock
+            if status_text:
+                await bot.change_presence(
+                    activity=disnake.Activity(
+                        type=disnake.ActivityType.listening,
+                        name=status_text
+                    ),
+                    status=status
+                )
+            else:
+                await bot.change_presence(activity=None, status=status)
 
-        return True
-    except disnake.HTTPException as e:
-        logger.debug("Presence update failed (non-critical): %s", e)
-        return False
+            # Update state ONLY on success to allow retries if failed
+            _last_presence_update = current_time
+            _current_presence_text = status_text
+            return True
+
+        except disnake.HTTPException as e:
+            logger.debug("Presence update failed (non-critical): %s", e)
+            return False
 
 
 def can_connect_to_channel(channel: disnake.VoiceChannel) -> bool:

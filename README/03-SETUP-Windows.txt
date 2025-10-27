@@ -59,26 +59,35 @@ STEP 4: RUN SETUP WIZARD (RECOMMENDED)
 ================================================================================
 
 The wizard will automatically:
-- Create a virtual environment
+- Create a virtual environment (venv\)
 - Install required Python packages
 - Generate your .env configuration file
 - Create the music folder if it doesn't exist
 - Optionally convert your audio files to .opus
 
-BEFORE STARTING THE WIZARD, make sure you have ready:
-- Your Discord bot token (from Step 2)
-- Python 3.11 or newer installed
-- FFmpeg installed for audio format conversion to .opus
-  (see "INSTALL FFMPEG:" in 04-Converting-To-Opus.txt for installation guide)
-- Your local music files
+PREREQUISITES:
+- Discord bot token (from Step 2)
+- Python 3.11 or newer installed and added to PATH
+- FFmpeg (only needed if converting audio to .opus)
+  See 04-Converting-To-Opus.txt for installation guide
 
-Use Setup Wizard:
+Running the Wizard:
 
 1. Navigate to C:\jill\scripts\ in File Explorer
 2. Double-click "win_setup.bat"
 3. Follow the interactive prompts
-4. Setup will complete automatically
-5. Proceed to STEP 5 of this setup guide
+4. Setup completed successfully when you see:
+   ========================================
+   SETUP COMPLETED - SAFE TO CLOSE SCRIPT
+   ========================================
+
+If successful → Continue to STEP 5
+
+IF SETUP FAILS:
+- Read the error message shown in the console
+- See 06-troubleshooting.txt for common issues
+- Verify Python 3.11+ is installed: python --version
+- Try ALTERNATIVE STEP 4 (Manual Setup) below
 
 ================================================================================
 ALTERNATIVE STEP 4: MANUAL SETUP
@@ -135,12 +144,6 @@ Example bad names:
 ✗ Hopes and Dreams.opus (no number - won't sort correctly)
 ✗ Track 01.opus (number not at start)
 ✗ Song_01.opus (number not at start)
-
-The bot will:
-- Sort files numerically (01, 02, 03... 10, 11, not alphabetically)
-- Display song names like this: "Track Name" (not "01 - Track Name")
-- Use track numbers for !play commands (!play 5 plays the 5th track)
-- Use track name for !play commands (!play Dawn Approaches)
 
 NOTE: PowerRename from Microsoft PowerToys can batch‑rename files.
 

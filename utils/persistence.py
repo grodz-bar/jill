@@ -175,6 +175,8 @@ async def _flush_channel_saves(immediate: bool = False):
     Args:
         immediate: If True, flush immediately without delay (for shutdown)
     """
+    global _last_save_task
+
     if not immediate:
         await asyncio.sleep(10)
     if not _pending_saves:
@@ -211,7 +213,6 @@ async def _flush_channel_saves(immediate: bool = False):
     finally:
         # If more saves came in during the flush, schedule another pass
         if _pending_saves:
-            global _last_save_task
             _last_save_task = asyncio.create_task(_flush_channel_saves())
 
 
@@ -306,6 +307,8 @@ async def _flush_playlist_saves(immediate: bool = False):
     Args:
         immediate: If True, flush immediately without delay (for shutdown)
     """
+    global _last_playlist_save_task
+
     if not immediate:
         await asyncio.sleep(10)
     if not _pending_playlist_saves:
@@ -324,7 +327,6 @@ async def _flush_playlist_saves(immediate: bool = False):
     finally:
         # If more saves came in during the flush, schedule another pass
         if _pending_playlist_saves:
-            global _last_playlist_save_task
             _last_playlist_save_task = asyncio.create_task(_flush_playlist_saves())
 
 

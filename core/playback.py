@@ -19,6 +19,11 @@
 Playback Functions
 
 Core music playback functionality including track playing, callbacks, and queue advancement.
+
+CRITICAL: FFmpeg callbacks run in audio thread. See AGENTS.md "Thread Safety" section.
+- READS: GIL-atomic (booleans, integers, references) - safe without synchronization
+- WRITES: Use bot.loop.call_soon_threadsafe() - never direct assignment
+- COROUTINES: Use asyncio.run_coroutine_threadsafe()
 """
 
 import asyncio
@@ -187,9 +192,18 @@ async def _play_current(guild_id: int, bot) -> None:
             Callback fired when track finishes playing.
 
             CRITICAL: This runs in FFmpeg's audio thread (NOT the event loop thread).
-            - Use bot.loop.call_soon_threadsafe() for ANY player attribute mutations
-            - Use asyncio.run_coroutine_threadsafe() for coroutine calls
-            - Direct attribute assignment causes race conditions and crashes
+
+            Thread Safety Model:
+            - READS: Simple attribute reads (booleans, integers, object references) are
+              GIL-atomic in CPython and safe without synchronization. This is a conscious
+              design decision to avoid latency from cross-thread calls.
+            - WRITES: ALL mutations must use bot.loop.call_soon_threadsafe() to prevent
+              race conditions and crashes. Direct assignment from audio thread is unsafe.
+            - COROUTINES: Use asyncio.run_coroutine_threadsafe() for async operations.
+
+            The reads below (_is_reconnecting, _suppress_callback, session.cancelled, etc.)
+            rely on CPython's GIL for atomicity. This is acceptable for boolean/integer
+            checks used as early-exit conditions.
             """
             nonlocal audio_source
 

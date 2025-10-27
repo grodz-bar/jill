@@ -110,6 +110,10 @@ async def on_ready():
     """Bot connected to Discord."""
     global _playback_watchdog_task, _alone_watchdog_task
 
+    # Set custom exception handler on the actual bot loop
+    # (Must be done here since bot.run() creates its own loop)
+    bot.loop.set_exception_handler(custom_exception_handler)
+
     # Print banner
     print("\n" + "="*60)
     print("""
@@ -353,10 +357,7 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, handle_shutdown_signal)
     signal.signal(signal.SIGTERM, handle_shutdown_signal)
 
-    # Set custom exception handler to suppress aiohttp shutdown warnings
-    loop = asyncio.get_event_loop()
-    loop.set_exception_handler(custom_exception_handler)
-
+    # Note: Custom exception handler is set in on_ready() where bot.loop exists
     logger.info("Starting bot...")
 
     try:

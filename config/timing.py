@@ -11,6 +11,8 @@ Changing some of these values can break things and make the bot more prone
 to spam and Discord's API rate-limiting, be careful and test thoroughly.
 """
 
+from typing import Final
+
 # =========================================================================================================
 # SPAM PROTECTION TIMING
 # =========================================================================================================
@@ -188,7 +190,7 @@ FRAME_DURATION = 0.02                    # Opus frame duration (20ms) for gracef
 # FFmpeg Audio Options - Controls playback latency and buffering behavior
 # Format: Space-separated command-line options passed to FFmpeg before reading input
 # Default optimizes for low latency and real-time playback of opus files
-FFMPEG_BEFORE_OPTIONS = '-hide_banner -loglevel error -nostdin -re -fflags +nobuffer'
+FFMPEG_BEFORE_OPTIONS: Final[str] = '-hide_banner -loglevel error -nostdin -re -fflags +nobuffer'
 # Breakdown of default options:
 #   -hide_banner      : Suppress FFmpeg version banner (cleaner logs)
 #   -loglevel error   : Only log errors (reduces noise)
@@ -196,6 +198,7 @@ FFMPEG_BEFORE_OPTIONS = '-hide_banner -loglevel error -nostdin -re -fflags +nobu
 #   -re               : Read input at native frame rate (real-time playback, prevents rushing)
 #   -fflags +nobuffer : Reduce buffering delay (lower latency, faster start)
 # Advanced tuning: Adjust -analyzeduration/-probesize for faster startup if needed
+# Note: -vn flag (ignore video streams) not needed for .opus audio-only files
 
 MAX_HISTORY = 100                        # Max tracks to remember (prevents memory bloat)
 COMMAND_QUEUE_MAXSIZE = 100              # Max commands in queue (prevents memory exhaustion)

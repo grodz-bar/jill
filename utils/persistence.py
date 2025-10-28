@@ -211,8 +211,8 @@ async def _flush_channel_saves(immediate: bool = False):
     except (OSError, json.JSONDecodeError, ValueError):
         logger.exception("Failed to flush channel saves")
     finally:
-        # If more saves came in during the flush, schedule another pass
-        if _pending_saves:
+        # If more saves came in during the flush, either re-arm (normal) or skip (immediate).
+        if _pending_saves and not immediate:
             _last_save_task = asyncio.create_task(_flush_channel_saves())
 
 
@@ -325,8 +325,8 @@ async def _flush_playlist_saves(immediate: bool = False):
     except (OSError, json.JSONDecodeError, ValueError):
         logger.exception("Failed to flush playlist saves")
     finally:
-        # If more saves came in during the flush, schedule another pass
-        if _pending_playlist_saves:
+        # If more saves came in during the flush, either re-arm (normal) or skip (immediate).
+        if _pending_playlist_saves and not immediate:
             _last_playlist_save_task = asyncio.create_task(_flush_playlist_saves())
 
 
@@ -403,6 +403,24 @@ async def flush_all_immediately():
 
     This should be called during bot shutdown to ensure no data is lost.
     Flushes both channel and playlist persistence.
+
+    Drains all pending saves in a loop to handle saves that arrive during flush.
+    Cancels any scheduled background flush tasks to avoid races.
     """
-    await _flush_channel_saves(immediate=True)
-    await _flush_playlist_saves(immediate=True)
+    global _last_save_task, _last_playlist_save_task
+
+    # Cancel any scheduled background flushes to avoid races during shutdown.
+    if _last_save_task and not _last_save_task.done():
+        _last_save_task.cancel()
+    if _last_playlist_save_task and not _last_playlist_save_task.done():
+        _last_playlist_save_task.cancel()
+
+    # Drain until empty so nothing is left unsaved.
+    while True:
+        await _flush_channel_saves(immediate=True)
+        if not _pending_saves:
+            break
+    while True:
+        await _flush_playlist_saves(immediate=True)
+        if not _pending_playlist_saves:
+            break

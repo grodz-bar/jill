@@ -300,7 +300,7 @@ async def _play_current(guild_id: int, bot) -> None:
         unsafe_or_down = True
         try:
             unsafe_or_down = not (vc and vc.is_connected())
-        except Exception as probe_err:
+        except (AttributeError, RuntimeError) as probe_err:
             logger.debug("Guild %s: vc.is_connected() probe failed after error: %s", guild_id, probe_err)
         if "Bad file descriptor" in str(e) or unsafe_or_down:
             # Close connection to avoid dangling references

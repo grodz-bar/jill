@@ -1,6 +1,6 @@
 # 🍸 Jill — A Cyberpunk Bartender Discord Music Bot
 
-A simple, robust Discord music bot that plays local **.opus** files that supports
+A simple, robust Discord music bot that plays local **.opus** files and supports
 multiple playlists, auto-cleanup, song selection, spam protection, and more.
 
 ---
@@ -14,7 +14,7 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 
 ## Features
 - Customization: rename commands, rewrite messages, flip features on or off, make it yours
-- Multiple playlists: you're using subfolders? now it's a playlist!
+- Multiple playlists: you're using subfolders? Now it's a playlist!
 - Spam protection: hammer it all you want, debounce, cooldowns, and limits keep it sane
 - Smart: jill reads the room, pauses when alone, cleans up after herself
 - Shuffle mode: toggle it on or off, she'll auto-reshuffle as well!
@@ -23,6 +23,7 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 ---
 
 ## Quick Start
+0. Install Python 3.11+ and FFmpeg
 1. Download the bot
 2. Get a Discord bot token → [02-Getting-Discord-Token.txt](../README/02-Getting-Discord-Token.txt)
 3. Run the interactive setup:

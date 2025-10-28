@@ -23,8 +23,8 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 ---
 
 ## Quick Start
-0. Install Python 3.11+ and FFmpeg
-1. Download the bot
+0. Install [Python 3.11+](https://www.python.org/downloads/) and [FFmpeg](https://www.ffmpeg.org/download.html)
+1. Download the [latest release](https://github.com/grodz-bar/jill/releases/latest)
 2. Get a Discord bot token → [Getting Discord Token](02-Getting-Discord-Token.md)
 3. Run the interactive setup:
    - **Windows:** [`/scripts/win_setup.bat`](../scripts/win_setup.bat)

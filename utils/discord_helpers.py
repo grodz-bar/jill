@@ -101,6 +101,7 @@ async def safe_disconnect(voice_client: Optional[disnake.VoiceClient], force: bo
     Note:
         Logs errors at debug level since disconnect failures are non-critical.
         Treats None as successful no-op for cleaner calling code.
+        Catches aiohttp transport errors that can occur during shutdown.
     """
     if not voice_client:
         return True  # No-op success for idempotency
@@ -109,6 +110,10 @@ async def safe_disconnect(voice_client: Optional[disnake.VoiceClient], force: bo
         return True
     except (disnake.ClientException, disnake.HTTPException) as e:
         logger.debug("Disconnect failed (non-critical): %s", e)
+        return False
+    except Exception as e:
+        # Catch aiohttp transport errors during shutdown (e.g., ClientConnectionResetError)
+        logger.debug("Disconnect failed with transport error (non-critical): %s", e)
         return False
 
 

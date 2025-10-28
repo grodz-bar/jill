@@ -101,6 +101,9 @@ from utils.persistence import load_last_channels, flush_all_immediately
 _playback_watchdog_task = None
 _alone_watchdog_task = None
 
+# Shutdown flag to prevent on_disconnect from running during intentional shutdown
+_is_shutting_down = False
+
 # =============================================================================
 # BOT EVENTS
 # =============================================================================
@@ -189,6 +192,10 @@ async def on_disconnect():
         - Disconnects from all voice channels
         - Clears bot presence status
     """
+    # Skip if we're already shutting down intentionally (prevents double-disconnect)
+    if _is_shutting_down:
+        return
+
     # Cancel and await watchdogs to prevent race conditions
     if _playback_watchdog_task and not _playback_watchdog_task.done():
         _playback_watchdog_task.cancel()
@@ -261,8 +268,11 @@ async def shutdown_bot():
     """
     logger.info("Initiating graceful shutdown...")
 
+    # Set shutdown flag to prevent on_disconnect from running
+    global _playback_watchdog_task, _alone_watchdog_task, _is_shutting_down
+    _is_shutting_down = True
+
     # Cancel and await watchdog tasks
-    global _playback_watchdog_task, _alone_watchdog_task
 
     if _playback_watchdog_task and not _playback_watchdog_task.done():
         logger.info("Stopping playback watchdog...")

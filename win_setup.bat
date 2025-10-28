@@ -1,17 +1,10 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 
-REM Change to parent directory (project root)
-cd /d "%~dp0.." || (
-    echo ERROR: Unable to locate project root.
-    pause
-    exit /b 1
-)
-
 REM Ensure we are in project root by verifying requirements file
 if not exist requirements.txt (
     echo ERROR: Could not find requirements.txt in project root.
-    echo Tip: Run this from scripts\ or project root; it auto-switches to root.
+    echo Please run this script from your Jill bot's root directory.
     pause
     exit /b 1
 )
@@ -301,318 +294,7 @@ if errorlevel 1 (
 
 echo.
 timeout /t 1 /nobreak >nul
-echo.
-echo OPTIONAL STEP:
-echo --------------------------
-set "CONVERSION_SUCCESS=false"
-echo Ready to convert and move your music files into !MUSIC_PATH! as .opus files.
-echo.
-echo In this step, we'll:
-echo 1. Scan a folder for music files
-echo 2. Convert them to .opus
-echo 3. Make sure they're inside the music folder you set for Jill
-echo 4. Delete the pre-conversion music files (IF you want)
-echo Note: The subfolder structure will stay the exact same
-echo.
-echo.
-set /p "CONVERT_FILES=Start the guided conversion now? (y/N): "
-if /i "%CONVERT_FILES%"=="y" (
-    call :RUN_CONVERSION
-) else (
-    echo Skipping conversion.
-    timeout /t 2 /nobreak >nul
-)
-goto AFTER_CONVERSION
 
-:RUN_CONVERSION
-echo.
-echo Checking for FFmpeg...
-ffmpeg -version >nul 2>&1
-if errorlevel 1 (
-    echo ERROR: FFmpeg is not installed or not in PATH.
-    echo Please install FFmpeg and add it to PATH, or follow the manual conversion guide:
-    echo See 03-SETUP-Windows.txt and 04-Converting-To-Opus.txt
-    echo.
-    echo Press any key to continue without conversion...
-    pause >nul
-    echo Skipping conversion.
-    timeout /t 2 /nobreak >nul
-    goto :EOF
-)
-
-echo FFmpeg found.
-timeout /t 2 /nobreak >nul
-
-echo Checking FFmpeg capabilities...
-
-REM Check if FFmpeg has libopus encoder
-ffmpeg -codecs 2>nul | findstr /i "libopus" >nul 2>&1
-if errorlevel 1 (
-    echo.
-    echo ERROR: FFmpeg does not have libopus encoder support.
-    echo Please install a version of FFmpeg with libopus support.
-    echo See 03-SETUP-Windows.txt for more information.
-    echo.
-    echo Press any key to continue without conversion...
-    pause >nul
-    echo Skipping conversion.
-    timeout /t 2 /nobreak >nul
-    goto :EOF
-)
-echo FFmpeg has libopus encoder support.
-
-REM Check if FFmpeg supports -frame_duration parameter
-set "SUPPORTS_FRAME_DURATION=false"
-ffmpeg -h encoder=libopus 2>nul | findstr /i "frame_duration" >nul 2>&1
-if not errorlevel 1 (
-    set "SUPPORTS_FRAME_DURATION=true"
-    echo FFmpeg supports -frame_duration parameter ^(better Discord playback^).
-) else (
-    echo FFmpeg does not support -frame_duration parameter ^(will use defaults^).
-)
-timeout /t 2 /nobreak >nul
-
-:CONVERSION_GUIDE
-echo.
-echo ========================================
-echo Conversion Overview
-echo ========================================
-echo We'll copy your audio into Jill's music folder so she can play it.
-echo Destination (the folder you just configured): %MUSIC_PATH%
-echo Folder structure is preserved ^(subfolders become playlists^).
-echo.
-timeout /t 1 /nobreak >nul
-
-:ASK_SOURCE_FOLDER
-echo.
-echo -------- Step 1: Choose the audio format --------
-set /p "FILE_FORMAT=What audio format are your files? (mp3/flac/wav/m4a/other): "
-if "%FILE_FORMAT%"=="" set "FILE_FORMAT=mp3"
-if /i "%FILE_FORMAT%"=="other" (
-    set "CUSTOM_EXT="
-    set /p "CUSTOM_EXT=Enter the file extension (without dot), e.g., aiff: "
-    if "!CUSTOM_EXT!"=="" set "CUSTOM_EXT=mp3"
-    set "FILE_FORMAT=!CUSTOM_EXT!"
-)
-REM Strip leading dot if present
-if "!FILE_FORMAT:~0,1!"=="." set "FILE_FORMAT=!FILE_FORMAT:~1!"
-for /f "tokens=1" %%A in ("!FILE_FORMAT!") do set "FILE_FORMAT=%%~A"
-echo.
-timeout /t 1 /nobreak >nul
-echo -------- Step 2: Tell us where the originals live --------
-set "SOURCE_FOLDER="
-echo This is the folder we will read from before writing to %MUSIC_PATH%.
-echo.
-echo Enter the full folder path (for example: D:\Downloads\Albums\).
-echo or
-echo Press Enter to use Jill's music folder for both.
-echo.
-set /p "SOURCE_FOLDER=Source folder path: "
-if "%SOURCE_FOLDER%"=="" (
-    set "SOURCE_FOLDER=%MUSIC_PATH%"
-    echo.
-    echo Using your Jill music folder as both the source and destination.
-    timeout /t 1 /nobreak >nul
-)
-timeout /t 1 /nobreak >nul
-
-set "SOURCE_FOLDER=!SOURCE_FOLDER:"=!"
-if not "%SOURCE_FOLDER:~-1%"=="\" set "SOURCE_FOLDER=%SOURCE_FOLDER%\"
-
-set "SOURCE_IS_DEST=false"
-if /i "%SOURCE_FOLDER%"=="%MUSIC_PATH%" set "SOURCE_IS_DEST=true"
-
-if not exist "%SOURCE_FOLDER%" (
-    echo.
-    echo ERROR: Source folder not found: %SOURCE_FOLDER%
-    echo Please check the path and try again.
-    echo.
-    set /p "TRY_AGAIN=Would you like to try again? (Y/n): "
-    if /i "%TRY_AGAIN%"=="n" (
-        echo Skipping conversion.
-        timeout /t 2 /nobreak >nul
-        goto :EOF
-    )
-    goto ASK_SOURCE_FOLDER
-)
-
-echo Destination: %MUSIC_PATH%
-echo Format: %FILE_FORMAT% ^> .opus
-echo Folder structure will be mirrored so playlists stay organized.
-echo.
-
-REM Check available disk space
-echo Checking available disk space...
-for /f "tokens=3" %%a in ('dir "%MUSIC_PATH%" ^| findstr /C:"bytes free"') do set "FREE_BYTES=%%a"
-set "FREE_BYTES=%FREE_BYTES:,=%"
-if defined FREE_BYTES (
-    set /a FREE_GB=%FREE_BYTES:~0,-9%
-    if not defined FREE_GB set "FREE_GB=0"
-    echo Available space at destination: !FREE_GB!GB
-    if !FREE_GB! LSS 1 (
-        echo WARNING: Less than 1GB available. Conversion may fail if you run out of space.
-        echo.
-        set /p "CONTINUE_SPACE=Continue anyway? (y/N): "
-        if /i not "!CONTINUE_SPACE!"=="y" (
-            echo Conversion cancelled.
-            timeout /t 2 /nobreak >nul
-            goto :EOF
-        )
-    )
-)
-echo.
-
-set /p "CONFIRM=Proceed with conversion? (Y/n): "
-if /i "%CONFIRM%"=="n" (
-    echo Conversion cancelled.
-    echo Skipping conversion.
-    timeout /t 2 /nobreak >nul
-    goto :EOF
-)
-
-set "FILE_COUNT=0"
-for /r "%SOURCE_FOLDER%" %%f in (*.%FILE_FORMAT%) do (
-    set /a FILE_COUNT+=1
-)
-
-if !FILE_COUNT! EQU 0 (
-    echo.
-    echo No %FILE_FORMAT% files found in: %SOURCE_FOLDER%
-    echo Add your %FILE_FORMAT% files to this folder and try again.
-    set /p "TRY_AGAIN=Would you like to try again? (Y/n): "
-    if /i "!TRY_AGAIN!"=="n" (
-        echo Skipping conversion.
-        timeout /t 2 /nobreak >nul
-        goto :EOF
-    )
-    goto ASK_SOURCE_FOLDER
-)
-
-echo Found !FILE_COUNT! %FILE_FORMAT% file(s).
-echo Starting conversion...
-echo This may take a while depending on the number of files.
-echo.
-echo NOTE: Files already converted to .opus will be skipped automatically.
-echo You can safely stop and resume conversion at any time.
-echo.
-
-set "SOURCE_BASE=!SOURCE_FOLDER!"
-set "SUCCESSFUL=0"
-set "SKIPPED=0"
-set "FAILED=0"
-set "CURRENT_COUNT=0"
-for /r "%SOURCE_FOLDER%" %%f in (*.%FILE_FORMAT%) do (
-    set /a CURRENT_COUNT+=1
-    set "CURRENT_FILE=%%f"
-    set "REL_PATH=!CURRENT_FILE:%SOURCE_BASE%=!"
-    set "DEST_PATH=!MUSIC_PATH!!REL_PATH!"
-    for %%I in ("!DEST_PATH!") do set "DEST_DIR=%%~dpI"
-    for %%I in ("!DEST_PATH!") do set "DEST_FILE=%%~dpnI"
-    set "BASENAME=%%~nxf"
-
-    if not exist "!DEST_DIR!" mkdir "!DEST_DIR!" >nul 2>&1
-
-    REM Check if file already exists
-    if exist "!DEST_FILE!.opus" (
-        echo [!CURRENT_COUNT!/!FILE_COUNT!] Skipping ^(already exists^): !BASENAME!
-        set /a SKIPPED+=1
-    ) else (
-        echo [!CURRENT_COUNT!/!FILE_COUNT!] Converting: !BASENAME!
-
-        REM Set FFmpeg args (conditionally using -frame_duration for better Discord playback)
-        if /i "!FILE_FORMAT!"=="opus" (
-            set "FFMPEG_ARGS=-c copy"
-        ) else (
-            if "!SUPPORTS_FRAME_DURATION!"=="true" (
-                set "FFMPEG_ARGS=-c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20"
-            ) else (
-                set "FFMPEG_ARGS=-c:a libopus -b:a 256k -ar 48000 -ac 2"
-            )
-        )
-
-        ffmpeg -i "%%f" !FFMPEG_ARGS! "!DEST_FILE!.opus" -loglevel error -n < nul
-        if errorlevel 1 (
-            echo     ERROR: Failed to convert this file
-            set /a FAILED+=1
-        ) else (
-            set /a SUCCESSFUL+=1
-        )
-    )
-)
-
-echo.
-echo ========================================
-echo Conversion Summary
-echo ========================================
-echo Total files found: !FILE_COUNT!
-echo Successfully converted: !SUCCESSFUL!
-if !SKIPPED! GTR 0 echo Skipped ^(already exists^): !SKIPPED!
-if !FAILED! GTR 0 echo Failed: !FAILED!
-echo.
-timeout /t 2 /nobreak >nul
-
-set /p "DELETE_ORIGINALS=Delete original files after conversion? (y/N): "
-if /i "!DELETE_ORIGINALS!"=="y" (
-    if /i "!FILE_FORMAT!"=="opus" (
-        if /i "!SOURCE_IS_DEST!"=="true" (
-            timeout /t 1 /nobreak >nul
-            echo.
-            echo Skipping deletion: source and destination are the same folder and files are already .opus.
-            timeout /t 2 /nobreak >nul
-        ) else (
-            goto :_DO_DELETE
-        )
-    ) else (
-        goto :_DO_DELETE
-    )
-)
-
-goto :_AFTER_DELETE
-
-:_DO_DELETE
-echo.
-REM Extra safety checks before destructive delete
-if /i "!SOURCE_FOLDER!"=="!MUSIC_PATH!" (
-    echo NOTE: Source and destination are the same; only originals will be removed.
-)
-REM Check if source is a drive root (e.g., C:\, D:\)
-for %%D in ("!SOURCE_FOLDER!") do set "DRIVE_CHECK=%%~dD%%~pD"
-if "!DRIVE_CHECK:~-2!"==":\" (
-    echo WARNING: Source looks like a drive root (!DRIVE_CHECK!). Aborting delete.
-    timeout /t 3 /nobreak >nul
-    goto :_AFTER_DELETE
-)
-echo WARNING: This will permanently delete the original files from %SOURCE_FOLDER%
-echo.
-set /p "DELETE_CONFIRM=Are you sure? Type 'yes' to confirm: "
-if /i "!DELETE_CONFIRM!"=="yes" (
-    timeout /t 1 /nobreak >nul
-    echo Deleting original files...
-    for /r "%SOURCE_FOLDER%" %%f in (*.%FILE_FORMAT%) do (
-        set "CURRENT_FILE=%%f"
-        set "REL_PATH=!CURRENT_FILE:%SOURCE_BASE%=!"
-        set "DEST_PATH=!MUSIC_PATH!!REL_PATH!"
-        for %%I in ("!DEST_PATH!") do set "DEST_FILE=%%~dpnI"
-        if exist "!DEST_FILE!.opus" del "%%f" /f /q
-    )
-    timeout /t 1 /nobreak >nul
-    echo Original files deleted.
-    timeout /t 2 /nobreak >nul
-) else (
-    echo Original files kept.
-    timeout /t 2 /nobreak >nul
-)
-
-:_AFTER_DELETE
-
-
-set "CONVERSION_SUCCESS=true"
-goto :EOF
-
-:AFTER_CONVERSION
-
-echo.
-timeout /t 1 /nobreak >nul
 echo ========================================
 echo Configuration Summary
 echo ========================================
@@ -629,8 +311,8 @@ if "%DEFAULT_PATH%"=="1" (
     echo Music Folder: %MUSIC_PATH%
 )
 echo.
-set /p "CONFIRM_CONFIG=Is this correct? (Y/n): "
-if /i "%CONFIRM_CONFIG%"=="n" (
+choice /c YN /d Y /t 30 /m "Is this correct"
+if errorlevel 2 (
     echo.
     echo Configuration cancelled. Please run the setup script again.
     pause
@@ -644,7 +326,7 @@ echo Creating Configuration
 echo ========================================
 echo.
 
-REM Create .env file using simple echo commands (more reliable than PowerShell)
+REM Create .env file using simple echo commands
 (
     echo DISCORD_BOT_TOKEN=%BOT_TOKEN%
 ) > .env
@@ -675,17 +357,17 @@ if not exist ".env" (
 )
 
 if "%DEFAULT_PATH%"=="1" (
-    echo Using default music folder: music\ ^(inside Jill's folder^)
+    echo Configuration saved. Using default music folder: music\
     timeout /t 2 /nobreak >nul
 ) else (
-    echo Music folder saved to .env: %MUSIC_PATH%
+    echo Configuration saved. Music folder: %MUSIC_PATH%
     timeout /t 2 /nobreak >nul
 )
 
 echo.
 if exist ".env.example" (
-    set /p "DELETE_EXAMPLE=Delete .env.example (no longer needed)? (Y/n): "
-    if /i not "!DELETE_EXAMPLE!"=="n" (
+    choice /c YN /d Y /t 10 /m "Delete .env.example (no longer needed)"
+    if not errorlevel 2 (
         del ".env.example" 2>nul
         echo .env.example deleted.
         timeout /t 2 /nobreak >nul
@@ -693,34 +375,444 @@ if exist ".env.example" (
     )
 )
 
+REM Create start-jill.bat script
+echo.
+echo Creating start script...
+(
+    echo @echo off
+    echo REM Jill Discord Bot Launcher
+    echo.
+    echo REM Activate virtual environment
+    echo if not exist "venv\Scripts\activate.bat" ^(
+    echo     echo ERROR: Virtual environment not found.
+    echo     echo Please run win_setup.bat first to set up the bot.
+    echo     pause
+    echo     exit /b 1
+    echo ^)
+    echo.
+    echo call venv\Scripts\activate
+    echo.
+    echo REM Run the bot
+    echo echo Starting Jill Discord Bot...
+    echo python bot.py
+    echo pause
+) > start-jill.bat
+
+if exist "start-jill.bat" (
+    echo start-jill.bat created successfully.
+) else (
+    echo WARNING: Could not create start-jill.bat
+)
+timeout /t 1 /nobreak >nul
+
+echo.
+echo ========================================
+echo OPTIONAL: Audio Conversion
+echo ========================================
+set "CONVERSION_SUCCESS=false"
+echo Ready to convert and move your music files into !MUSIC_PATH! as .opus files.
+echo.
+echo In this step, we'll:
+echo 1. Scan a folder for music files
+echo 2. Convert them to .opus
+echo 3. Make sure they're inside the music folder you set for Jill
+echo 4. Delete the pre-conversion music files (IF you want)
+echo Note: The subfolder structure will stay the exact same
+echo.
+echo.
+set /p "CONVERT_FILES=Start the guided conversion now? (y/N): "
+if /i "%CONVERT_FILES%"=="y" (
+    call :RUN_CONVERSION
+) else (
+    echo Skipping conversion.
+    timeout /t 2 /nobreak >nul
+)
+goto AFTER_CONVERSION
+
+:RUN_CONVERSION
+REM Initialize master conversion tracking
+set "MASTER_CONVERTED_LIST=%TEMP%\jill_all_converted_%RANDOM%.txt"
+if exist "!MASTER_CONVERTED_LIST!" del "!MASTER_CONVERTED_LIST!" >nul 2>&1
+set "TOTAL_CONVERTED_COUNT=0"
+set "FORMATS_CONVERTED="
+set "CONVERSION_SUCCESS=false"
+
+echo.
+echo ========================================
+echo Audio Format Selection
+echo ========================================
+echo.
+echo Which audio formats would you like to convert to .opus?
+echo.
+echo Common formats: mp3, flac, wav, m4a, ogg, wma, aac, aiff, ape
+echo.
+echo Enter ALL the formats you want to convert, separated by spaces.
+echo Example: flac mp3 wav
+echo Or just press Enter to skip conversion.
+echo.
+set "USER_FORMATS="
+set /p "USER_FORMATS=Formats to convert: "
+
+REM Check if user wants to skip conversion
+if "!USER_FORMATS!"=="" (
+    echo.
+    echo Skipping conversion.
+    timeout /t 2 /nobreak >nul
+    goto AFTER_CONVERSION
+)
+
+REM Check for FFmpeg once before starting
+echo.
+echo Checking for FFmpeg...
+ffmpeg -version >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: FFmpeg is not installed or not in PATH.
+    echo Please install FFmpeg and add it to PATH, or follow the manual conversion guide.
+    echo.
+    echo Press any key to continue without conversion...
+    pause >nul
+    echo Skipping conversion.
+    timeout /t 2 /nobreak >nul
+    goto AFTER_CONVERSION
+)
+echo FFmpeg found.
+timeout /t 1 /nobreak >nul
+
+REM Check FFmpeg capabilities once
+echo Checking FFmpeg capabilities...
+set "SUPPORTS_FRAME_DURATION=false"
+ffmpeg -codecs 2>nul | findstr /i "libopus" >nul 2>&1
+if errorlevel 1 (
+    echo WARNING: FFmpeg doesn't have libopus support. Will try alternative method.
+    timeout /t 2 /nobreak >nul
+) else (
+    ffmpeg -h encoder=libopus 2>nul | findstr /i "frame_duration" >nul 2>&1
+    if not errorlevel 1 set "SUPPORTS_FRAME_DURATION=true"
+)
+
+REM Clean up and validate formats
+set "FORMATS_TO_CONVERT="
+set "FORMAT_COUNT=0"
+for %%F in (!USER_FORMATS!) do (
+    set "CLEAN_FORMAT=%%F"
+    REM Remove dots if present
+    set "CLEAN_FORMAT=!CLEAN_FORMAT:.=!"
+    
+    REM Add to list if not already there
+    echo !FORMATS_TO_CONVERT! | findstr /i "\<!CLEAN_FORMAT!\>" >nul 2>&1
+    if errorlevel 1 (
+        if "!FORMATS_TO_CONVERT!"=="" (
+            set "FORMATS_TO_CONVERT=!CLEAN_FORMAT!"
+        ) else (
+            set "FORMATS_TO_CONVERT=!FORMATS_TO_CONVERT! !CLEAN_FORMAT!"
+        )
+        set /a FORMAT_COUNT+=1
+    )
+)
+
+echo.
+echo Will convert these !FORMAT_COUNT! format(s): !FORMATS_TO_CONVERT!
+echo.
+timeout /t 2 /nobreak >nul
+
+echo ========================================
+echo Conversion Process
+echo ========================================
+
+REM Process each format the user selected
+for %%X in (!FORMATS_TO_CONVERT!) do (
+    set "FILE_FORMAT=%%X"
+    echo.
+    echo ----------------------------------------
+    echo Processing .!FILE_FORMAT! files
+    echo ----------------------------------------
+    call :CONVERT_FORMAT
+)
+
+REM After all formats are processed
+echo.
+echo ========================================
+echo All Conversions Complete
+echo ========================================
+
+if !TOTAL_CONVERTED_COUNT! GTR 0 (
+    echo.
+    echo Successfully processed formats: !FORMATS_CONVERTED!
+    echo Total files converted: !TOTAL_CONVERTED_COUNT!
+    echo.
+    timeout /t 2 /nobreak >nul
+    set "CONVERSION_SUCCESS=true"
+    
+    REM Now proceed to deletion phase
+    call :DELETE_ORIGINALS
+) else (
+    echo.
+    echo No files were converted.
+    echo.
+    timeout /t 2 /nobreak >nul
+)
+
+goto AFTER_CONVERSION
+
+REM ===== SUBROUTINE: Convert a single format =====
+:CONVERT_FORMAT
+echo.
+echo Where are your .!FILE_FORMAT! files located?
+echo.
+echo Options:
+echo - Enter the folder path (subdirectories will be searched automatically)
+echo - Type 'skip' to skip this format
+echo.
+set "SOURCE_FOLDER="
+set /p "SOURCE_FOLDER=Source folder path: "
+
+if /i "!SOURCE_FOLDER!"=="skip" (
+    echo Skipping .!FILE_FORMAT! format.
+    timeout /t 1 /nobreak >nul
+    exit /b
+)
+
+REM Clean up the path
+if "!SOURCE_FOLDER!"=="" (
+    echo No path entered. Skipping .!FILE_FORMAT! format.
+    timeout /t 1 /nobreak >nul
+    exit /b
+)
+
+set "SOURCE_FOLDER=!SOURCE_FOLDER:"=!"
+if not "!SOURCE_FOLDER:~-1!"=="\" set "SOURCE_FOLDER=!SOURCE_FOLDER!\"
+
+REM Validate source folder
+if not exist "!SOURCE_FOLDER!" (
+    echo.
+    echo ERROR: Folder does not exist: !SOURCE_FOLDER!
+    echo Skipping .!FILE_FORMAT! format.
+    timeout /t 2 /nobreak >nul
+    exit /b
+)
+
+REM Count files (including in subdirectories)
+set "FILE_COUNT=0"
+for /f "delims=" %%f in ('dir /s /b "!SOURCE_FOLDER!*.!FILE_FORMAT!" 2^>nul') do (
+    set /a FILE_COUNT+=1
+)
+
+if !FILE_COUNT! EQU 0 (
+    echo.
+    echo No .!FILE_FORMAT! files found in: !SOURCE_FOLDER! or its subdirectories
+    echo Skipping this format.
+    timeout /t 2 /nobreak >nul
+    exit /b
+)
+
+echo Found !FILE_COUNT! .!FILE_FORMAT! file(s) in !SOURCE_FOLDER! and subdirectories.
+echo Starting conversion...
+echo.
+
+set "SOURCE_BASE=!SOURCE_FOLDER!"
+set "SUCCESSFUL=0"
+set "SKIPPED=0"
+set "FAILED=0"
+set "CURRENT_COUNT=0"
+
+for /f "delims=" %%f in ('dir /s /b "!SOURCE_FOLDER!*.!FILE_FORMAT!" 2^>nul') do (
+    set /a CURRENT_COUNT+=1
+    set "CURRENT_FILE=%%f"
+    set "REL_PATH=!CURRENT_FILE:%SOURCE_BASE%=!"
+    set "DEST_PATH=!MUSIC_PATH!!REL_PATH!"
+    for %%I in ("!DEST_PATH!") do set "DEST_DIR=%%~dpI"
+    for %%I in ("!DEST_PATH!") do set "DEST_FILE=%%~dpnI"
+    set "BASENAME=%%~nxf"
+
+    if not exist "!DEST_DIR!" mkdir "!DEST_DIR!" >nul 2>&1
+
+    REM Check if file already exists
+    if exist "!DEST_FILE!.opus" (
+        echo [!CURRENT_COUNT!/!FILE_COUNT!] Skipping ^(already exists^): !BASENAME!
+        set /a SKIPPED+=1
+    ) else (
+        echo [!CURRENT_COUNT!/!FILE_COUNT!] Converting: !BASENAME!
+
+        REM Set FFmpeg args
+        if /i "!FILE_FORMAT!"=="opus" (
+            set "FFMPEG_ARGS=-c copy"
+        ) else (
+            if "!SUPPORTS_FRAME_DURATION!"=="true" (
+                set "FFMPEG_ARGS=-c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20"
+            ) else (
+                set "FFMPEG_ARGS=-c:a libopus -b:a 256k -ar 48000 -ac 2"
+            )
+        )
+
+        ffmpeg -i "%%f" !FFMPEG_ARGS! "!DEST_FILE!.opus" -loglevel error -n < nul
+        if errorlevel 1 (
+            echo     ERROR: Failed to convert this file
+            set /a FAILED+=1
+        ) else (
+            set /a SUCCESSFUL+=1
+            REM Add to master list immediately after successful conversion (with quotes for safety)
+            echo "%%f";!FILE_FORMAT!>>"!MASTER_CONVERTED_LIST!"
+            set /a TOTAL_CONVERTED_COUNT+=1
+        )
+    )
+)
+
+echo.
+echo Format Summary: !FILE_FORMAT!
+echo - Converted: !SUCCESSFUL!
+if !SKIPPED! GTR 0 echo - Skipped: !SKIPPED!
+if !FAILED! GTR 0 echo - Failed: !FAILED!
+timeout /t 1 /nobreak >nul
+
+REM Track which formats we've successfully converted
+if !SUCCESSFUL! GTR 0 (
+    if "!FORMATS_CONVERTED!"=="" (
+        set "FORMATS_CONVERTED=!FILE_FORMAT!"
+    ) else (
+        set "FORMATS_CONVERTED=!FORMATS_CONVERTED!, !FILE_FORMAT!"
+    )
+)
+
+exit /b
+
+REM ===== SUBROUTINE: Delete original files =====
+:DELETE_ORIGINALS
+REM Check if we have files to delete
+if !TOTAL_CONVERTED_COUNT! EQU 0 (
+    exit /b
+)
+
+if not exist "!MASTER_CONVERTED_LIST!" (
+    echo No conversion tracking file found.
+    exit /b
+)
+
+echo.
+echo ========================================
+echo Original Files Deletion
+echo ========================================
+echo.
+echo You have successfully converted files in these formats: !FORMATS_CONVERTED!
+echo Total original files that can be deleted: !TOTAL_CONVERTED_COUNT!
+echo.
+echo The converted .opus files are safely in: !MUSIC_PATH!
+echo.
+echo Delete ALL !TOTAL_CONVERTED_COUNT! original files to free up disk space?
+echo.
+
+set "DELETE_CHOICE="
+set /p "DELETE_CHOICE=Type YES (in capitals) to delete, or press Enter to keep them: "
+
+if not "!DELETE_CHOICE!"=="YES" (
+    echo.
+    echo Original files will be kept.
+    if exist "!MASTER_CONVERTED_LIST!" del "!MASTER_CONVERTED_LIST!" >nul 2>&1
+    timeout /t 2 /nobreak >nul
+    exit /b
+)
+
+REM Final safety confirmation
+echo.
+echo ============================================
+echo FINAL CONFIRMATION REQUIRED
+echo ============================================
+echo You are about to permanently DELETE:
+echo   - !TOTAL_CONVERTED_COUNT! original files
+echo   - In formats: !FORMATS_CONVERTED!
+echo.
+echo This action CANNOT be undone!
+echo.
+set "FINAL_CONFIRM="
+set /p "FINAL_CONFIRM=Type DELETE (in capitals) to proceed, or press Enter to cancel: "
+
+if not "!FINAL_CONFIRM!"=="DELETE" (
+    echo.
+    echo Deletion cancelled. Original files kept.
+    if exist "!MASTER_CONVERTED_LIST!" del "!MASTER_CONVERTED_LIST!" >nul 2>&1
+    timeout /t 2 /nobreak >nul
+    exit /b
+)
+
+REM Perform the actual deletion
+echo.
+echo Deleting original files...
+set "DELETED_OK=0"
+set "DELETED_FAIL=0"
+set "CURRENT_FORMAT="
+
+for /f "usebackq tokens=1,2 delims=;" %%F in ("!MASTER_CONVERTED_LIST!") do (
+    set "FILEPATH=%%~F"
+    set "FILEFORMAT=%%G"
+    
+    if exist "!FILEPATH!" (
+        REM Show format changes
+        if not "!FILEFORMAT!"=="!CURRENT_FORMAT!" (
+            set "CURRENT_FORMAT=!FILEFORMAT!"
+            echo Processing .!CURRENT_FORMAT! files...
+        )
+        
+        REM Delete the file
+        del /f /q "!FILEPATH!"
+        
+        REM Verify deletion
+        if exist "!FILEPATH!" (
+            echo Failed to delete: !FILEPATH!
+            set /a DELETED_FAIL+=1
+        ) else (
+            set /a DELETED_OK+=1
+            set /a "PROGRESS_CHECK=!DELETED_OK! %% 10"
+            if !PROGRESS_CHECK! EQU 0 echo Deleted !DELETED_OK! files so far...
+        )
+    ) else (
+        echo Warning: File not found for deletion: !FILEPATH!
+        set /a DELETED_FAIL+=1
+    )
+)
+
+REM Clean up master list
+if exist "!MASTER_CONVERTED_LIST!" del "!MASTER_CONVERTED_LIST!" >nul 2>&1
+
+echo.
+echo ========================================
+echo Deletion Complete
+echo ========================================
+if !DELETED_OK! GTR 0 echo Successfully deleted: !DELETED_OK! files
+if !DELETED_FAIL! GTR 0 echo Failed to delete: !DELETED_FAIL! files
+echo.
+timeout /t 3 /nobreak >nul
+
+exit /b
+
+:AFTER_CONVERSION
+
 echo.
 timeout /t 1 /nobreak >nul
 echo ========================================
 echo SETUP COMPLETED - SAFE TO CLOSE SCRIPT
 echo ========================================
 echo.
-echo Configuration saved to .env file.
+echo Your Jill Discord Bot is now configured!
 echo.
 if "%DEFAULT_PATH%"=="1" (
-    echo Music folder: music\ - inside Jill's folder
-    echo.
-    echo   Your bot folder is fully portable:
+    echo Your bot folder is fully portable:
     echo   - Virtual environment: venv\ - inside Jill's folder
     echo   - Music folder: music\ - inside Jill's folder
 ) else (
     echo Music folder: %MUSIC_PATH%
-    echo.
     echo NOTE: Update .env file if you move the music folder somewhere else.
 )
+
 if "%CONVERSION_SUCCESS%"=="true" (
     echo.
-    echo Next step: Run scripts/win_run_bot.bat to start your bot.
+    echo ✓ Audio files converted successfully
+    echo.
+    echo Next step: Run start-jill.bat to start your bot.
 ) else (
     echo.
     echo Next steps:
     echo   1. Add .opus music files to your music folder.
     echo      See 04-Converting-To-Opus.txt for help converting audio files.
-    echo   2. Run scripts/win_run_bot.bat to start your bot.
+    echo   2. Run start-jill.bat to start your bot.
 )
 echo.
 echo For help, see the README folder or 06-troubleshooting.txt

@@ -1,0 +1,49 @@
+================================================================================
+                    JILL - A CYBERPUNK BARTENDER MUSIC BOT
+================================================================================
+
+A simple, robust Discord music bot that plays local .opus files that supports
+multiple playlists, auto-cleanup, song selection, spam protection, and more.
+
+ABOUT:
+Built in a neon-lit feedback loop between me and AI coding agents. I prompted,
+stitched the pieces, and fine tuned behavior; the agents generated most of the
+raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
+
+QUICK START:
+1. Get a Discord bot token [see '02-Getting-Discord-Token.txt']
+2. Run the setup wizard [inside scripts folder]
+   - The wizard can convert your music to .opus automatically
+   - Or convert manually [see '04-Converting-To-Opus.txt']
+3. Run your bot [inside scripts folder]
+4. Serve drinks.
+
+BASIC COMMANDS:
+!play             # start/resume playback
+!play [track]     # jump by number or name (!play 5 or !play lonely job)
+!pause            # pause
+!skip             # next track
+!previous         # previous track
+!stop             # disconnect/reset
+!queue            # show the current queue
+!tracks           # show tracks in the current playlist
+!playlist [name]  # switch to a playlist (!playlist dome keeper)
+!playlists        # show all available playlists
+!shuffle          # toggle shuffle
+!help             # show help
+
+FEATURES:
+- Customization: rename commands, rewrite messages, flip features on or off, make it yours
+- Multiple playlists: you're using subfolders? now it's a playlist!
+- Spam protection: hammer it all you want, debounce, cooldowns, and limits keep it sane
+- Smart: jill reads the room, pauses when alone, cleans up after herself
+- Shuffle mode: toggle it on or off, she'll auto reshuffle as well!
+- Quick search: just say the song name or track number (works on playlists too!)
+
+CONFIGURATION:
+Settings live in /config/ folder. Main files:
+- config/messages.py  - Customize bot responses
+- config/features.py  - Turn features on/off
+- config/aliases.py   - Change command aliases
+
+INFO: Built on the Disnake API — https://docs.disnake.dev

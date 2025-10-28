@@ -1,15 +1,21 @@
-"""
+# Part of Jill - Licensed under GPL 3.0
+# See LICENSE.md for details
+
+r"""
+=========================================================================================================================
 Bot Messages - All text responses
+=========================================================================================================================
 
-This file contains all the bot's text output that users see.
-Customize these messages to change Jill's personality and responses.
+This file contains the bot's text output that users see.
+Customize these messages to change jill's personality and responses.
 
+=========================================================================================================================
 STRING FORMATTING GUIDE:
-========================
+=========================================================================================================================
 
 APOSTROPHES:
-❌ WRONG: 'It's broken'          # Apostrophe breaks things
-✅ RIGHT: 'It\'s broken'         # Now it doesn't
+WRONG: 'It's broken'          # Apostrophe breaks things
+RIGHT: 'It\'s broken'         # Now it doesn't
 
 SPECIAL CHARACTERS:
 - \n = new line, \t = tab, \\ = backslash
@@ -24,7 +30,25 @@ EXAMPLE TEXT (with lots of formatting):
 CUSTOMIZATION TIPS:
 - Change emojis to match your server's style
 - Modify personality by changing the tone of messages
-- Add your own custom responses for special events
+- If you have your own custom server emojis, you can use them like this:
+
+1. Find what emoji you want to use and what its name is; you can see the emoji's name by
+hovering over it in the emoji selection menu.
+
+2. Go to a text channel and type \:youremojiname: then hit Enter to send
+
+3. Copy the output of the message, it should look like <:emojiname:1628512340528825422>
+
+4. Replace or add below with your custom emoji code; for example, I use:
+
+    'spam_skip': '<:jillgun:1428564230588827442> Easy there, hotshot. I\'ll skip when you stop button mashing.',
+    
+    instead of the default
+    
+    'spam_skip': '😒 Easy there. I\'ll skip when you stop button mashing.',
+    
+5. Now your bot is extra special and unique, just like you.
+=========================================================================================================================
 """
 
 # =======================================================================================================================
@@ -42,17 +66,22 @@ MESSAGES = {
     'error_not_playing': "😒 I'm not even playing anything.",
     'error_already_playing': "🙄 It's already playing?",
     'error_no_tracks': "🎵 No tracks in the jukebox!",
-    'error_fight_me': "😤 Fight me.",
+    'error_fight_me': "👺 Fight me.",
     'error_cant_connect': "❌ Can't join that channel: {error}",
-    'error_invalid_track': "❌ Track #{number} doesn't exist. Library has {total} tracks.",
+    'error_invalid_track': "❌ Track #{number} doesn't exist. Current playlist has {total} tracks.",
+    'error_track_not_found': "❌ '{query}'? Try !tracks to see what we have.",
+    'error_playlist_not_found': '❌ I ran out of \'{query}\'. Try `!playlists` to see the menu.',
+    'error_playlist_already_active': '😑 Already using that playlist.',
+    'error_no_playlists': '❌ No playlists found. Music must be in subfolders.',
     
     # ===================================================================================================================
     # FEATURE DISABLED - Messages for disabled features
     # ===================================================================================================================
-    'feature_shuffle_disabled': "🔒 Shuffle feature is currently disabled.",
-    'feature_queue_disabled': "🔒 Queue display feature is currently disabled.",
-    'feature_library_disabled': "🔒 Library display feature is currently disabled.",
-    
+    'feature_shuffle_disabled': "🔒 Shuffle is currently disabled.",
+    'feature_queue_disabled': "🔒 Queue display is currently disabled.",
+    'feature_library_disabled': "🔒 Library display is currently disabled.",
+    'feature_playlists_disabled': "🔒 Playlist switching is currently disabled.",
+
     # ===================================================================================================================
     # PLAYBACK - Music playback and control messages
     # ===================================================================================================================
@@ -66,92 +95,111 @@ MESSAGES = {
     # ===================================================================================================================
     # NAVIGATION - Track navigation and queue messages
     # ===================================================================================================================
+    # I use invisible characters to align text when needed, here's one if you want to use it: "⠀"
+    # To customize "upcoming tracks" indentation/spacing, see /handlers/commands.py (queue formatting)
+
     'previous_at_start': '😑 Already at the beginning!',
     'skip_no_disc': '✖️ No disc in jukebox.',
     'nothing_playing': '✖️ Nothing\'s playing right now.',
-    'queue_will_loop': '_(Queue will loop after this)_',
+    'queue_will_loop': ' _(Queue will loop after this)_',
+    'queue_header': '╔════════════════════════════╗',
+    'queue_footer': '╚════════════════════════════╝',
+    'queue_now_playing': '⠀⠀🍸 Now Serving →',
+    'queue_last_played': '⠀⠀🍷 Last Served: ',
+    'queue_up_next': '⠀⠀🍹 Coming Up: ',
     
     # ===================================================================================================================
     # SHUFFLE - Shuffle mode and organization messages
     # ===================================================================================================================
     'shuffle_on': '🔀 **Shuffle ON** - Time to mix things up!',
-    'shuffle_off': '📋 **Shuffle OFF** - Back to the classics.',
+    'shuffle_off': '🎼 **Shuffle OFF** - Back to the classics.',
     'shuffle_already_off': '📋 Already done!',
-    'unshuffle_organized': '📋 **Shuffle OFF** - All neat and organized.',
+    'unshuffle_organized': '🎼 **Shuffle OFF** - All neat and organized.',
     
     # ===================================================================================================================
     # SPAM WARNINGS - Warning messages for spam protection
     # ===================================================================================================================
-    'spam_skip': '😤 Easy there, hotshot. I\'ll skip when you stop button mashing.',
+    'spam_skip': '😒 Easy there. I\'ll skip when you stop button mashing.',
     'spam_pause': '😑 Alright, alright, I\'ll pause. Chill.',
     'spam_stop': '😑 Yeah yeah, I\'m leaving. Give me a second.',
     'spam_previous': '😑 Going back, going back...',
-    'spam_shuffle': '😵‍💫 Shuffle, unshuffle, make up your mind!',
-    'spam_unshuffle': '😑 Okay, okay, organizing...',
+    'spam_shuffle': '😵‍💫 Shuffle on, shuffle off, make up your mind!',
     'spam_play_jump': '😵‍💫 Hold on, let me find that track...',
+    'spam_tracks': '😑 Alright, alright, here it is...',
+    'spam_playlists': '😒 Yeah, yeah, can you even read this fast?',
     
     # ===================================================================================================================
-    # LIBRARY - Music library and playlist messages
+    # TRACKS - Track list and playlist management messages
     # ===================================================================================================================
-    'library_header': '**🎵 Library (Page {page}/{total_pages})**\n',
-    'library_next_page': '\nUse `!list {next_page}` for next page.',
-    'library_shuffle_note': '\n🔀 **Shuffle is ON** - The list above shows unshuffled order.',
-    'library_shuffle_help': 'Use `!play [number]` to jump to a track | Use `!queue` to see shuffled playback order.',
-    'library_normal_help': 'Use `!play [number]` to jump to a track.',
-    
+    'tracks_header': '**🎵 Tracks (Page {page}/{total_pages})**\n',
+    'tracks_next_page': '\nUse `!tracks {next_page}` for next page.',
+    'tracks_shuffle_note': '\n🔀 **Shuffle is ON** - The list above shows unshuffled order.',
+    'tracks_shuffle_help': 'Use `!play [number or name]` to jump to a track | Use `!queue` to see shuffled playback order.',
+    'tracks_normal_help': 'Use `!play [number or name]` to jump to a track.',
+
     # ===================================================================================================================
-    # HELP TEXT - Command help and information
+    # PLAYLISTS - Playlist browsing and switching messages
     # ===================================================================================================================
-    # NOTE: Help text is dynamically generated based on which features are enabled
-    # See HELP_TEXT dictionary below for customization options
+    'playlists_header': '**🎵 Playlists (Page {page}/{total_pages})**\n',
+    'playlists_next_page': '\nUse `!playlists {next_page}` for next page.',
+    'playlists_help': '\nUse `!tracks [name or number]` or `!list [name]` to switch playlists.',
+    'playlist_switched': '✅ {message}',
         }
 
 # =======================================================================================================================
-# HELP TEXT - Customize everything here!
+# HELP TEXT - Customize all the !help text here!
 # =======================================================================================================================
 
 HELP_TEXT = {
     # Always shown
     'header': '🍸 **jill\'s jukebox** 🍸',
-    'volume_note': '***Volume control***: *Use Discord\'s user volume slider (right-click bot)*',
-    'footer': '        Time to mix drinks and change lives. 🍹',
+    'volume_note': '**Volume control**: Use Discord\'s user volume slider (right-click bot)',
+    'footer': 'Time to mix drinks and change lives. 🍹',
     
     # Section titles
     'playback_title': '**Playback:**',
-    'queue_title': '**Queue & Library:**',
+    'queue_title': '**Queue:**',
+    'tracks_title': '**Tracks:**',
+    'playlist_title': '**Playlists:**',
     'shuffle_title': '**Shuffle:**',
     'info_title': '**Info:**',
     
     # Command lists
     # Note: Each section only shows if the corresponding feature is enabled
     'playback_commands': [
-        '`!play` / `!resume` / `!unpause` / `!start` - Start/resume music',
-        '`!play [number]` / `!skipto [number]` - Jump to track (e.g., !play 32)',
-        '`!pause` / `!break` - Pause playback',
-        '`!skip` / `!next` / `!ns` - Skip track',
-        '`!previous` / `!back` / `!ps` - Previous track',
-        '`!stop` / `!leave` / `!dc` / `!bye` - Disconnect'
+        '`!play` - Start/resume music',
+        '`!play [track]` - Jump to track by number or name',
+        '`!pause` - Pause playback',
+        '`!skip` - Next track',
+        '`!previous` - Previous track',
+        '`!stop` - Disconnect'
     ],
     
     # Queue section (only shows if QUEUE_DISPLAY_ENABLED = True)
     'queue_commands': [
-        '`!queue` / `!q` / `!song` / `!name` / `!playing` - Show song queue'
+        '`!queue` - Show current song queue',
+        '`!tracks` - Show all tracks in current playlist'
+    ],
+ 
+    # Playlists section (only shows if has_playlist_structure() = True)
+    'playlist_commands': [
+        '`!playlists` - Show all available playlists',
+        '`!list [name]` - Switch to different playlist'
     ],
     
-    # Library section (only shows if LIBRARY_DISPLAY_ENABLED = True)
-    'library_commands': [
-        '`!list [page]` / `!playlist [page]` / `!all [page]` - Show entire song list'
+    # Tracks section (only shows if LIBRARY_DISPLAY_ENABLED = True)
+    'tracks_commands': [
+        # Empty - all track/playlist commands moved to playlists section
     ],
-    
+
     # Shuffle section (only shows if SHUFFLE_MODE_ENABLED = True)
     'shuffle_commands': [
-        '`!shuffle` / `!mess` / `!scramble` - Toggle shuffle on/off',
-        '`!unshuffle` / `!fix` / `!organize` - Turn shuffle off'
+        '`!shuffle` - Toggle shuffle mode'
     ],
     
     # Info section (always shown)
     'info_commands': [
-        '`!help` / `!commands` / `!jill` - Show this message'
+        '`!help` - Show this message'
     ],
     
     # Error message (shown if help generation fails)

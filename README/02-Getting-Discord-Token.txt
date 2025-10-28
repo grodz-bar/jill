@@ -3,27 +3,28 @@ HOW TO GET A DISCORD BOT TOKEN
 =====================================================================================
 
 STEP 1: CREATE APPLICATION
----------------------------
+----------------------------------------------------------
 1. Go to: https://discord.com/developers/applications
 2. Click "New Application"
-3. Name it (e.g., "Music Bot")
+3. Name it (e.g., "jill music")
 4. Click "Create"
 
 STEP 2: CREATE BOT USER
-------------------------
+----------------------------------------------------------
 1. Click "Bot" in left sidebar
 2. Click "Add Bot"
 3. Confirm "Yes, do it!"
+NOTE: Sometime's it's auto-created.
 
 STEP 3: CONFIGURE BOT
----------------------
+----------------------------------------------------------
 1. Under "Privileged Gateway Intents", enable:
 
-   - SERVER MEMBERS INTENT (for auto-pause and disconnect)
-   - MESSAGE CONTENT INTENT (to read command messages)
+   - SERVER MEMBERS INTENT     (for auto-pause and disconnect)
+   - MESSAGE CONTENT INTENT    (to read command messages)
 
 STEP 4: GET TOKEN
------------------
+----------------------------------------------------------
 1. Under "Token" section, click "Reset Token"
 2. Confirm, then copy the token
 3. Save it somewhere safe (you'll need it later)
@@ -32,9 +33,9 @@ IMPORTANT: NEVER share your token! It's like a password.
 IMPORTANT: If your token is leaked, reset it immediately in the developer portal.
 
 STEP 5: INVITE BOT TO SERVER
------------------------------
-1. Click "OAuth2" → "URL Generator" in left sidebar
-2. Under "Scopes", select:
+----------------------------------------------------------
+1. Click "OAuth2" in left sidebar
+2. Find "OAuth2 URL Generator" and "Scopes", select:
    - bot
    - applications.commands
 
@@ -52,10 +53,9 @@ STEP 5: INVITE BOT TO SERVER
 7. Click "Authorize"
 
 STEP 6: CONTINUE WITH PLATFORM SETUP
------------------------------
+----------------------------------------------------------
 
-Now continue with your platform setup guide (SETUP-Windows.txt or SETUP-Linux.txt) 
-starting from Step 3.
+1. If you're following a platform setup guide (03-SETUP-Windows.txt or 03-SETUP-Linux.txt),
+continue from it. You will need this token in the setup wizard.
 
-
-For troubleshooting, see troubleshooting.txt
+NOTE: For troubleshooting, see 06-troubleshooting.txt

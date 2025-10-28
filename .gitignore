@@ -7,6 +7,7 @@ bot.log
 
 # Runtime state files
 last_channels.json
+last_playlists.json
 
 # Python cache directories
 .mypy_cache/
@@ -37,6 +38,7 @@ Thumbs.db
 *~
 
 # Windows
+run_bot.bat
 desktop.ini
 $RECYCLE.BIN/
 *.cab
@@ -47,6 +49,13 @@ $RECYCLE.BIN/
 
 # Music files
 music/
+songs/
+albums/
+audio/
+library/
+musicfiles/
+opus/
+audiofiles/
 *.opus
 *.mp3
 *.wav
@@ -88,3 +97,9 @@ music/
 .idea/
 *.sublime-project
 *.sublime-workspace
+
+# Git
+.git_backup/
+.git/
+commit.txt
+push.bat

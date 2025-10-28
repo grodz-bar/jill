@@ -1,0 +1,217 @@
+# Troubleshooting Guide
+
+Hopefully you're only here because you're curious.
+
+---
+
+## Bot Issues
+
+### Bot doesn't respond to commands
+
+- Ensure **MESSAGE CONTENT INTENT** is enabled in Discord Developer Portal
+- Verify bot has **"Send Messages"** and **"View Channel"** permissions in channel
+- Check bot is online (default behaviour: red dot in member list)
+- Verify bot is invited to the server correctly
+
+### Bot can't join voice
+
+- Ensure **"View"**, **"Connect"** AND **"Speak"** permissions are granted
+- Check voice channel isn't full or restricted
+- Verify bot has proper voice permissions in server settings
+
+### "Privileged intent" error
+
+- Go back to Discord Developer Portal → Bot
+- Enable **MESSAGE CONTENT INTENT**
+- Enable **SERVER MEMBERS INTENT**
+- Restart bot
+
+### Bot disconnects frequently
+
+- Check internet connection stability
+- Verify Discord API status: [discordstatus.com](https://discordstatus.com)
+- Check Windows power settings (prevent sleep)
+- Check logs
+
+---
+
+## Bot Startup Issues
+
+### Bot won't start
+
+- Check token and music folder are correct in `.env` file
+- Verify Python 3.11+ is installed
+- Ensure venv has all dependencies installed
+- Make sure Windows Defender isn't blocking the bot (Windows)
+- Read the `bot.log` and service logs (Linux) for error messages
+- Check you used your actual username instead of "YOUR-USERNAME" during setup
+
+### Bot can't find music
+
+- Verify `MUSIC_FOLDER` path is correct
+- Check files are `.opus` format (not `.mp3`, `.flac`, etc.)
+- Ensure bot has read permission on music folder
+- Ensure song files are named properly (`01 - Track Name.opus`)
+- If using multiple playlists: Make sure the playlist folder name follows this format (`01 - Album Name`, `02 - Game OST`, etc.)
+
+### Bot joins but no sound
+
+- Verify Discord voice settings
+- Verify bot has **"Connect"** and **"Speak"** permissions in voice channel
+- Verify your `.opus` files play normally
+- Ensure song files are named properly (`01 - Track Name.opus`)
+- ... do you have Discord muted? Or the bot volume set too low to hear...?
+
+---
+
+## Audio Conversion Issues
+
+### "ffmpeg not recognized"
+
+- **Linux:** Install with apt (`sudo apt install ffmpeg`)
+- **Windows:** Add ffmpeg to PATH (see [Converting to Opus](04-Converting-To-Opus.md))
+
+### "Could not write header for output file"
+
+- Check you have write permission in folder
+- Ensure output filename doesn't have illegal characters
+- Ensure you're replacing the default commands from the guide with YOUR specific use case, like changing ALL `.mp3`'s to `.flac`, etc.
+
+### Audio sounds weird/distorted
+
+- Verify source file plays correctly
+- Verify `.opus` file plays correctly on a different machine
+- Check conversion had the right output:
+  - Use command: `ffprobe -hide_banner SONG-NAME.opus`
+  - Look for: Sample rate 48000 Hz, stereo channels, ~256 kb/s bit rate
+- Bot might have a bad connection to Discord
+- User might have a bad connection to Discord
+- Discord is just weird sometimes
+
+### Bot won't play opus files
+
+- Verify files are in correct folder/folders
+- Try some of the possibly relevant things above
+
+---
+
+## Auto-Start Issues
+
+### Task Scheduler won't start bot (Windows)
+
+- Check task is enabled in Task Scheduler
+- Verify batch file path is correct
+- Check task runs with proper permissions
+- View task history for error messages
+
+### Service won't start (Linux)
+
+- Check `sudo systemctl status jill.service` for errors
+- Verify paths in service file are correct
+- Ensure `linux_run_bot.sh` is executable (`chmod +x ~/jill/scripts/linux_run_bot.sh`)
+- Check service logs: `sudo journalctl -u jill.service -f`
+- I really hope you did not add the `"---------"` characters (from the setup txt) to your service file. Because if you did, delete them.
+
+---
+
+## Stopping the Bot (Graceful Shutdown)
+
+The bot implements a graceful shutdown system that ensures all tasks are properly cleaned up before exiting. This prevents data loss and race conditions.
+
+### How to stop the bot properly:
+
+#### Windows (Command Prompt)
+
+- Press **Ctrl+C** in the console window
+- Wait 2-3 seconds for shutdown to complete
+- You'll see "Shutdown complete" in the logs
+
+#### Windows (Task Scheduler)
+
+- Open Task Scheduler
+- Right-click "Jill Discord Bot" task → **End**
+- Or: `Stop-ScheduledTask -TaskName "Jill Discord Bot"` (PowerShell)
+
+#### Linux (systemd service)
+
+```bash
+sudo systemctl stop jill.service
+```
+
+- The bot will shutdown gracefully within 2-3 seconds
+- Check status: `sudo systemctl status jill.service`
+
+#### Linux (manual/screen session)
+
+- Press **Ctrl+C** in the terminal
+- Wait for "Shutdown complete" message
+- Or: `kill -TERM <pid>` (sends SIGTERM signal)
+
+### What happens during graceful shutdown:
+
+1. Signal received (SIGINT from Ctrl+C or SIGTERM from systemd)
+2. Watchdog tasks cancelled
+3. All players shutdown (spam protectors, cleanup managers)
+4. Voice connections closed
+5. Bot disconnects from Discord
+6. Logs "Shutdown complete"
+
+### DO NOT:
+
+- Use `kill -9` or "End Process" in Task Manager (forces immediate exit)
+- Close terminal window without Ctrl+C (unclean shutdown)
+- Use `systemctl kill` (too aggressive, use stop instead)
+
+### If the bot doesn't shutdown within 10 seconds:
+
+- Something is deadlocked (rare)
+- Check logs for errors
+- As last resort, use `kill -9 <pid>` or Task Manager → End Process
+
+---
+
+## Logging and Debugging
+
+### How to view logs:
+
+#### Windows
+
+- Bot logs are displayed in the console window
+- For Task Scheduler logs go to:
+  - Task Scheduler → "Jill Discord Bot" task → Properties → History tab
+
+#### Linux
+
+```bash
+# Bot logs
+tail -f ~/jill/bot.log
+
+# Service logs
+sudo journalctl -u jill.service -f
+
+# Check service status
+sudo systemctl status jill.service
+```
+
+---
+
+## Common Solutions
+
+### For persistent issues:
+
+- Check the `bot.log` file for detailed error messages
+- Verify all setup steps were completed correctly
+- Ensure your system meets the requirements
+
+### If nothing else works:
+
+1. Restart the bot
+2. Restart your computer
+3. Restart your internet
+4. Restart THE internet
+5. Check Discord API status: [discordstatus.com](https://discordstatus.com)
+6. Verify all permissions are correct
+7. Check file paths and permissions
+8. Ensure Python and dependencies are properly installed
+9. Try running the bot manually first before setting up auto-start
+10. Restart the Cosmos

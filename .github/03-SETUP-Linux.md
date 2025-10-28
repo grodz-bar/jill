@@ -1,0 +1,397 @@
+# Linux Setup Guide
+
+This guide works for:
+- Debian/Ubuntu Linux
+- Raspberry Pi OS
+
+---
+
+## Step 1: System Requirements
+
+### Install Required Packages
+
+1. **Update package list:**
+   ```bash
+   sudo apt update
+   ```
+
+2. **Install Python and dependencies:**
+   ```bash
+   sudo apt install -y python3 python3-pip python3-venv ffmpeg git
+   ```
+
+   > **Note:** On some distros (Debian 10, Ubuntu 18.04), the venv module is packaged separately. If you get "No module named venv", install it:
+   > ```bash
+   > sudo apt install -y python3.11-venv
+   > ```
+   > (Replace 3.11 with your Python version)
+
+### Verify Python Version
+
+1. **Check Python version:**
+   ```bash
+   python3 --version
+   ```
+
+2. You should see **"Python 3.11.x"** or newer
+
+> **Note:** If your version is too old, you may need to install a newer Python version.
+
+---
+
+## Step 2: Get Discord Bot Token and Set Permissions
+
+See [Getting Discord Token](02-Getting-Discord-Token.md) for instructions on creating a Discord bot and getting your token. You will need this later.
+
+### Required Discord Permissions
+
+When inviting the bot to your server, ensure it has these permissions:
+
+**Voice Permissions:**
+- **Connect** (Join voice channels)
+- **Speak** (Play audio in voice channels)
+
+**Text Permissions:**
+- **View Channel** (See text channels)
+- **Send Messages** (Send bot responses)
+- **Manage Messages** (Delete old bot/command messages for cleanup)
+- **Read Message History** (Scan channel history for cleanup)
+
+> **Note:** Without "Manage Messages", the bot can still function but auto-cleanup features will only delete the bot's own messages, not user commands or other bots' messages.
+
+---
+
+## Step 3: Download Bot
+
+Download the bot to your home directory:
+
+### Method 1 - Download Release ZIP
+
+1. Download the latest release ZIP from the releases page
+2. Extract the zip file to `~/jill/`
+
+> **Note:** Ensure files are in `~/jill/` (not `~/jill/jill/`)
+
+### Method 2 - Using Git
+
+1. **Navigate to home directory:**
+   ```bash
+   cd ~
+   ```
+
+2. **Clone the repository:**
+   ```bash
+   git clone https://github.com/grodz-bar/jill.git jill
+   ```
+
+> **Note:** You can extract jill into any folder you want, but this guide assumes you've placed it in `~/jill/`, change instructions to fit your use case.
+
+---
+
+## Step 4: Run Setup Wizard (Recommended)
+
+The wizard will automatically:
+- Create a virtual environment (`venv/`)
+- Install required Python packages
+- Generate your `.env` configuration file
+- Create the music folder if it doesn't exist
+- Optionally convert your audio files to `.opus`
+
+### Prerequisites
+
+- Discord bot token (from Step 2)
+- Python 3.11+ installed (from Step 1)
+- FFmpeg (only needed if converting audio to `.opus`)
+
+### Running the Wizard
+
+1. **Navigate to bot directory:**
+   ```bash
+   cd ~/jill
+   ```
+
+2. **Make setup script executable:**
+   ```bash
+   chmod +x scripts/linux_setup.sh
+   ```
+
+3. **Run the setup wizard:**
+   ```bash
+   ./scripts/linux_setup.sh
+   ```
+
+4. Follow the interactive prompts
+
+5. Setup completed successfully when you see:
+   ```
+   ========================================
+   SETUP COMPLETED - SAFE TO CLOSE SCRIPT
+   ========================================
+   ```
+
+**If successful** → Continue to **Step 5**
+
+### If Setup Fails
+
+- Read the error message shown in the terminal
+- See [Troubleshooting](06-troubleshooting.md) for common issues
+- Verify Python 3.11+ is installed: `python3 --version`
+- Check venv module: `python3 -m venv --help`
+- Try **Alternative Step 4 (Manual Setup)** below
+
+---
+
+## Alternative Step 4: Manual Setup
+
+If you prefer to set up manually, follow these steps:
+
+1. **Create virtual environment:**
+   ```bash
+   python3 -m venv venv
+   ```
+
+2. **Activate virtual environment:**
+   ```bash
+   source venv/bin/activate
+   ```
+
+3. **Upgrade pip and wheel (recommended):**
+   ```bash
+   python3 -m pip install -U pip wheel
+   ```
+
+4. **Install dependencies:**
+   ```bash
+   python3 -m pip install -r requirements.txt
+   ```
+
+5. **Create .env file in the bot folder:**
+   ```bash
+   nano .env
+   ```
+
+   Add:
+   ```
+   DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN
+   ```
+
+   (Optional) Add:
+   ```
+   MUSIC_FOLDER=path/to/music
+   ```
+   (Blank uses default: `music/` folder)
+
+   Save and exit (Ctrl+X, Y, Enter)
+
+6. **Deactivate venv:**
+   ```bash
+   deactivate
+   ```
+
+7. Edit the `jill/scripts/linux_run_bot.sh` file to match your installation
+
+8. Proceed to **Step 5** of this setup guide
+
+---
+
+## Step 5: Add Your Music Files (If Needed)
+
+Convert your files to `.opus` by following the [Converting to Opus](04-Converting-To-Opus.md) guide.
+
+**EVEN** if you used the WIZARD (`linux_setup.sh`) you need to make sure your `.opus` music files follow the naming format described below.
+
+> **Note:** This step only covers music files, but if you're using **PLAYLISTS** (as in, subfolders inside your jill music folder), it is HIGHLY recommended that they use the same naming format described below.
+
+### File Naming Format
+
+Files MUST start with numbers for proper sorting. The bot expects:
+
+```
+01 - Track Name.opus
+02 - Track Name.opus
+03 - Track Name.opus
+...
+10 - Track Name.opus
+```
+
+**Format rules:**
+- Start with digits (01, 02, 03... or 1, 2, 3...)
+- Follow with space, dash, space: `" - "`
+- Then your track name
+- End with `.opus` extension
+
+**Example good names:**
+- ✅ `01 - Hopes and Dreams.opus`
+- ✅ `02 - Every Day Is Night.opus`
+- ✅ `10 - Drive Me Wild.opus`
+
+**Example bad names:**
+- ❌ `Hopes and Dreams.opus` (no number - won't sort correctly)
+- ❌ `Track 01.opus` (number not at start)
+- ❌ `Song_01.opus` (number not at start)
+
+> **Note:** On Linux, tools like `rename`, `mmv`, or `vidir` help batch-rename quickly. On Windows, PowerRename works well.
+
+---
+
+## Step 6: Run the Bot
+
+1. **Navigate to bot directory:**
+   ```bash
+   cd ~/jill
+   ```
+
+2. **Run the bot:**
+   ```bash
+   ./scripts/linux_run_bot.sh
+   ```
+
+You should see:
+- "Bot connected as YourBot#1234"
+- "Music folder found: /home/example/jill/music"
+
+**To stop the bot**, press `Ctrl+C` in the terminal.
+
+---
+
+## Step 7: Auto-Start with systemd (Optional but Recommended)
+
+> **Note:** Do this so bot will start automatically after a machine boot.
+
+1. **Make sure our run bot script is executable:**
+   ```bash
+   chmod +x ~/jill/scripts/linux_run_bot.sh
+   ```
+
+2. **Create systemd service file:**
+   ```bash
+   sudo nano /etc/systemd/system/jill.service
+   ```
+
+3. **Add the following configuration:**
+
+   > **WARNING:** Before pasting, you MUST replace these placeholders:
+   > - `YOUR-USERNAME` → your actual Linux username (appears 5 times below)
+   > - `YOUR-BOT-TOKEN` → your Discord bot token (if using optional method)
+   > - `/home/YOUR-USERNAME/jill/` → actual path if stored elsewhere
+
+   ```ini
+   [Unit]
+   Description=Jill Discord Bot
+   After=network-online.target
+   Wants=network-online.target
+
+   [Service]
+   Type=simple
+   User=YOUR-USERNAME
+   WorkingDirectory=/home/YOUR-USERNAME/jill/
+   ExecStart=/home/YOUR-USERNAME/jill/scripts/linux_run_bot.sh
+   StandardOutput=append:/home/YOUR-USERNAME/jill/bot.log
+   StandardError=append:/home/YOUR-USERNAME/jill/bot.log
+   Restart=always
+   RestartSec=10
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+   **OPTIONAL:** If you don't want to use the `.env` file (from the default setup), you can place these lines under `[Service]` instead:
+   ```ini
+   Environment="DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN"
+   Environment="MUSIC_FOLDER=/home/YOUR-USERNAME/jill/music/"
+   ```
+
+4. **Save and exit** (Ctrl+X, Y, Enter in nano)
+
+5. **Reload systemd configuration:**
+   ```bash
+   sudo systemctl daemon-reload
+   ```
+
+6. **Enable the service to start on boot:**
+   ```bash
+   sudo systemctl enable jill.service
+   ```
+
+7. **Start the service:**
+   ```bash
+   sudo systemctl start jill.service
+   ```
+
+8. **Check service status:**
+   ```bash
+   sudo systemctl status jill.service
+   ```
+
+---
+
+## Customization
+
+### How to Edit Config Files
+
+Config files are just text files - edit them with nano.
+
+**Example:**
+```bash
+cd ~/jill/config
+ls
+nano features.py
+# Make changes and save (Ctrl+X, Y, Enter)
+```
+
+### Files in the `/config/` folder to customize:
+
+- `config/aliases.py` - Command aliases
+- `config/features.py` - Turn features on/off
+- `config/messages.py` - Bot text responses
+- `config/timing.py` - Timing and cooldown settings
+- `config/paths.py` - File paths
+
+**Make sure to restart bot after changes:**
+```bash
+sudo systemctl restart jill.service
+```
+
+For bot profile picture/banner/etc, change it on the [Developer Portal](https://discord.com/developers/applications).
+
+---
+
+## Updating the Bot
+
+To update to a new version:
+
+```bash
+cd ~/jill
+git pull
+
+# Restart the service
+sudo systemctl restart jill.service
+
+# Check logs to ensure it started correctly
+tail -f ~/jill/bot.log
+```
+
+---
+
+## Raspberry Pi Specific Notes
+
+### Performance
+- Tested on a Raspberry Pi 4, barely uses RAM and CPU.
+
+### Audio Quality
+- Using pre-encoded `.opus` files means less CPU usage, plus Discord seems to like it better, this is why the format requirements are strict.
+
+### Storage
+- SD card should be Class 10 or better (U1/U3 recommended)
+- Huge libraries might benefit from a USB SSD
+
+### Networking
+- Wired > WiFi
+- If using WiFi, see if you drop packets when using Discord (not good)
+- Discord voice uses ~96kbps upstream (opus 256kbps gets compressed)
+
+---
+
+## Troubleshooting
+
+For troubleshooting, see [Troubleshooting](06-troubleshooting.md)

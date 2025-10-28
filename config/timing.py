@@ -1,9 +1,17 @@
+# Part of Jill - Licensed under GPL 3.0
+# See LICENSE.md for details
+
 """
 Timing Settings - All timing and cooldown configurations
 
 This file contains all timing-related settings organized by category.
 These control how fast/slow the bot responds and manages various operations.
+
+Changing some of these values can break things and make the bot more prone
+to spam and Discord's API rate-limiting, be careful and test thoroughly.
 """
+
+from typing import Final
 
 # =========================================================================================================
 # SPAM PROTECTION TIMING
@@ -41,7 +49,7 @@ TTL_CHECK_INTERVAL = 1.0           # Seconds between TTL expiry checks
 
 USER_COMMAND_TTL = 8.0             # Seconds before user command messages are deleted
                                    # LOWER = cleaner chat, HIGHER = users can see their commands longer
-                                   # Used for all user commands (!play, !skip, !library, etc.)
+                                   # Used for all user commands (!play, !skip, !tracks, etc.)
 
 MESSAGE_SETTLE_DELAY = 0.5         # Seconds to wait for new messages to settle
                                    # LOWER = faster responses, HIGHER = more stable
@@ -77,15 +85,6 @@ SPAM_CLEANUP_DELAY = 20            # Seconds to wait before cleaning up spam mes
                                    # LOWER = cleans faster, HIGHER = lets users see warning messages
 
 # =========================================================================================================
-# COMMAND COOLDOWNS
-# =========================================================================================================
-
-SKIP_COOLDOWN = 2.0                # Time after !skip before another !skip works
-PLAY_COOLDOWN = 2.0                # Time after !play before another !play works  
-STOP_COOLDOWN = 2.0                # Time after !stop before another !stop works
-RECONNECT_COOLDOWN = 3.0           # Time after channel switch before commands work
-
-# =========================================================================================================
 # AUTO-PAUSE TIMING
 # =========================================================================================================
 
@@ -99,13 +98,18 @@ ALONE_DISCONNECT_DELAY = 600       # Seconds alone before auto-disconnect (10 mi
 # MESSAGE LIFETIMES (seconds) - How long each message type stays visible
 # =========================================================================================================
 
+# Used by systems.cleanup.CleanupManager to schedule deletions. Status embeds
+# are edited in place, and these TTLs govern follow-up messages such as queue
+# lists, shuffle toggles, and errors.
+
 MESSAGE_TTL = {
     'now_serving': 600,            # Current track info - protected while playing
     'pause': 10,                   # "Paused" message
-    'resume': 10,                  # "Resumed" message  
+    'resume': 10,                  # "Resumed" message
     'stop': 20,                    # "Stopped" message
     'queue': 30,                   # !queue command output
-    'library': 90,                 # !library command output (longer to read)
+    'tracks': 90,                  # !tracks command output (longer to read)
+    'playlists': 90,               # !playlists command output (longer to read)
     'help': 120,                   # !help command output (wall of text)
     'shuffle': 30,                 # Shuffle mode confirmation
     'error_quick': 10,             # Quick error messages
@@ -121,15 +125,17 @@ QUEUE_DEBOUNCE_WINDOW = 2.0        # Wait time for spam to stop (seconds)
 QUEUE_COOLDOWN = 1.0               # Cooldown after execution (seconds)
 QUEUE_SPAM_THRESHOLD = 5           # Times user can spam before warning
 
-# Library command debouncing
-LIBRARY_DEBOUNCE_WINDOW = 1.5      # Wait time for spam to stop (seconds)
-LIBRARY_COOLDOWN = 0.5             # Cooldown after execution (seconds)
-LIBRARY_SPAM_THRESHOLD = 5         # Times user can spam before warning
+# Tracks command debouncing (!tracks or !tracks <name> to switch)
+# This handles both showing tracks AND switching playlists
+TRACKS_DEBOUNCE_WINDOW = 2.0       # Wait time for spam to stop (seconds)
+TRACKS_COOLDOWN = 1.0              # Cooldown after execution (seconds)
+TRACKS_SPAM_THRESHOLD = 5          # Times user can spam before warning
 
-# Play command debouncing
-PLAY_DEBOUNCE_WINDOW = 1.0         # Wait time for spam to stop (seconds)
-PLAY_COOLDOWN = 1.0                # Cooldown after execution (seconds)
-PLAY_SPAM_THRESHOLD = 5            # Times user can spam before warning
+# Play jump command debouncing (!play [number])
+# Note: Normal !play (join/resume) doesn't use debouncing - only track jumping does
+PLAY_JUMP_DEBOUNCE_WINDOW = 1.0    # Wait time for spam to stop (seconds)
+PLAY_JUMP_COOLDOWN = 1.0           # Cooldown after execution (seconds)
+PLAY_JUMP_SPAM_THRESHOLD = 5       # Times user can spam before warning
 
 # Pause command debouncing
 PAUSE_DEBOUNCE_WINDOW = 2.0        # Wait time for spam to stop (seconds)
@@ -156,15 +162,19 @@ SHUFFLE_DEBOUNCE_WINDOW = 2.5      # Wait time for spam to stop (seconds)
 SHUFFLE_COOLDOWN = 2.0             # Cooldown after execution (seconds)
 SHUFFLE_SPAM_THRESHOLD = 5         # Times user can spam before warning
 
-# Unshuffle command debouncing
-UNSHUFFLE_DEBOUNCE_WINDOW = 2.5    # Wait time for spam to stop (seconds)
-UNSHUFFLE_COOLDOWN = 2.0           # Cooldown after execution (seconds)
-UNSHUFFLE_SPAM_THRESHOLD = 5       # Times user can spam before warning
+# Shuffle command now toggles (unshuffle removed)
 
 # Help command debouncing
 HELP_DEBOUNCE_WINDOW = 1.0         # Wait time for spam to stop (seconds)
 HELP_COOLDOWN = 1.0                # Cooldown after execution (seconds)
 HELP_SPAM_THRESHOLD = 4            # Times user can spam before warning
+
+# Playlists list command debouncing
+PLAYLISTS_DEBOUNCE_WINDOW = 1.0    # Wait time for spam to stop (seconds)
+PLAYLISTS_COOLDOWN = 1.0           # Cooldown after execution (seconds)
+PLAYLISTS_SPAM_THRESHOLD = 4       # Times user can spam before warning
+
+# Switch playlist command merged into 'tracks' command
 
 # =========================================================================================================
 # ADVANCED TIMING SETTINGS (Don't change unless you know what you're doing)
@@ -173,10 +183,22 @@ HELP_SPAM_THRESHOLD = 4            # Times user can spam before warning
 VOICE_CONNECT_DELAY = 0.15               # Wait for Discord voice handshake (prevents crashes)
 VOICE_SETTLE_DELAY = 0.05                # Let voice settle between tracks (prevents audio glitches)
 VOICE_RECONNECT_DELAY = 0.30             # Wait during voice reconnection (prevents race conditions)
-                                         # Slightly higher delay (0.30) = safer reconnect on slower networks.
 VOICE_CONNECTION_MAX_WAIT = 0.5          # Max wait for voice connection (500ms)
 VOICE_CONNECTION_CHECK_INTERVAL = 0.05   # Check voice connection every 50ms
 FRAME_DURATION = 0.02                    # Opus frame duration (20ms) for graceful stops
+
+# FFmpeg Audio Options - Controls playback latency and buffering behavior
+# Format: Space-separated command-line options passed to FFmpeg before reading input
+# Default optimizes for low latency and real-time playback of opus files
+FFMPEG_BEFORE_OPTIONS: Final[str] = '-hide_banner -loglevel error -nostdin -re -fflags +nobuffer'
+# Breakdown of default options:
+#   -hide_banner      : Suppress FFmpeg version banner (cleaner logs)
+#   -loglevel error   : Only log errors (reduces noise)
+#   -nostdin          : Don't read from stdin (prevents FFmpeg hanging)
+#   -re               : Read input at native frame rate (real-time playback, prevents rushing)
+#   -fflags +nobuffer : Reduce buffering delay (lower latency, faster start)
+# Advanced tuning: Adjust -analyzeduration/-probesize for faster startup if needed
+# Note: -vn flag (ignore video streams) not needed for .opus audio-only files
 
 MAX_HISTORY = 100                        # Max tracks to remember (prevents memory bloat)
 COMMAND_QUEUE_MAXSIZE = 100              # Max commands in queue (prevents memory exhaustion)
@@ -185,7 +207,5 @@ COMMAND_QUEUE_TIMEOUT = 0.5              # Max wait for queue operations (don't 
 WATCHDOG_INTERVAL = 600                  # Check for stuck playback every 10 minutes
 WATCHDOG_TIMEOUT = 660                   # Consider playback stuck after 11 minutes
 
-# Legacy constants (kept for compatibility)
 CALLBACK_MIN_INTERVAL = 1.0              # Min time between callback-triggered track advances
 ALONE_WATCHDOG_INTERVAL = 10             # Check alone status every 10 seconds
-

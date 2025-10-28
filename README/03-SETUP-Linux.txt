@@ -17,7 +17,7 @@ Install required packages:
 2. Install Python and dependencies:
     sudo apt install -y python3 python3-pip python3-venv ffmpeg git
 
-   NOTE: On some older distros (Debian 10, Ubuntu 18.04), the venv module
+   NOTE: On some distros (Debian 10, Ubuntu 18.04), the venv module
    is packaged separately. If you get "No module named venv", install it:
        sudo apt install -y python3.11-venv
    (Replace 3.11 with your Python version)
@@ -85,7 +85,6 @@ The wizard will automatically:
 - Generate your .env configuration file
 - Create the music folder if it doesn't exist
 - Optionally convert your audio files to .opus
-- Make scripts/linux_run_bot.sh executable
 
 PREREQUISITES:
 - Discord bot token (from Step 2)
@@ -143,9 +142,9 @@ Convert your files to .opus by following the 04-Converting-To-Opus.txt guide.
 EVEN if you used the WIZARD (linux_setup.sh) you need to make sure your .opus
 music files follow the naming format described below.
 
-NOTE: This step only covers music files, but if you're using PLAYLISTS
-(as in, subfolders inside your jill music folder), it is HIGHLY recommended
-that you use the same naming format described below in those as well.
+NOTE: This step only covers music files, but if you're using PLAYLISTS (as in,
+subfolders inside your jill music folder), it is HIGHLY recommended that they
+use the same naming format described below.
 
 FILE NAMING FORMAT:
 -------------------------------

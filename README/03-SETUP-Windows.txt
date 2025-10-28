@@ -20,7 +20,7 @@ Verify installation:
 7. Close the Command Prompt window
 
 If python --version doesn't work:
-   - Restart your computer (PATH changes need a reboot)
+   - Restart your computer (PATH change might need a reboot)
    - Reinstall Python and choose "Add to PATH" if prompted
    - Try: python3 --version
    - Or see 06-troubleshooting.txt for manual PATH configuration
@@ -115,9 +115,9 @@ Convert your files to .opus by following the 04-Converting-To-Opus.txt guide.
 EVEN if you used the WIZARD (win_setup.bat) you need to make sure your .opus
 music files follow the naming format described below.
 
-NOTE: This step only covers music files, but if you're using PLAYLISTS
-(as in, subfolders inside your jill music folder), it is HIGHLY recommended
-that you use the same naming format described below in those as well.
+NOTE: This step only covers music files, but if you're using PLAYLISTS (as in,
+subfolders inside your jill music folder), it is HIGHLY recommended that they use
+the same naming format described below.
 
 FILE NAMING FORMAT:
 -------------------------------
@@ -157,7 +157,6 @@ STEP 6: RUN THE BOT
 You should see:
 - "Bot connected as YourBot#1234"
 - "Music folder found: C:\jill\music"
-- List of loaded tracks (or message if folder is empty)
 
 To stop the bot, press Ctrl+C in the console window.
 
@@ -165,7 +164,7 @@ To stop the bot, press Ctrl+C in the console window.
 STEP 7: AUTO-START ON BOOT (OPTIONAL)
 ================================================================================
 
-NOTE: Do this so bot will start automatically after a machine boot.
+NOTE: Do this so bot will start automatically after Windows starts.
 
 Create a Windows Task Scheduler task:
 
@@ -220,17 +219,6 @@ Make sure to restart bot after changes.
 
 For bot profile picture/banner/etc, just change it on the developer portal:
 https://discord.com/developers/applications
-
-================================================================================
-LOG FILES
-================================================================================
-
-Bot logs are displayed in the console window.
-
-For Task Scheduler logs:
-1. Open Task Scheduler
-2. Find "Jill Discord Bot" task
-3. Right-click → Properties → History tab
 
 ================================================================================
 TROUBLESHOOTING

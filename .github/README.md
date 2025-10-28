@@ -25,17 +25,17 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 ## Quick Start
 0. Install Python 3.11+ and FFmpeg
 1. Download the bot
-2. Get a Discord bot token → [02-Getting-Discord-Token.txt](../README/02-Getting-Discord-Token.txt)
+2. Get a Discord bot token → [Getting Discord Token](02-Getting-Discord-Token.md)
 3. Run the interactive setup:
-   - **Windows:** [`win_setup.bat`](../scripts/win_setup.bat)
-   - **Linux:** [`scripts/linux_setup.sh`](../scripts/linux_setup.sh)
+   - **Windows:** [`/scripts/win_setup.bat`](../scripts/win_setup.bat)
+   - **Linux:** [`./scripts/linux_setup.sh`](../scripts/linux_setup.sh)
 4. Run the bot:
-   - **Windows:** [`win_run_bot.bat`](../scripts/win_run_bot.bat)
-   - **Linux:** [`./linux_run_bot.sh`](../scripts/linux_run_bot.sh)
+   - **Windows:** [`/scripts/win_run_bot.bat`](../scripts/win_run_bot.bat)
+   - **Linux:** [`./scripts/linux_run_bot.sh`](../scripts/linux_run_bot.sh)
 5. Done. 
 
-- **Full Linux setup guide:** [03-SETUP-Linux.txt](../README/03-SETUP-Linux.txt)
-- **Full Windows setup guide:** [03-SETUP-Windows.txt](../README/03-SETUP-Windows.txt)
+- **Full Linux setup guide:** [Linux Setup Guide](03-SETUP-Linux.md)
+- **Full Windows setup guide:** [Windows Setup Guide](03-SETUP-Windows.md)
 
 ## Commands
 ```text
@@ -64,13 +64,13 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 ---
 
 ## Docs
-- **Overview:** [01-README.txt](../README/01-README.txt)
-- **Files overview:** [05-Files.txt](../README/05-Files.txt)
-- **Discord Token guide:** [02-Getting-Discord-Token.txt](../README/02-Getting-Discord-Token.txt)
-- **Windows setup guide:** [03-SETUP-Windows.txt](../README/03-SETUP-Windows.txt)
-- **Linux setup guide:** [03-SETUP-Linux.txt](../README/03-SETUP-Linux.txt)
-- **Converting to Opus guide:** [04-Converting-To-Opus.txt](../README/04-Converting-To-Opus.txt)
-- **Troubleshooting:** [06-troubleshooting.txt](../README/06-troubleshooting.txt)
+- **This file:** [README](01-README.md)
+- **Files overview:** [Files Reference](05-Files.md)
+- **Discord Token guide:** [Getting Discord Token](02-Getting-Discord-Token.md)
+- **Windows setup guide:** [Windows Setup](03-SETUP-Windows.md)
+- **Linux setup guide:** [Linux Setup](03-SETUP-Linux.md)
+- **Converting to Opus guide:** [Converting to Opus](04-Converting-To-Opus.md)
+- **Troubleshooting:** [Troubleshooting](06-troubleshooting.md)
 
 ---
 

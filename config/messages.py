@@ -142,7 +142,7 @@ MESSAGES = {
     # ===================================================================================================================
     'playlists_header': '**🎵 Playlists (Page {page}/{total_pages})**\n',
     'playlists_next_page': '\nUse `!playlists {next_page}` for next page.',
-    'playlists_help': '\nUse `!tracks [name or number]` or `!list [name]` to switch playlists.',
+    'playlists_help': '\nUse `!playlist [name or number]` to switch playlists.',
     'playlist_switched': '✅ {message}',
         }
 

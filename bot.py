@@ -93,6 +93,7 @@ bot = commands.Bot(
 
 # Import our modules
 from core.player import get_player, players
+from core.track import discover_playlists, load_library, has_playlist_structure
 from systems.watchdog import playback_watchdog, alone_watchdog
 from utils.discord_helpers import safe_disconnect, update_presence
 from utils.persistence import load_last_channels, flush_all_immediately
@@ -146,6 +147,20 @@ async def on_ready():
     logger.info('Jill v1.0.0 - Copyright (C) 2025 grodz-bar')
     logger.info('Licensed under GPL 3.0 - See LICENSE.md for details')
     logger.info("Press Ctrl+C or send SIGTERM to shutdown gracefully")
+
+    # Display music library summary
+    if has_playlist_structure():
+        # Multi-playlist mode: count playlists and total songs
+        playlists = discover_playlists(guild_id=0)
+        total_songs = sum(playlist.track_count for playlist in playlists)
+        logger.info(f"Discovered {len(playlists)} playlists with {total_songs} total songs")
+    else:
+        # Single-playlist mode: count songs in root folder
+        library, _ = load_library(guild_id=0)
+        if library:
+            logger.info(f"Loaded {len(library)} songs from music folder")
+        else:
+            logger.warning("No .opus files found in music folder")
 
     # Restore players for guilds with saved channels
     # This ensures cleanup workers resume automatically on restart

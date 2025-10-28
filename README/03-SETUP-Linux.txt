@@ -96,11 +96,12 @@ Running the Wizard:
 1. Navigate to bot directory:
     cd ~/jill
 2. Make setup script executable:
-    chmod +x scripts/linux_setup.sh
+    chmod +x linux_setup.sh
 3. Run the setup wizard:
-    ./scripts/linux_setup.sh
+    ./linux_setup.sh
 4. Follow the interactive prompts
-5. Setup completed successfully when you see:
+5. The wizard will automatically create "start-jill.sh" for running the bot
+6. Setup completed successfully when you see:
    ========================================
    SETUP COMPLETED - SAFE TO CLOSE SCRIPT
    ========================================
@@ -120,18 +121,55 @@ ALTERNATIVE STEP 4: MANUAL SETUP
 
 If you prefer to set up manually, follow these steps:
 
-1. Create virtual environment: python3 -m venv venv
-2. Activate virtual environment: source venv/bin/activate
-3. Upgrade pip and wheel (recommended): python3 -m pip install -U pip wheel
-4. Install dependencies: python3 -m pip install -r requirements.txt
-5. Create .env file in the bot folder:
+VERIFY PYTHON FIRST:
+1. Check Python version:
+    python3 --version
+2. Verify you see "Python 3.11+" or newer
+3. If not, go back to STEP 1 and install a newer Python version
+
+SETUP STEPS:
+1. Navigate to bot directory:
+    cd ~/jill
+2. Create virtual environment:
+    python3 -m venv venv
+3. Activate virtual environment:
+    source venv/bin/activate
+4. Upgrade pip and wheel (recommended):
+    python3 -m pip install -U pip wheel
+5. Install dependencies:
+    python3 -m pip install -r requirements.txt
+6. Create .env file in the bot folder:
    - Run: nano .env
    - Add: DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN
    - (Optional) Add: MUSIC_FOLDER=path/to/music (blank uses default: music/ folder)
    - Save and exit (Ctrl+X, Y, Enter)
-6. Deactivate venv: deactivate
-7. Edit the jill/scripts/linux_run_bot.sh file to match your installation
-8. Proceed to STEP 5 of this setup guide
+7. Deactivate venv:
+    deactivate
+8. Create start script "start-jill.sh":
+    nano start-jill.sh
+
+   Add these lines:
+   #!/bin/bash
+   # Jill Discord Bot Launcher
+
+   # Activate virtual environment
+   if [ -f "venv/bin/activate" ]; then
+       source venv/bin/activate
+   else
+       echo "ERROR: Virtual environment not found."
+       echo "Please run linux_setup.sh first to set up the bot."
+       exit 1
+   fi
+
+   # Run the bot
+   echo "Starting Jill Discord Bot..."
+   exec python3 bot.py
+
+   Save and exit (Ctrl+X, Y, Enter)
+
+9. Make the script executable:
+    chmod +x start-jill.sh
+10. Proceed to STEP 5 of this setup guide
 
 ================================================================================
 STEP 5: ADD YOUR MUSIC FILES (If Needed)
@@ -182,11 +220,11 @@ STEP 6: RUN THE BOT
 1. Navigate to bot directory:
     cd ~/jill
 2. Run the bot:
-    ./scripts/linux_run_bot.sh
+    ./start-jill.sh
 
 You should see:
 - "Bot connected as YourBot#1234"
-- "Music folder found: /home/example/jill/music"
+- "Discovered X playlists with Y total songs" (or "Loaded X songs from music folder")
 
 To stop the bot, press Ctrl+C in the terminal.
 
@@ -196,11 +234,11 @@ STEP 7: AUTO-START WITH SYSTEMD (OPTIONAL BUT RECOMMENDED)
 NOTE: Do this so bot will start automatically after a machine boot.
 
 1. Make sure our run bot script is executable:
-    chmod +x ~/jill/scripts/linux_run_bot.sh
+    chmod +x ~/jill/start-jill.sh
 
 2. Create systemd service file:
     sudo nano /etc/systemd/system/jill.service
-	
+
 3. Add the following configuration:
 
 WARNING: Before pasting, you MUST replace these placeholders:
@@ -218,7 +256,7 @@ Wants=network-online.target
 Type=simple
 User=YOUR-USERNAME
 WorkingDirectory=/home/YOUR-USERNAME/jill/
-ExecStart=/home/YOUR-USERNAME/jill/scripts/linux_run_bot.sh
+ExecStart=/home/YOUR-USERNAME/jill/start-jill.sh
 StandardOutput=append:/home/YOUR-USERNAME/jill/bot.log
 StandardError=append:/home/YOUR-USERNAME/jill/bot.log
 Restart=always

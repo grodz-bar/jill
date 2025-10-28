@@ -791,7 +791,7 @@ echo ========================================
 echo SETUP COMPLETED - SAFE TO CLOSE SCRIPT
 echo ========================================
 echo.
-echo Your Jill Discord Bot is now configured!
+echo Your bartender is now fully configured!
 echo.
 if "%DEFAULT_PATH%"=="1" (
     echo Your bot folder is fully portable:
@@ -804,15 +804,15 @@ if "%DEFAULT_PATH%"=="1" (
 
 if "%CONVERSION_SUCCESS%"=="true" (
     echo.
-    echo ✓ Audio files converted successfully
+    echo Songs converted: !TOTAL_CONVERTED_COUNT!
     echo.
-    echo Next step: Run start-jill.bat to start your bot.
+    echo NEXT STEP: Run start-jill.bat (inside Jill's folder).
 ) else (
     echo.
     echo Next steps:
     echo   1. Add .opus music files to your music folder.
     echo      See 04-Converting-To-Opus.txt for help converting audio files.
-    echo   2. Run start-jill.bat to start your bot.
+    echo   2. Run start-jill.bat (inside Jill's folder).
 )
 echo.
 echo For help, see the README folder or 06-troubleshooting.txt

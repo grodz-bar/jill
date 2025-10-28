@@ -10,6 +10,22 @@ STEP 1: INSTALL PYTHON
 
 Download and install Python from: https://www.python.org/downloads/
 
+IMPORTANT INSTALLATION NOTES:
+- When installing, CHECK "Add Python to PATH" on the first screen
+- This is CRITICAL for the bot to work
+- If you forget this, you'll need to reinstall Python or manually add it to PATH
+
+Adding Python to PATH Manually (if needed):
+1. Find your Python installation directory (usually C:\Users\YourName\AppData\Local\Programs\Python\Python3XX\)
+2. Press Windows key, search "Environment Variables"
+3. Click "Edit the system environment variables"
+4. Click "Environment Variables" button
+5. Under "System variables", find and select "Path", then click "Edit"
+6. Click "New" and add your Python directory path
+7. Click "New" again and add your Python Scripts directory (same path but add \Scripts at the end)
+8. Click OK on all windows
+9. Restart your computer for changes to take effect
+
 Verify installation:
 1. Press Windows key + R
 2. Type "cmd" and press Enter
@@ -73,10 +89,11 @@ PREREQUISITES:
 
 Running the Wizard:
 
-1. Navigate to C:\jill\scripts\ in File Explorer
+1. Navigate to C:\jill\ in File Explorer
 2. Double-click "win_setup.bat"
 3. Follow the interactive prompts
-4. Setup completed successfully when you see:
+4. The wizard will automatically create "start-jill.bat" for running the bot
+5. Setup completed successfully when you see:
    ========================================
    SETUP COMPLETED - SAFE TO CLOSE SCRIPT
    ========================================
@@ -95,15 +112,35 @@ ALTERNATIVE STEP 4: MANUAL SETUP
 
 If you prefer to set up manually, follow these steps:
 
+VERIFY PYTHON FIRST:
 1. Open Command Prompt
-2. Navigate to bot directory: cd C:\jill
-3. Create virtual environment: python -m venv venv
-4. Activate virtual environment: C:\jill\venv\Scripts\activate
-5. Install dependencies: python -m pip install -r requirements.txt
-6. Create .env file in C:\jill\:
+2. Type: python --version
+3. Verify you see "Python 3.11+" or newer
+4. If not, go back to STEP 1 and install/configure Python
+
+SETUP STEPS:
+1. Navigate to bot directory: cd C:\jill
+2. Create virtual environment: python -m venv venv
+3. Activate virtual environment: venv\Scripts\activate
+4. Install dependencies: python -m pip install -r requirements.txt
+5. Create .env file in C:\jill\:
    - Create a file named ".env" (including the dot)
    - Add: DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN
    - (Optional) Add: MUSIC_FOLDER=C:\jill\music\ (leave blank to use default: music\ folder)
+6. Create start script "start-jill.bat" in C:\jill\:
+   - Create a file named "start-jill.bat"
+   - Add these lines:
+     @echo off
+     if not exist "venv\Scripts\activate.bat" (
+         echo ERROR: Virtual environment not found.
+         echo Please run win_setup.bat first to set up the bot.
+         pause
+         exit /b 1
+     )
+     call venv\Scripts\activate
+     echo Starting Jill Discord Bot...
+     python bot.py
+     pause
 7. Proceed to STEP 5 of this setup guide
 
 ================================================================================
@@ -152,11 +189,11 @@ STEP 6: RUN THE BOT
 ================================================================================
 
 1. Navigate to C:\jill\ in File Explorer
-2. Double-click "scripts\win_run_bot.bat"
+2. Double-click "start-jill.bat"
 
 You should see:
 - "Bot connected as YourBot#1234"
-- "Music folder found: C:\jill\music"
+- "Discovered X playlists with Y total songs" (or "Loaded X songs from music folder")
 
 To stop the bot, press Ctrl+C in the console window.
 
@@ -173,7 +210,7 @@ Create a Windows Task Scheduler task:
 3. Name: "Jill Discord Bot"
 4. Trigger: "When the computer starts"
 5. Action: "Start a program"
-6. Program: C:\jill\scripts\win_run_bot.bat
+6. Program: C:\jill\start-jill.bat
 7. Finish
 
 ================================================================================

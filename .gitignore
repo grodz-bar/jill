@@ -37,7 +37,11 @@ Thumbs.db
 *.swo
 *~
 
+# Linux
+start-jill.sh
+
 # Windows
+start-jill.bat
 run_bot.bat
 desktop.ini
 $RECYCLE.BIN/

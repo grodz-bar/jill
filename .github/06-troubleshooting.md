@@ -69,7 +69,13 @@ Hopefully you're only here because you're curious.
 ### "ffmpeg not recognized"
 
 - **Linux:** Install with apt (`sudo apt install ffmpeg`)
-- **Windows:** Add ffmpeg to PATH (see [Converting to Opus](04-Converting-To-Opus.md))
+- **Add ffmpeg to PATH:**
+   - Right-click **"This PC"** → Properties
+   - **Advanced system settings** → **Environment Variables**
+   - Under **System Variables**, find **"Path"** → **Edit**
+   - Click **"New"** and add: `C:\ffmpeg\bin`
+   - Click **OK** on all windows
+   - Restart computer
 
 ### "Could not write header for output file"
 

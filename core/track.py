@@ -31,9 +31,88 @@ logger = logging.getLogger(__name__)
 
 # Import from config
 from config.paths import MUSIC_FOLDER
+from config.features import ALLOW_TRANSCODING, SUPPORTED_AUDIO_FORMATS
 
 # Module-level regex pattern for numeric prefix removal (DRY - used by both Playlist and Track)
 _PREFIX_PATTERN = re.compile(r'^\d+\s*-\s*')
+
+
+def _collect_audio_files(target_path: Path, guild_id: int = 0) -> List[Path]:
+    """
+    Collect audio files from path, respecting ALLOW_TRANSCODING setting.
+
+    When multiple formats of the same file exist (e.g., song.opus and song.mp3),
+    prefers .opus format (first in SUPPORTED_AUDIO_FORMATS list).
+
+    Args:
+        target_path: Directory to scan for audio files
+        guild_id: Guild ID for logging purposes
+
+    Returns:
+        List of Path objects for audio files (deduplicated, .opus preferred)
+
+    Examples:
+        ALLOW_TRANSCODING=True, files: [song.opus, song.mp3, track.flac]
+        Returns: [song.opus, track.flac]  (song.opus preferred over song.mp3)
+
+        ALLOW_TRANSCODING=False, files: [song.opus, song.mp3, track.flac]
+        Returns: [song.opus]  (only .opus files)
+    """
+    if not target_path.exists():
+        return []
+
+    # Determine which extensions to accept
+    if ALLOW_TRANSCODING:
+        allowed_extensions = set(ext.lower() for ext in SUPPORTED_AUDIO_FORMATS)
+    else:
+        allowed_extensions = {'.opus'}
+
+    # Collect all files with allowed extensions
+    all_files = [f for f in target_path.glob("*")
+                 if f.is_file() and f.suffix.lower() in allowed_extensions]
+
+    if not all_files:
+        return []
+
+    # Group files by stem (filename without extension)
+    # This allows us to prefer .opus when multiple formats exist
+    files_by_stem = {}
+    for filepath in all_files:
+        stem = filepath.stem
+        if stem not in files_by_stem:
+            files_by_stem[stem] = []
+        files_by_stem[stem].append(filepath)
+
+    # For each stem, select the preferred format
+    selected_files = []
+    for stem, file_group in files_by_stem.items():
+        if len(file_group) == 1:
+            # Only one format exists, use it
+            selected_files.append(file_group[0])
+        else:
+            # Multiple formats exist - prefer based on SUPPORTED_AUDIO_FORMATS order
+            # (opus is first, so it will be preferred)
+            preferred = None
+            for ext in SUPPORTED_AUDIO_FORMATS:
+                ext_lower = ext.lower()  # Normalize extension for case-insensitive comparison
+                for filepath in file_group:
+                    if filepath.suffix.lower() == ext_lower:
+                        preferred = filepath
+                        break
+                if preferred:
+                    break
+
+            if preferred:
+                selected_files.append(preferred)
+                # Log if we're preferring one format over another
+                other_formats = [f.suffix for f in file_group if f != preferred]
+                if other_formats:
+                    logger.debug(
+                        f"Guild {guild_id}: Multiple formats found for '{stem}', "
+                        f"preferring {preferred.suffix} over {other_formats}"
+                    )
+
+    return selected_files
 
 
 class Playlist:
@@ -97,30 +176,31 @@ class Track:
 
     Attributes:
         track_id: Unique identifier (auto-incremented)
-        opus_path: Full path to .opus file
+        file_path: Full path to audio file (supports multiple formats)
         library_index: Position in master library (immutable)
         display_name: Formatted name for display (without number prefix/extension)
 
     Design notes:
         - Each track gets a unique ID to prevent object reference bugs
         - library_index is the track's position in the sorted library (never changes)
-        - display_name strips "01 - " prefix and ".opus" extension for clean display
+        - display_name strips "01 - " prefix and file extension for clean display
         - Equality based on track_id, not file path (survives file moves)
+        - Supports multiple audio formats when ALLOW_TRANSCODING=True
     """
 
     _next_id = 0  # Class variable: auto-incrementing ID counter
 
-    def __init__(self, opus_path: Path, library_index: int):
+    def __init__(self, file_path: Path, library_index: int):
         """
         Create a new track.
 
         Args:
-            opus_path: Full path to the .opus file
+            file_path: Full path to the audio file (any supported format)
             library_index: Position in sorted library (0-based)
         """
         self.track_id = Track._next_id
         Track._next_id += 1
-        self.opus_path = opus_path
+        self.file_path = file_path
         self.library_index = library_index
         self.display_name = self._get_display_name()
 
@@ -134,8 +214,9 @@ class Track:
 
         Example:
             "01 - Hopes and Dreams.opus" → "Hopes and Dreams"
+            "02 - Track.mp3" → "Track"
         """
-        name = self.opus_path.stem  # Filename without extension
+        name = self.file_path.stem  # Filename without extension
         name = _PREFIX_PATTERN.sub('', name)  # Remove "01 - " using module-level regex
         return name
 
@@ -181,10 +262,10 @@ def discover_playlists(guild_id: int = 0) -> List[Playlist]:
         if not folder.is_dir():
             continue
 
-        # Count .opus files in this folder
-        opus_files = [f for f in folder.glob("*") if f.is_file() and f.suffix.lower() == '.opus']
-        if opus_files:
-            playlists.append(Playlist(folder, track_count=len(opus_files)))
+        # Count audio files in this folder using the multi-format helper
+        audio_files = _collect_audio_files(folder, guild_id)
+        if audio_files:
+            playlists.append(Playlist(folder, track_count=len(audio_files)))
 
     if not playlists:
         logger.debug(f"Guild {guild_id}: No playlist subfolders found in {MUSIC_FOLDER}")
@@ -216,7 +297,7 @@ def has_playlist_structure() -> bool:
     Check if music folder has playlist structure (subfolders with tracks).
 
     Returns:
-        True if subfolders with .opus files exist, False otherwise
+        True if subfolders with audio files exist, False otherwise
 
     Use this to determine whether to enable multi-playlist features.
     """
@@ -224,11 +305,11 @@ def has_playlist_structure() -> bool:
     if not music_path.exists():
         return False
 
-    # Check if any subdirectories contain .opus files
+    # Check if any subdirectories contain audio files
     for folder in music_path.iterdir():
         if folder.is_dir():
-            opus_files = [f for f in folder.glob("*") if f.is_file() and f.suffix.lower() == '.opus']
-            if opus_files:
+            audio_files = _collect_audio_files(folder)
+            if audio_files:
                 return True
 
     return False
@@ -237,6 +318,9 @@ def has_playlist_structure() -> bool:
 def load_library(guild_id: int = 0, playlist_path: Optional[Path] = None) -> Tuple[List[Track], Dict[int, Track]]:
     """
     Load all music files from disk into library.
+
+    Supports multiple audio formats when ALLOW_TRANSCODING=True (MP3, FLAC, WAV, M4A, OGG).
+    Always prefers .opus format when multiple versions of the same file exist.
 
     Files are sorted numerically by leading digits in filename:
     - "01 - Track.opus" comes before "02 - Track.opus"
@@ -262,9 +346,11 @@ def load_library(guild_id: int = 0, playlist_path: Optional[Path] = None) -> Tup
         logger.warning(f"Guild {guild_id}: Music path not found: {target_path}")
         return [], {}
 
-    files = [f for f in target_path.glob("*") if f.is_file() and f.suffix.lower() == '.opus']
+    # Collect audio files using the new multi-format helper
+    files = _collect_audio_files(target_path, guild_id)
     if not files:
-        logger.warning(f"Guild {guild_id}: No .opus files found in {target_path}")
+        format_msg = "audio files" if ALLOW_TRANSCODING else ".opus files"
+        logger.warning(f"Guild {guild_id}: No {format_msg} found in {target_path}")
         return [], {}
 
     def get_sort_key(filepath: Path) -> int:

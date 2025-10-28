@@ -2,13 +2,20 @@
 
 Linux and Windows guide for converting audio to `.opus` format.
 
+> **Important:** As of v2.0, the bot now supports multiple audio formats (MP3, FLAC, WAV, M4A, OGG, OPUS). However, converting to OPUS is **highly recommended** for:
+> - Lower CPU usage (especially critical on Raspberry Pi)
+> - Guaranteed stability and audio quality
+> - Zero transcoding overhead (native Discord format)
+>
+> Other formats work but require real-time transcoding, which increases CPU usage.
+
 > **Note:** The setup wizard (`scripts\win_setup.bat` / `scripts/linux_setup.sh`) can automatically convert audio files for you during initial setup. Or follow this guide for manual conversion.
 
 ---
 
-## Required Format Specifications
+## Recommended Format Specifications
 
-The bot requires `.opus` files with these exact specifications:
+The recommended `.opus` specifications are:
 - **48kHz** sample rate
 - **Stereo** (2 channels)
 - **256kbps VBR** (Variable Bit Rate)

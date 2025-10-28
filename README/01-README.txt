@@ -2,8 +2,9 @@
                     JILL - A CYBERPUNK BARTENDER MUSIC BOT
 ================================================================================
 
-A simple, robust Discord music bot that plays local .opus files that supports
-multiple playlists, auto-cleanup, song selection, spam protection, and more.
+A simple, robust Discord music bot that plays local audio files. 
+Supports multiple playlists, auto-cleanup, song selection, spam
+protection, and more. Opus format recommended for best performance.
 
 ABOUT:
 Built in a neon-lit feedback loop between me and AI coding agents. I prompted,
@@ -46,7 +47,9 @@ Settings live in /config/ folder. Main files:
 - config/features.py  - Turn features on/off
 - config/aliases.py   - Change command aliases
 
-INFO: Built on the Disnake API — https://docs.disnake.dev
+INFO: 
+- Built on the Disnake API — https://docs.disnake.dev
+- Supports OPUS, MP3, FLAC, WAV, M4A, OGG
 
 
 

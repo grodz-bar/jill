@@ -108,6 +108,31 @@ PLAYLIST_PAGE_SIZE = 20            # Number of playlists per page in !playlists
                                    # Higher = more playlists per page (longer messages)
 
 # =========================================================================================================
+# AUDIO FORMAT FEATURES
+# =========================================================================================================
+
+# AUDIO TRANSCODING EXPLAINED:
+# -----------------------------
+# By default, the bot supports multiple audio formats (MP3, FLAC, WAV, M4A, OGG, OPUS).
+# OPUS files are ALWAYS preferred when available (zero CPU overhead, best quality).
+# Other formats are transcoded in real-time (uses CPU during playback).
+#
+# RECOMMENDATION: Convert your music to .opus format using the setup scripts for:
+# - Lower CPU usage (especially on Raspberry Pi)
+# - Guaranteed stability (Discord-native format)
+# - Best audio quality (no double-compression)
+#
+# See README/04-Converting-To-Opus.txt for conversion instructions.
+
+ALLOW_TRANSCODING = True           # Enable playback of non-opus formats (MP3, FLAC, etc)
+                                   # False = opus-only mode (highest performance, guaranteed stability)
+                                   # True = supports multiple formats (convenience, higher CPU usage)
+
+# Supported audio formats (in preference order - opus is always first)
+# DO NOT MODIFY unless you know what you're doing
+SUPPORTED_AUDIO_FORMATS = ['.opus', '.mp3', '.flac', '.wav', '.m4a', '.ogg']
+
+# =========================================================================================================
 # ADVANCED FEATURES
 # =========================================================================================================
 

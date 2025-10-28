@@ -410,6 +410,16 @@ echo ========================================
 echo OPTIONAL: Audio Conversion
 echo ========================================
 set "CONVERSION_SUCCESS=false"
+echo.
+echo The bot supports MP3, FLAC, WAV, M4A, OGG, and OPUS formats.
+echo.
+echo HOWEVER, converting to .opus format is HIGHLY RECOMMENDED for:
+echo   - Lower CPU usage (especially important on lower-end systems)
+echo   - Best audio quality (Discord-native format, no double compression)
+echo   - Guaranteed stability (zero transcoding overhead)
+echo.
+echo Other formats work but require real-time transcoding (higher CPU usage).
+echo.
 echo Ready to convert and move your music files into !MUSIC_PATH! as .opus files.
 echo.
 echo In this step, we'll:

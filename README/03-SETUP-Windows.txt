@@ -147,10 +147,12 @@ SETUP STEPS:
 STEP 5: ADD YOUR MUSIC FILES (If Needed)
 ================================================================================
 
-Convert your files to .opus by following the 04-Converting-To-Opus.txt guide.
+The bot supports MP3, FLAC, WAV, M4A, OGG, and OPUS formats. However,
+converting to .opus is HIGHLY RECOMMENDED for best performance. Follow the
+04-Converting-To-Opus.txt guide.
 
-EVEN if you used the WIZARD (win_setup.bat) you need to make sure your .opus
-music files follow the naming format described below.
+EVEN if you used the WIZARD (win_setup.bat) you need to make sure your music
+files follow the naming format described below.
 
 NOTE: This step only covers music files, but if you're using PLAYLISTS (as in,
 subfolders inside your jill music folder), it is HIGHLY recommended that they use

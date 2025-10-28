@@ -134,8 +134,8 @@ async def _play_current(guild_id: int, bot) -> None:
         return
 
     # Validate file exists
-    if not track.opus_path.exists():
-        logger.error(f"Guild {guild_id}: Track file missing: {track.opus_path}")
+    if not track.file_path.exists():
+        logger.error(f"Guild {guild_id}: Track file missing: {track.file_path}")
         # Skip to next track (priority=True to ensure internal commands aren't dropped)
         await player.spam_protector.queue_command(lambda: _play_next(guild_id, bot), priority=True)
         return
@@ -181,8 +181,8 @@ async def _play_current(guild_id: int, bot) -> None:
 
     audio_source = None
     try:
-        # Create audio source (native opus passthrough)
-        audio_source = make_audio_source(str(track.opus_path))
+        # Create audio source (format-aware: opus passthrough or transcoding)
+        audio_source = make_audio_source(str(track.file_path))
 
         # Capture track ID for this specific callback
         callback_track_id = track.track_id

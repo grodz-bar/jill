@@ -1,7 +1,6 @@
 # 🍸 Jill — A Cyberpunk Bartender Discord Music Bot
 
-A simple, robust Discord music bot that plays local **.opus** files and supports
-multiple playlists, auto-cleanup, song selection, spam protection, and more.
+A simple, robust Discord music bot that plays local audio files and supports multiple playlists, auto-cleanup, song selection, spam protection, and more.
 
 ---
 
@@ -13,12 +12,13 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 ---
 
 ## Features
-- Customization: rename commands, rewrite messages, flip features on or off, make it yours
-- Multiple playlists: you're using subfolders? Now it's a playlist!
-- Spam protection: hammer it all you want, debounce, cooldowns, and limits keep it sane
-- Smart: jill reads the room, pauses when alone, cleans up after herself
-- Shuffle mode: toggle it on or off, she'll auto-reshuffle as well!
-- Quick search: just say the song name or track number (works on playlists too!)
+- **Multi-format audio**: Supports MP3, FLAC, WAV, M4A, OGG, and OPUS (opus recommended for best performance)
+- **Customization**: Rename commands, rewrite messages, flip features on or off, make it yours
+- **Multiple playlists**: You're using subfolders? Now it's a playlist!
+- **Spam protection**: Hammer it all you want, debounce, cooldowns, and limits keep it sane
+- **Smart**: Jill reads the room, pauses when alone, cleans up after herself
+- **Shuffle mode**: Toggle it on or off, she'll auto-reshuffle as well!
+- **Quick search**: Just say the song name or track number (works on playlists too!)
 
 ---
 
@@ -76,5 +76,6 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 
 ## Notes
 - Zero telemetry or spying
+- Supports OPUS, MP3, FLAC, WAV, M4A, OGG
 - Requires [Python 3.11+](https://www.python.org/downloads/) and [FFmpeg](https://ffmpeg.org/download.html)
 - Built on the [Disnake](https://docs.disnake.dev) API

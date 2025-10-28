@@ -196,9 +196,9 @@ If you prefer to set up manually, follow these steps:
 
 ## Step 5: Add Your Music Files (If Needed)
 
-Convert your files to `.opus` by following the [Converting to Opus](04-Converting-To-Opus.md) guide.
+The bot supports MP3, FLAC, WAV, M4A, OGG, and OPUS formats. However, **converting to .opus is highly recommended** for best performance. Follow the [Converting to Opus](04-Converting-To-Opus.md) guide.
 
-**EVEN** if you used the WIZARD (`linux_setup.sh`) you need to make sure your `.opus` music files follow the naming format described below.
+**EVEN** if you used the WIZARD (`linux_setup.sh`) you need to make sure your music files follow the naming format described below.
 
 > **Note:** This step only covers music files, but if you're using **PLAYLISTS** (as in, subfolders inside your jill music folder), it is HIGHLY recommended that they use the same naming format described below.
 

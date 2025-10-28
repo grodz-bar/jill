@@ -287,22 +287,45 @@ async def safe_delete_message(message: Optional[disnake.Message]) -> bool:
 
 def make_audio_source(path: str):
     """
-    Create FFmpegOpusAudio source for playback.
+    Create audio source for playback (format-aware).
+
+    For .opus files: Uses FFmpegOpusAudio (native passthrough, zero CPU overhead)
+    For other formats: Uses FFmpegPCMAudio (real-time transcoding to Discord format)
 
     Creates a fresh audio source for each playback - audio sources are
     single-use and cannot be reused after consumption.
 
     Args:
-        path: Path to opus audio file
+        path: Path to audio file (supports .opus, .mp3, .flac, .wav, .m4a, .ogg)
 
     Returns:
-        FFmpegOpusAudio: Audio source object for Discord voice playback
+        Audio source object for Discord voice playback (FFmpegOpusAudio or FFmpegPCMAudio)
 
     Note:
         FFmpeg options are configurable via FFMPEG_BEFORE_OPTIONS in config/timing.py.
         Default options optimize for low latency and real-time playback.
+
+        Opus files use passthrough mode (no transcoding) for maximum performance.
+        Other formats are transcoded to 48kHz stereo PCM, which Discord encodes to opus.
     """
-    return disnake.FFmpegOpusAudio(
-        path,
-        before_options=FFMPEG_BEFORE_OPTIONS
-    )
+    from pathlib import Path
+
+    file_path = Path(path)
+    extension = file_path.suffix.lower()
+
+    if extension == '.opus':
+        # Native opus passthrough (zero CPU overhead, Discord-native format)
+        logger.debug(f"Creating opus passthrough source for: {file_path.name}")
+        return disnake.FFmpegOpusAudio(
+            path,
+            before_options=FFMPEG_BEFORE_OPTIONS
+        )
+    else:
+        # Transcode to PCM, then Discord re-encodes to opus
+        # Output format: 48kHz stereo signed 16-bit PCM (Discord-compatible)
+        logger.debug(f"Creating transcoded source for: {file_path.name} ({extension})")
+        return disnake.FFmpegPCMAudio(
+            path,
+            before_options=FFMPEG_BEFORE_OPTIONS,
+            options='-vn -f s16le -ar 48000 -ac 2'
+        )

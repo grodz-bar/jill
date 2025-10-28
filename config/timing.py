@@ -198,7 +198,7 @@ FFMPEG_BEFORE_OPTIONS: Final[str] = '-hide_banner -loglevel error -nostdin -re -
 #   -re               : Read input at native frame rate (real-time playback, prevents rushing)
 #   -fflags +nobuffer : Reduce buffering delay (lower latency, faster start)
 # Advanced tuning: Adjust -analyzeduration/-probesize for faster startup if needed
-# Note: -vn flag (ignore video streams) not needed for .opus audio-only files
+# Note: -vn flag (ignore video streams) not needed since we only play audio files
 
 MAX_HISTORY = 100                        # Max tracks to remember (prevents memory bloat)
 COMMAND_QUEUE_MAXSIZE = 100              # Max commands in queue (prevents memory exhaustion)

@@ -2,6 +2,8 @@
 
 Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.11+, `python -m pip install -r requirements.txt`)
 
+**Audio formats:** Supports MP3, FLAC, WAV, M4A, OGG, OPUS. Opus recommended for best performance (see `README/04-Converting-To-Opus.txt`).
+
 ## Agent Interaction Preferences
 
 - Assume novice audience, keep responses under 200 words
@@ -11,7 +13,7 @@ Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.1
 ## File Map (Where to Look)
 
 **Config** (`/config/` - user customization only):
-- `features.py` — toggles (shuffle, queue, cleanup, auto-pause). Validates BOT_STATUS at import.
+- `features.py` — toggles (shuffle, queue, cleanup, auto-pause, transcoding). Validates BOT_STATUS at import.
 - `messages.py` — all user-facing text
 - `aliases.py` — command aliases
 - `paths.py` — file paths
@@ -22,7 +24,7 @@ Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.1
 - `handlers/commands.py` — all commands
 - `core/player.py` — MusicPlayer, queue, shuffle. `switch_playlist()` is synchronous.
 - `core/playback.py` — _play_current, _play_next, FFmpeg callbacks (session-guarded)
-- `core/track.py` — Track class, library loading, playlist discovery
+- `core/track.py` — Track class, library loading, playlist discovery, multi-format support
 - `systems/spam_protection.py` — 5-layer spam protection
 - `systems/cleanup.py` — dual cleanup (TTL + history scan)
 - `systems/voice_manager.py` — auto-pause/disconnect/resume
@@ -81,7 +83,12 @@ All user commands implemented in `handlers/commands.py`. Context-aware (e.g., `!
 - Add heavy dependencies (prefer stdlib)
 - Spam reconnect attempts (rate limit safety)
 
-**File safety:** Only `.opus` files from `MUSIC_FOLDER`, prevent path traversal
+**File safety:**
+- Supports `.opus`, `.mp3`, `.flac`, `.wav`, `.m4a`, `.ogg` files from `MUSIC_FOLDER`
+- Always prefers `.opus` format when multiple versions exist (best performance)
+- Opus uses passthrough (zero CPU), other formats transcode (higher CPU usage)
+- Set `ALLOW_TRANSCODING = False` in `config/features.py` for opus-only mode
+- Prevent path traversal attacks
 
 ## Documentation
 

@@ -27,10 +27,10 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 1. Download the bot
 2. Get a Discord bot token → [02-Getting-Discord-Token.txt](../README/02-Getting-Discord-Token.txt)
 3. Run the interactive setup:
-   - **Windows:** [`win_setup.bat`](../scripts/win_setup.bat)
+   - **Windows:** [`/scripts/win_setup.bat`](../scripts/win_setup.bat)
    - **Linux:** [`./scripts/linux_setup.sh`](../scripts/linux_setup.sh)
 4. Run the bot:
-   - **Windows:** [`win_run_bot.bat`](../scripts/win_run_bot.bat)
+   - **Windows:** [`/scripts/win_run_bot.bat`](../scripts/win_run_bot.bat)
    - **Linux:** [`./scripts/linux_run_bot.sh`](../scripts/linux_run_bot.sh)
 5. Done. 
 

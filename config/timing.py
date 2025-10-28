@@ -185,6 +185,18 @@ VOICE_CONNECTION_MAX_WAIT = 0.5          # Max wait for voice connection (500ms)
 VOICE_CONNECTION_CHECK_INTERVAL = 0.05   # Check voice connection every 50ms
 FRAME_DURATION = 0.02                    # Opus frame duration (20ms) for graceful stops
 
+# FFmpeg Audio Options - Controls playback latency and buffering behavior
+# Format: Space-separated command-line options passed to FFmpeg before reading input
+# Default optimizes for low latency and real-time playback of opus files
+FFMPEG_BEFORE_OPTIONS = '-hide_banner -loglevel error -nostdin -re -fflags +nobuffer'
+# Breakdown of default options:
+#   -hide_banner      : Suppress FFmpeg version banner (cleaner logs)
+#   -loglevel error   : Only log errors (reduces noise)
+#   -nostdin          : Don't read from stdin (prevents FFmpeg hanging)
+#   -re               : Read input at native frame rate (real-time playback, prevents rushing)
+#   -fflags +nobuffer : Reduce buffering delay (lower latency, faster start)
+# Advanced tuning: Adjust -analyzeduration/-probesize for faster startup if needed
+
 MAX_HISTORY = 100                        # Max tracks to remember (prevents memory bloat)
 COMMAND_QUEUE_MAXSIZE = 100              # Max commands in queue (prevents memory exhaustion)
 COMMAND_QUEUE_TIMEOUT = 0.5              # Max wait for queue operations (don't wait forever)

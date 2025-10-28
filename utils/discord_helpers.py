@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 # Import config
 from config.features import BOT_STATUS
+from config.timing import FFMPEG_BEFORE_OPTIONS
 
 # Global presence state (bot-wide, not per-guild)
 _last_presence_update: float = 0
@@ -77,9 +78,10 @@ def _get_status_enum() -> disnake.Status:
         'invisible': disnake.Status.invisible,
     }
 
-    status = status_map.get(BOT_STATUS.lower(), disnake.Status.dnd)
+    cfg = str(BOT_STATUS).lower()
+    status = status_map.get(cfg, disnake.Status.dnd)
 
-    if BOT_STATUS.lower() not in status_map:
+    if cfg not in status_map:
         logger.warning(f"Invalid BOT_STATUS '{BOT_STATUS}', defaulting to 'dnd'")
 
     return status
@@ -133,10 +135,11 @@ async def safe_send(channel: Optional[disnake.TextChannel], content: str) -> Opt
     try:
         # Suppress all mentions to prevent mass-ping abuse from user-controlled content
         msg = await channel.send(content, allowed_mentions=disnake.AllowedMentions.none())
-        return msg
     except (disnake.NotFound, disnake.Forbidden, disnake.HTTPException) as e:
         logger.debug("Could not send message: %s", e)
         return None
+    else:
+        return msg
 
 
 async def safe_voice_state_change(guild: disnake.Guild, channel: disnake.VoiceChannel, self_deaf: bool = True) -> bool:
@@ -156,10 +159,11 @@ async def safe_voice_state_change(guild: disnake.Guild, channel: disnake.VoiceCh
     """
     try:
         await guild.change_voice_state(channel=channel, self_deaf=self_deaf)
-        return True
     except (disnake.ClientException, disnake.HTTPException) as e:
         logger.debug("Voice state change failed (non-critical): %s", e)
         return False
+    else:
+        return True
 
 
 async def update_presence(bot, status_text: Optional[str]) -> bool:
@@ -216,14 +220,15 @@ async def update_presence(bot, status_text: Optional[str]) -> bool:
             # Update state ONLY on success to allow retries if failed
             _last_presence_update = current_time
             _current_presence_text = status_text
-            return True
 
-        except disnake.HTTPException as e:
+        except (disnake.ClientException, disnake.HTTPException) as e:
             logger.debug("Presence update failed (non-critical): %s", e)
             return False
+        else:
+            return True
 
 
-def can_connect_to_channel(channel: disnake.VoiceChannel) -> bool:
+def can_connect_to_channel(channel: Optional[disnake.VoiceChannel]) -> bool:
     """
     Check if bot has permission to connect to a voice channel.
 
@@ -266,12 +271,13 @@ async def safe_delete_message(message: Optional[disnake.Message]) -> bool:
         return True  # No-op success for idempotency
     try:
         await message.delete()
-        return True
     except disnake.NotFound:
         return True  # Already deleted = success (idempotent)
     except (disnake.Forbidden, disnake.HTTPException) as e:
         logger.debug("Could not delete message: %s", e)
         return False
+    else:
+        return True
 
 
 def make_audio_source(path: str):
@@ -288,10 +294,10 @@ def make_audio_source(path: str):
         FFmpegOpusAudio: Audio source object for Discord voice playback
 
     Note:
-        Uses '-re' flag for real-time playback and '-nostdin' to avoid FFmpeg
-        waiting for input. '-fflags +nobuffer' reduces initial buffering delay.
+        FFmpeg options are configurable via FFMPEG_BEFORE_OPTIONS in config/timing.py.
+        Default options optimize for low latency and real-time playback.
     """
     return disnake.FFmpegOpusAudio(
         path,
-        before_options='-hide_banner -loglevel error -nostdin -re -fflags +nobuffer'
+        before_options=FFMPEG_BEFORE_OPTIONS
     )

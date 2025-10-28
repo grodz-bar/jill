@@ -165,8 +165,9 @@ async def _play_current(guild_id: int, bot) -> None:
             waited = 0
             while waited < max_wait:
                 remaining = max_wait - waited
-                await asyncio.sleep(min(wait_increment, remaining))
-                waited += wait_increment
+                step = min(wait_increment, remaining)
+                await asyncio.sleep(step)
+                waited += step
                 try:
                     vc = player.voice_client
                     if vc and not vc.is_playing() and not vc.is_paused():
@@ -296,7 +297,12 @@ async def _play_current(guild_id: int, bot) -> None:
             except (OSError, RuntimeError, AttributeError) as cleanup_err:
                 logger.debug("Guild %s: cleanup after exception failed: %s", guild_id, cleanup_err)
         vc = player.voice_client
-        if "Bad file descriptor" in str(e) or not (vc and vc.is_connected()):
+        unsafe_or_down = True
+        try:
+            unsafe_or_down = not (vc and vc.is_connected())
+        except Exception as probe_err:
+            logger.debug("Guild %s: vc.is_connected() probe failed after error: %s", guild_id, probe_err)
+        if "Bad file descriptor" in str(e) or unsafe_or_down:
             # Close connection to avoid dangling references
             if vc:
                 from utils.discord_helpers import safe_disconnect

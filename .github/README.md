@@ -7,7 +7,7 @@ multiple playlists, auto-cleanup, song selection, spam protection, and more.
 
 ## About
 Built in a neon-lit feedback loop between me and AI coding agents. I prompted,
-stitched the pieces, and fine tuned behavior; the agents generated most of the
+stitched the pieces, and fine-tuned behavior; the agents generated most of the
 raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 
 ---
@@ -17,7 +17,7 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 - Multiple playlists: you're using subfolders? now it's a playlist!
 - Spam protection: hammer it all you want, debounce, cooldowns, and limits keep it sane
 - Smart: jill reads the room, pauses when alone, cleans up after herself
-- Shuffle mode: toggle it on or off, she'll auto reshuffle as well!
+- Shuffle mode: toggle it on or off, she'll auto-reshuffle as well!
 - Quick search: just say the song name or track number (works on playlists too!)
 
 ---

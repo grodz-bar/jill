@@ -114,7 +114,7 @@ def load_last_channels() -> Dict[int, int]:
         _cache_loaded = True
         return _channel_cache.copy()
 
-    except (json.JSONDecodeError, ValueError, FileNotFoundError) as e:
+    except (OSError, json.JSONDecodeError, ValueError) as e:
         logger.warning(f"Could not load channel storage: {e}")
         _channel_cache = {}
         _cache_loaded = True
@@ -246,7 +246,7 @@ def load_last_playlists() -> Dict[int, str]:
         _playlist_cache_loaded = True
         return _playlist_cache.copy()
 
-    except (json.JSONDecodeError, ValueError, FileNotFoundError) as e:
+    except (OSError, json.JSONDecodeError, ValueError) as e:
         logger.warning(f"Could not load playlist storage: {e}")
         _playlist_cache = {}
         _playlist_cache_loaded = True

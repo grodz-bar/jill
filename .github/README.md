@@ -12,7 +12,6 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 ---
 
 ## Features
-- **Multi-format audio**: Supports MP3, FLAC, WAV, M4A, OGG, and OPUS (opus recommended for best performance)
 - **Customization**: Rename commands, rewrite messages, flip features on or off, make it yours
 - **Multiple playlists**: You're using subfolders? Now it's a playlist!
 - **Spam protection**: Hammer it all you want, debounce, cooldowns, and limits keep it sane
@@ -40,6 +39,11 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 - **Windows (Quick):** [Windows Quick Setup](03-Windows-Quick-Setup.md) - Using the wizard
 - **Windows (Manual):** [Windows Manual Setup](03-Windows-Manual-Setup.md) - Step-by-step commands
 
+---
+> Supports OPUS, MP3, FLAC, WAV, M4A, and OGG files.
+>
+> Since .opus is **HIGHLY RECOMMENDED** for the best experience, I've included a very nice converter script.
+---
 ## Commands
 ```text
 !play             # start/resume playback
@@ -82,6 +86,5 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 
 ## Notes
 - Zero telemetry or spying
-- Supports OPUS, MP3, FLAC, WAV, M4A, OGG
 - Requires [Python 3.11+](https://www.python.org/downloads/) and [FFmpeg](https://ffmpeg.org/download.html)
 - Built on the [Disnake](https://docs.disnake.dev) API

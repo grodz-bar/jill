@@ -27,15 +27,18 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 1. Download the [latest release](https://github.com/grodz-bar/jill/releases/latest)
 2. Get a Discord bot token → [Getting Discord Token](02-Getting-Discord-Token.md)
 3. Run the interactive setup:
-   - **Windows:** [`/scripts/win_setup.bat`](../scripts/win_setup.bat)
-   - **Linux:** [`./scripts/linux_setup.sh`](../scripts/linux_setup.sh)
-4. Run the bot:
-   - **Windows:** [`/scripts/win_run_bot.bat`](../scripts/win_run_bot.bat)
-   - **Linux:** [`./scripts/linux_run_bot.sh`](../scripts/linux_run_bot.sh)
-5. Done. 
+   - **Linux:** [`./linux_setup.sh`](../linux_setup.sh)
+   - **Windows:** [`win_setup.bat`](../win_setup.bat)
+5. Run the bot:
+   - **Linux:** [`./start-jill.sh`](../start-jill.sh) (created during setup)
+   - **Windows:** [`start-jill.bat`](../start-jill.bat) (created during setup)
+6. Done.
 
-- **Full Linux setup guide:** [Linux Setup Guide](03-SETUP-Linux.md)
-- **Full Windows setup guide:** [Windows Setup Guide](03-SETUP-Windows.md)
+**Setup guides:**
+- **Linux (Quick):** [Linux Quick Setup](03-Linux-Quick-Setup.md) - Using the wizard
+- **Linux (Manual):** [Linux Manual Setup](03-Linux-Manual-Setup.md) - Step-by-step commands
+- **Windows (Quick):** [Windows Quick Setup](03-Windows-Quick-Setup.md) - Using the wizard
+- **Windows (Manual):** [Windows Manual Setup](03-Windows-Manual-Setup.md) - Step-by-step commands
 
 ## Commands
 ```text
@@ -67,8 +70,11 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 - **This file:** [README](01-README.md)
 - **Files overview:** [Files Reference](05-Files.md)
 - **Discord Token guide:** [Getting Discord Token](02-Getting-Discord-Token.md)
-- **Windows setup guide:** [Windows Setup](03-SETUP-Windows.md)
-- **Linux setup guide:** [Linux Setup](03-SETUP-Linux.md)
+- **Setup guides:**
+  - [Windows Quick Setup](03-Windows-Quick-Setup.md) - (Recommended)
+  - [Windows Manual Setup](03-Windows-Manual-Setup.md) - Manual setup
+  - [Linux Quick Setup](03-Linux-Quick-Setup.md) - (Recommended)
+  - [Linux Manual Setup](03-Linux-Manual-Setup.md) - Manual setup
 - **Converting to Opus guide:** [Converting to Opus](04-Converting-To-Opus.md)
 - **Troubleshooting:** [Troubleshooting](06-troubleshooting.md)
 

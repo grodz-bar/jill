@@ -9,9 +9,18 @@ IMPORTANT: Converting to OPUS is HIGHLY RECOMMENDED for:
 
 Other formats work but require real-time transcoding, which increases CPU usage.
 
-NOTE: The setup wizard (win_setup.bat / linux_setup.sh) can automatically convert
-audio files for you during initial setup. Or you can follow this guide for manual
-conversion.
+EASIEST METHOD - USE THE STANDALONE CONVERTERS:
+-----------------------------------------------
+The bot includes smart converter scripts that auto-detect your music folder:
+  - Windows: Double-click "win_convert_opus.bat" in the bot folder
+  - Linux: Run "./linux_convert_opus.sh" in the bot folder
+
+These scripts intelligently detect your music folder from .env and handle
+everything automatically, including recursive conversion of playlists.
+
+ALTERNATIVE METHODS:
+- Setup wizard (win_setup.bat / linux_setup.sh) can convert during initial setup
+- Manual conversion using FFmpeg commands (see below)
 
 The recommended .opus specifications are:
 - 48kHz sample rate

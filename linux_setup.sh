@@ -263,6 +263,24 @@ echo "Creating Configuration"
 echo "========================================"
 echo ""
 
+# Check if .env already exists
+if [ -f ".env" ]; then
+    echo "You already have a .env configuration file."
+    echo ""
+    read -p "Do you want to reconfigure it? (y/N): " OVERWRITE
+    if [[ ! "$OVERWRITE" =~ ^[Yy]$ ]]; then
+        echo ""
+        echo "Setup cancelled. Your existing .env file was not modified."
+        echo ""
+        read -p "Press Enter to exit..."
+        exit 0
+    fi
+    echo ""
+    echo "Updating .env file with new configuration..."
+    sleep 2
+    echo ""
+fi
+
 # Write .env file safely
 {
     echo "DISCORD_BOT_TOKEN=$BOT_TOKEN"
@@ -681,7 +699,9 @@ read -p "Start the guided conversion now? (y/N): " CONVERT_FILES
 if [[ "$CONVERT_FILES" =~ ^[Yy]$ ]]; then
     run_conversion
 else
+    echo ""
     echo "Skipping conversion."
+    echo ""
     sleep 2
 fi
 
@@ -716,9 +736,12 @@ fi
 sleep 1
 
 echo ""
-sleep 1
+echo ""
+echo ""
 echo "========================================"
-echo "SETUP COMPLETED - SAFE TO CLOSE SCRIPT"
+echo "========================================"
+echo "   SETUP COMPLETED SUCCESSFULLY!"
+echo "========================================"
 echo "========================================"
 echo ""
 echo "Your bartender is now fully configured!"
@@ -736,15 +759,24 @@ if [ "$CONVERSION_SUCCESS" = true ]; then
     echo ""
     echo "Songs converted: $TOTAL_CONVERTED_COUNT"
     echo ""
-    echo "NEXT STEP: Run ./start-jill.sh (inside Jill's folder)."
+    echo "NEXT STEPS:"
+    echo "  1. Run ./start-jill.sh to start your bot"
+    echo "  2. To convert MORE files later, run: ./linux_convert_opus.sh"
 else
     echo ""
-    echo "Next steps:"
-    echo "  1. Add .opus music files to your music folder."
-    echo "     See 04-Converting-To-Opus.txt for help converting audio files."
-    echo "  2. Run ./start-jill.sh (inside Jill's folder)."
+    echo "NEXT STEPS:"
+    echo "  1. CONVERT YOUR MUSIC: Run ./linux_convert_opus.sh"
+    echo "     (Converts MP3/FLAC/WAV/etc to .opus format - HIGHLY RECOMMENDED)"
+    echo ""
+    echo "  2. START YOUR BOT: Run ./start-jill.sh"
+    echo ""
+    echo "  Note: You can also manually add .opus files to your music folder."
 fi
 echo ""
 echo "For help, see the README folder or 06-troubleshooting.txt"
 echo ""
+echo "========================================"
+echo ""
 read -p "Press Enter to exit..."
+echo ""
+echo "Exiting setup..."

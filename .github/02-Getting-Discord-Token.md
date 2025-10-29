@@ -66,7 +66,13 @@ Under **"Privileged Gateway Intents"**, enable:
 
 ## Step 6: Continue with Platform Setup
 
-If you're following a platform setup guide ([Windows Setup](03-SETUP-Windows.md) or [Linux Setup](03-SETUP-Linux.md)), continue from it. You will need this token in the setup wizard.
+If you are following a platform setup guide, continue from that guide. You will need this token for the setup.
+
+- [Linux Quick Setup](03-Linux-Quick-Setup.md)
+- [Windows Quick Setup](03-Windows-Quick-Setup.md)
+- [Windows Manual Setup](03-Windows-Manual-Setup.md)
+- [Linux Manual Setup](03-Linux-Manual-Setup.md)
+
 
 ---
 

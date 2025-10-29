@@ -1,10 +1,12 @@
 ================================================================================
-LINUX SETUP GUIDE
+LINUX MANUAL SETUP GUIDE (Step-by-Step Commands)
 ================================================================================
 
 This guide works for:
 - Debian/Ubuntu Linux
 - Raspberry Pi OS
+
+For automated setup using the wizard, see 03-Linux-Quick-Setup.txt
 
 ================================================================================
 STEP 1: SYSTEM REQUIREMENTS
@@ -35,7 +37,7 @@ STEP 2: GET DISCORD BOT TOKEN AND SET PERMISSIONS
 ================================================================================
 
 See '02-Getting-Discord-Token.txt' for instructions on creating a Discord bot
-and getting your token. You will need this later.
+and getting your token. You will need this in STEP 4.
 
 REQUIRED DISCORD PERMISSIONS:
 -----------------------------
@@ -76,50 +78,8 @@ NOTE: You can extract jill into any folder you want, but this guide assumes
 you've placed it in ~/jill/ , change instructions to fit your use case.
 
 ================================================================================
-STEP 4: RUN SETUP WIZARD (RECOMMENDED)
+STEP 4: MANUAL SETUP
 ================================================================================
-
-The wizard will automatically:
-- Create a virtual environment (venv/)
-- Install required Python packages
-- Generate your .env configuration file
-- Create the music folder if it doesn't exist
-- Optionally convert your audio files to .opus
-
-PREREQUISITES:
-- Discord bot token (from Step 2)
-- Python 3.11+ installed (from Step 1)
-- FFmpeg (only needed if converting audio to .opus)
-
-Running the Wizard:
-
-1. Navigate to bot directory:
-    cd ~/jill
-2. Make setup script executable:
-    chmod +x linux_setup.sh
-3. Run the setup wizard:
-    ./linux_setup.sh
-4. Follow the interactive prompts
-5. The wizard will automatically create "start-jill.sh" for running the bot
-6. Setup completed successfully when you see:
-   ========================================
-   SETUP COMPLETED - SAFE TO CLOSE SCRIPT
-   ========================================
-
-If successful → Continue to STEP 5
-
-IF SETUP FAILS:
-- Read the error message shown in the terminal
-- See 06-troubleshooting.txt for common issues
-- Verify Python 3.11+ is installed: python3 --version
-- Check venv module: python3 -m venv --help
-- Try ALTERNATIVE STEP 4 (Manual Setup) below
-
-================================================================================
-ALTERNATIVE STEP 4: MANUAL SETUP
-================================================================================
-
-If you prefer to set up manually, follow these steps:
 
 VERIFY PYTHON FIRST:
 1. Check Python version:
@@ -172,22 +132,33 @@ SETUP STEPS:
 10. Proceed to STEP 5 of this setup guide
 
 ================================================================================
-STEP 5: ADD YOUR MUSIC FILES (If Needed)
+STEP 5: CONVERT YOUR MUSIC
 ================================================================================
 
+You can run the standalone converter anytime:
+
+1. Navigate to bot directory:
+    cd ~/jill
+2. Make converter executable (if not already):
+    chmod +x linux_convert_opus.sh
+3. Run the converter:
+    ./linux_convert_opus.sh
+4. Follow the prompts to convert your music files
+
 The bot supports MP3, FLAC, WAV, M4A, OGG, and OPUS formats. However,
-converting to .opus is HIGHLY RECOMMENDED for best performance. Follow the
-04-Converting-To-Opus.txt guide.
+converting to .opus is HIGHLY RECOMMENDED for:
+  - Lower CPU usage (especially important on Raspberry Pi)
+  - Best audio quality (Discord-native format, no double compression)
+  - Guaranteed stability (zero transcoding overhead)
 
-EVEN if you used the WIZARD (linux_setup.sh) you need to make sure your music
-files follow the naming format described below.
+See 04-Converting-To-Opus.txt for detailed information about audio conversion.
 
-NOTE: This step only covers music files, but if you're using PLAYLISTS (as in,
-subfolders inside your jill music folder), it is HIGHLY recommended that they
-use the same naming format described below.
+================================================================================
+STEP 6: FILE NAMING FORMAT
+================================================================================
 
-FILE NAMING FORMAT:
--------------------------------
+IMPORTANT: Your music files MUST follow this naming format for proper playback!
+
 Files MUST start with numbers for proper sorting. The bot expects:
 
     01 - Track Name.opus
@@ -200,7 +171,7 @@ Format rules:
 - Start with digits (01, 02, 03... or 1, 2, 3...)
 - Follow with space, dash, space: " - "
 - Then your track name
-- End with .opus extension
+- End with .opus extension (or other supported format)
 
 Example good names:
 ✓ 01 - Hopes and Dreams.opus
@@ -212,11 +183,14 @@ Example bad names:
 ✗ Track 01.opus (number not at start)
 ✗ Song_01.opus (number not at start)
 
-NOTE: On Linux, tools like `rename`, `mmv`, or `vidir` help batch-rename
-quickly. On Windows, PowerRename works well.
+NOTE: If you're using PLAYLISTS (subfolders inside your music folder), they
+should also use the same numeric naming format.
+
+BATCH RENAMING TIP: On Linux, tools like `rename`, `mmv`, or `vidir` help
+batch-rename quickly. On Windows, PowerRename works well.
 
 ================================================================================
-STEP 6: RUN THE BOT
+STEP 7: RUN THE BOT
 ================================================================================
 
 1. Navigate to bot directory:
@@ -231,7 +205,7 @@ You should see:
 To stop the bot, press Ctrl+C in the terminal.
 
 ================================================================================
-STEP 7: AUTO-START WITH SYSTEMD (OPTIONAL BUT RECOMMENDED)
+STEP 8: AUTO-START WITH SYSTEMD (OPTIONAL BUT RECOMMENDED)
 ================================================================================
 NOTE: Do this so bot will start automatically after a machine boot.
 
@@ -277,13 +251,13 @@ Environment="MUSIC_FOLDER=/home/YOUR-USERNAME/jill/music/"
 
 5. Reload systemd configuration:
     sudo systemctl daemon-reload
-	
+
 6. Enable the service to start on boot:
     sudo systemctl enable jill.service
-	
+
 7. Start the service:
     sudo systemctl start jill.service
-	
+
 8. Check service status:
     sudo systemctl status jill.service
 
@@ -357,3 +331,5 @@ TROUBLESHOOTING
 For troubleshooting, see 06-troubleshooting.txt
 
 ================================================================================
+
+

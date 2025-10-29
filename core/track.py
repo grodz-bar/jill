@@ -287,7 +287,7 @@ def discover_playlists(guild_id: int = 0) -> List[Playlist]:
         playlists,
         key=lambda p: (get_sort_key(p), p.display_name.casefold())
     )
-    logger.info(f"Guild {guild_id}: Discovered {len(sorted_playlists)} playlists")
+    logger.debug(f"Guild {guild_id}: Discovered {len(sorted_playlists)} playlists")
 
     return sorted_playlists
 

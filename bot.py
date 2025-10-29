@@ -268,6 +268,17 @@ async def on_guild_remove(guild):
         await player.shutdown()
         del players[guild.id]
 
+@bot.event
+async def on_command_error(ctx, error):
+    """Handle command errors gracefully."""
+    # Silently ignore typos (CommandNotFound) - these are harmless user mistakes
+    if isinstance(error, commands.CommandNotFound):
+        logger.debug(f"Guild {ctx.guild.id if ctx.guild else 'DM'}: Unknown command from {ctx.author}: {ctx.message.content}")
+        return
+
+    # For other errors, log them for debugging
+    logger.error(f"Command error in {ctx.command}: {error}", exc_info=error)
+
 # =============================================================================
 # GRACEFUL SHUTDOWN
 # =============================================================================

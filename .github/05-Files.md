@@ -10,11 +10,12 @@ A comprehensive reference of the bot's directory structure and file descriptions
 /jill/
 ├── bot.py                            # Main bot file
 ├── requirements.txt                  # Python dependencies
-├── /scripts/                         # Setup and launcher scripts
-│   ├── win_setup.bat                 # Windows setup wizard
-│   ├── linux_setup.sh                # Linux setup wizard
-│   ├── win_run_bot.bat               # Windows launcher
-│   └── linux_run_bot.sh              # Linux launcher
+├── win_setup.bat                     # Windows setup wizard
+├── linux_setup.sh                    # Linux setup wizard
+├── win_convert_opus.bat              # Windows standalone opus converter
+├── linux_convert_opus.sh             # Linux standalone opus converter
+├── start-jill.bat                    # Windows launcher (created by setup)
+├── start-jill.sh                     # Linux launcher (created by setup)
 ├── .env                              # Bot configuration (created during setup)
 ├── /config/                          # Configuration folder (USER CUSTOMIZATION)
 │   ├── __init__.py                   # Python package marker
@@ -49,8 +50,10 @@ A comprehensive reference of the bot's directory structure and file descriptions
 ├── /README/                          # Documentation folder
 │   ├── 01-README.txt                 # Main overview
 │   ├── 02-Getting-Discord-Token.txt  # Bot token guide
-│   ├── 03-SETUP-Windows.txt          # Windows setup guide
-│   ├── 03-SETUP-Linux.txt            # Linux setup guide
+│   ├── 03-Windows-Quick-Setup.txt    # Windows quick setup guide (wizard)
+│   ├── 03-Windows-Manual-Setup.txt   # Windows manual setup guide (step-by-step)
+│   ├── 03-Linux-Quick-Setup.txt      # Linux quick setup guide (wizard)
+│   ├── 03-Linux-Manual-Setup.txt     # Linux manual setup guide (step-by-step)
 │   ├── 04-Converting-To-Opus.txt     # Audio conversion guide
 │   ├── 05-Files.txt                  # This file (reference)
 │   └── 06-troubleshooting.txt        # Troubleshooting guide
@@ -79,11 +82,17 @@ Main overview - start here! Quick feature list, commands, and basic info.
 #### `02-Getting-Discord-Token.txt`
 Quick guide for creating a Discord bot and getting your token.
 
-#### `03-SETUP-Windows.txt`
-Detailed setup guide for Windows.
+#### `03-Windows-Quick-Setup.txt`
+Windows setup guide using the automated setup wizard (`win_setup.bat`).
 
-#### `03-SETUP-Linux.txt`
-Detailed setup guide for Linux/Pi.
+#### `03-Windows-Manual-Setup.txt`
+Windows setup guide with step-by-step manual commands.
+
+#### `03-Linux-Quick-Setup.txt`
+Linux setup guide using the automated setup wizard (`linux_setup.sh`).
+
+#### `03-Linux-Manual-Setup.txt`
+Linux setup guide with step-by-step manual commands for Linux/Raspberry Pi.
 
 #### `04-Converting-To-Opus.txt`
 Instructions for converting your music to `.opus` format. (Windows/Linux)
@@ -98,19 +107,25 @@ Troubleshooting guide for common issues.
 
 ---
 
-### Setup Scripts
+### Setup and Launcher Scripts
 
-#### `scripts/win_setup.bat`
+#### `win_setup.bat`
 Interactive setup wizard for Windows. Creates venv inside bot folder, installs dependencies, configures bot token and music folder (default: `music/` subfolder), and optionally converts audio files. Bot folder is fully portable.
 
-#### `scripts/linux_setup.sh`
+#### `linux_setup.sh`
 Interactive setup wizard for Linux. Creates venv inside bot folder, installs dependencies, configures bot token and music folder (default: `music/` subfolder), and optionally converts audio files. Bot folder is fully portable.
 
-#### `scripts/win_run_bot.bat`
-Simple launcher script for Windows. Activates venv and runs the bot.
+#### `win_convert_opus.bat`
+Standalone opus converter for Windows. Intelligently detects your music folder from `.env` and converts all audio files to `.opus` format recursively. Can be run anytime after setup.
 
-#### `scripts/linux_run_bot.sh`
-Simple launcher script for Linux. Activates venv and runs the bot.
+#### `linux_convert_opus.sh`
+Standalone opus converter for Linux. Intelligently detects your music folder from `.env` and converts all audio files to `.opus` format recursively. Can be run anytime after setup.
+
+#### `start-jill.bat`
+Launcher script for Windows (created during setup). Activates venv and runs the bot.
+
+#### `start-jill.sh`
+Launcher script for Linux (created during setup). Activates venv and runs the bot.
 
 ---
 
@@ -157,7 +172,11 @@ Tells git which files to ignore (logs, tokens, music, runtime state, caches, etc
 
 ## Setup Order (Recommended)
 
-1. Read [README](01-README.md) (get familiar with the bot)
-2. Follow [Getting Discord Token](02-Getting-Discord-Token.md) (get your bot token)
-3. Follow [Linux Setup](03-SETUP-Linux.md) or [Windows Setup](03-SETUP-Windows.md)
-4. Run the bot
+1. Read [README](01-README.txt) (get familiar with the bot)
+2. Follow [Getting Discord Token](02-Getting-Discord-Token.txt) (get your bot token)
+3. Follow one of the setup guides:
+   - [Windows Quick Setup](03-Windows-Quick-Setup.txt) (recommended - uses wizard)
+   - [Windows Manual Setup](03-Windows-Manual-Setup.txt) (step-by-step commands)
+   - [Linux Quick Setup](03-Linux-Quick-Setup.txt) (recommended - uses wizard)
+   - [Linux Manual Setup](03-Linux-Manual-Setup.txt) (step-by-step commands)
+4. Run the bot with `start-jill.bat` (Windows) or `./start-jill.sh` (Linux)

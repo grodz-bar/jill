@@ -105,7 +105,7 @@ Task Scheduler won't start bot (Windows):
 Service won't start (Linux):
 - Check 'sudo systemctl status jill.service' for errors
 - Verify paths in service file are correct
-- Ensure linux_run_bot.sh is executable (chmod +x ~/jill/scripts/linux_run_bot.sh)
+- Ensure start-jill.sh is executable (chmod +x ~/jill/start-jill.sh)
 - Check service logs: sudo journalctl -u jill.service -f
 - I really hope you did not add the "---------" characters (from the setup txt)
 to your service file. Because if you did, delete them.

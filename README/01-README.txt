@@ -13,10 +13,11 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 
 QUICK START:
 1. Get a Discord bot token [see '02-Getting-Discord-Token.txt']
-2. Run the setup wizard [inside scripts folder]
+2. Run the setup wizard: win_setup.bat (Windows) or ./linux_setup.sh (Linux)
    - The wizard can convert your music to .opus automatically
+   - Or use standalone converters later: win_convert_opus.bat / linux_convert_opus.sh
    - Or convert manually [see '04-Converting-To-Opus.txt']
-3. Run your bot [inside scripts folder]
+3. Run your bot: start-jill.bat (Windows) or ./start-jill.sh (Linux)
 4. Serve drinks.
 
 BASIC COMMANDS:

@@ -49,7 +49,7 @@ Hopefully you're only here because you're curious.
 ### Bot can't find music
 
 - Verify `MUSIC_FOLDER` path is correct
-- Check files are `.opus` format (not `.mp3`, `.flac`, etc.)
+- Check files are in a supported format 
 - Ensure bot has read permission on music folder
 - Ensure song files are named properly (`01 - Track Name.opus`)
 - If using multiple playlists: Make sure the playlist folder name follows this format (`01 - Album Name`, `02 - Game OST`, etc.)
@@ -58,7 +58,7 @@ Hopefully you're only here because you're curious.
 
 - Verify Discord voice settings
 - Verify bot has **"Connect"** and **"Speak"** permissions in voice channel
-- Verify your `.opus` files play normally
+- Verify your files play normally
 - Ensure song files are named properly (`01 - Track Name.opus`)
 - ... do you have Discord muted? Or the bot volume set too low to hear...?
 
@@ -69,7 +69,7 @@ Hopefully you're only here because you're curious.
 ### "ffmpeg not recognized"
 
 - **Linux:** Install with apt (`sudo apt install ffmpeg`)
-- **Add ffmpeg to PATH:**
+- **Windows: Add ffmpeg to PATH:**
    - Right-click **"This PC"** → Properties
    - **Advanced system settings** → **Environment Variables**
    - Under **System Variables**, find **"Path"** → **Edit**
@@ -85,8 +85,9 @@ Hopefully you're only here because you're curious.
 
 ### Audio sounds weird/distorted
 
+- If you haven't [converted to .opus](04-Converting-To-Opus.md) now's the time.
 - Verify source file plays correctly
-- Verify `.opus` file plays correctly on a different machine
+- Verify file plays correctly on a different machine
 - Check conversion had the right output:
   - Use command: `ffprobe -hide_banner SONG-NAME.opus`
   - Look for: Sample rate 48000 Hz, stereo channels, ~256 kb/s bit rate
@@ -114,7 +115,7 @@ Hopefully you're only here because you're curious.
 
 - Check `sudo systemctl status jill.service` for errors
 - Verify paths in service file are correct
-- Ensure `linux_run_bot.sh` is executable (`chmod +x ~/jill/scripts/linux_run_bot.sh`)
+- Ensure `start-jill.sh` is executable (`chmod +x ~/jill/start-jill.sh`)
 - Check service logs: `sudo journalctl -u jill.service -f`
 - I really hope you did not add the `"---------"` characters (from the setup txt) to your service file. Because if you did, delete them.
 

@@ -55,7 +55,8 @@ STEP 5: INVITE BOT TO SERVER
 STEP 6: CONTINUE WITH PLATFORM SETUP
 ----------------------------------------------------------
 
-1. If you're following a platform setup guide (03-SETUP-Windows.txt or 03-SETUP-Linux.txt),
+1. If you're following a platform setup guide (see 03-Windows-Quick-Setup.txt,
+03-Windows-Manual-Setup.txt, 03-Linux-Quick-Setup.txt, or 03-Linux-Manual-Setup.txt),
 continue from it. You will need this token in the setup wizard.
 
 NOTE: For troubleshooting, see 06-troubleshooting.txt

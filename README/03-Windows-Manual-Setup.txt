@@ -1,8 +1,9 @@
 ================================================================================
-WINDOWS SETUP GUIDE
+WINDOWS MANUAL SETUP GUIDE (Step-by-Step Commands)
 ================================================================================
 
-This guide will help you set up jill on Windows 10/11.
+This guide will help you set up jill on Windows 10/11 manually using command-line
+instructions. For automated setup using the wizard, see 03-Windows-Quick-Setup.txt
 
 ================================================================================
 STEP 1: INSTALL PYTHON
@@ -46,7 +47,7 @@ STEP 2: GET DISCORD BOT TOKEN
 ================================================================================
 
 See '02-Getting-Discord-Token.txt' for instructions on creating a Discord bot
-and getting your token. You will need this later.
+and getting your token. You will need this in STEP 4.
 
 ================================================================================
 STEP 3: DOWNLOAD BOT (if you somehow haven't)
@@ -71,46 +72,8 @@ NOTE: You can extract jill into any folder you want, but this guide assumes
 you've placed it in C:\jill\ , change instructions to fit your use case.
 
 ================================================================================
-STEP 4: RUN SETUP WIZARD (RECOMMENDED)
+STEP 4: MANUAL SETUP
 ================================================================================
-
-The wizard will automatically:
-- Create a virtual environment (venv\)
-- Install required Python packages
-- Generate your .env configuration file
-- Create the music folder if it doesn't exist
-- Optionally convert your audio files to .opus
-
-PREREQUISITES:
-- Discord bot token (from Step 2)
-- Python 3.11 or newer installed and added to PATH
-- FFmpeg (only needed if converting audio to .opus)
-  See 04-Converting-To-Opus.txt for installation guide
-
-Running the Wizard:
-
-1. Navigate to C:\jill\ in File Explorer
-2. Double-click "win_setup.bat"
-3. Follow the interactive prompts
-4. The wizard will automatically create "start-jill.bat" for running the bot
-5. Setup completed successfully when you see:
-   ========================================
-   SETUP COMPLETED - SAFE TO CLOSE SCRIPT
-   ========================================
-
-If successful → Continue to STEP 5
-
-IF SETUP FAILS:
-- Read the error message shown in the console
-- See 06-troubleshooting.txt for common issues
-- Verify Python 3.11+ is installed: python --version
-- Try ALTERNATIVE STEP 4 (Manual Setup) below
-
-================================================================================
-ALTERNATIVE STEP 4: MANUAL SETUP
-================================================================================
-
-If you prefer to set up manually, follow these steps:
 
 VERIFY PYTHON FIRST:
 1. Open Command Prompt
@@ -144,22 +107,29 @@ SETUP STEPS:
 7. Proceed to STEP 5 of this setup guide
 
 ================================================================================
-STEP 5: ADD YOUR MUSIC FILES (If Needed)
+STEP 5: CONVERT YOUR MUSIC
 ================================================================================
 
+You can run the standalone converter anytime:
+
+1. Navigate to C:\jill\ in File Explorer
+2. Double-click "win_convert_opus.bat"
+3. Follow the prompts to convert your music files
+
 The bot supports MP3, FLAC, WAV, M4A, OGG, and OPUS formats. However,
-converting to .opus is HIGHLY RECOMMENDED for best performance. Follow the
-04-Converting-To-Opus.txt guide.
+converting to .opus is HIGHLY RECOMMENDED for:
+  - Lower CPU usage (especially important on lower-end systems)
+  - Best audio quality (Discord-native format, no double compression)
+  - Guaranteed stability (zero transcoding overhead)
 
-EVEN if you used the WIZARD (win_setup.bat) you need to make sure your music
-files follow the naming format described below.
+See 04-Converting-To-Opus.txt for detailed information about audio conversion.
 
-NOTE: This step only covers music files, but if you're using PLAYLISTS (as in,
-subfolders inside your jill music folder), it is HIGHLY recommended that they use
-the same naming format described below.
+================================================================================
+STEP 6: FILE NAMING FORMAT
+================================================================================
 
-FILE NAMING FORMAT:
--------------------------------
+IMPORTANT: Your music files MUST follow this naming format for proper playback!
+
 Files MUST start with numbers for proper sorting. The bot expects:
 
     01 - Track Name.opus
@@ -172,7 +142,7 @@ Format rules:
 - Start with digits (01, 02, 03... or 1, 2, 3...)
 - Follow with space, dash, space: " - "
 - Then your track name
-- End with .opus extension
+- End with .opus extension (or other supported format)
 
 Example good names:
 ✓ 01 - Hopes and Dreams.opus
@@ -184,10 +154,14 @@ Example bad names:
 ✗ Track 01.opus (number not at start)
 ✗ Song_01.opus (number not at start)
 
-NOTE: PowerRename from Microsoft PowerToys can batch‑rename files.
+NOTE: If you're using PLAYLISTS (subfolders inside your music folder), they
+should also use the same numeric naming format.
+
+BATCH RENAMING TIP: PowerRename from Microsoft PowerToys can batch-rename files
+easily on Windows.
 
 ================================================================================
-STEP 6: RUN THE BOT
+STEP 7: RUN THE BOT
 ================================================================================
 
 1. Navigate to C:\jill\ in File Explorer
@@ -200,7 +174,7 @@ You should see:
 To stop the bot, press Ctrl+C in the console window.
 
 ================================================================================
-STEP 7: AUTO-START ON BOOT (OPTIONAL)
+STEP 8: AUTO-START ON BOOT (OPTIONAL)
 ================================================================================
 
 NOTE: Do this so bot will start automatically after Windows starts.
@@ -266,6 +240,5 @@ TROUBLESHOOTING
 For troubleshooting, see 06-troubleshooting.txt
 
 ================================================================================
-
 
 

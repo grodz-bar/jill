@@ -1,15 +1,19 @@
-# How to Convert Music to Opus Format
+# How to Manually Convert Music to Opus Format
 
 Linux and Windows guide for converting audio to `.opus` format.
 
-> **Important:** As of v2.0, the bot now supports multiple audio formats (MP3, FLAC, WAV, M4A, OGG, OPUS). However, converting to OPUS is **highly recommended** for:
-> - Lower CPU usage (especially critical on Raspberry Pi)
-> - Guaranteed stability and audio quality
-> - Zero transcoding overhead (native Discord format)
+> **Important:** The bot supports multiple audio formats (MP3, FLAC, WAV, M4A, OGG, OPUS). However, converting to .opus is **HIGHLY recommended** for:
+> - **Way** fewer Discord audio bugs (for some reason)
+> - Lower CPU usage (especially important on Raspberry Pi)
+> - Best audio quality (Discord-native format, no double compression)
+> - Higher stability (zero transcoding overhead)
 >
 > Other formats work but require real-time transcoding, which increases CPU usage.
 
-> **Note:** The setup wizard (`scripts\win_setup.bat` / `scripts/linux_setup.sh`) can automatically convert audio files for you during initial setup. Or follow this guide for manual conversion.
+
+> **NOTE:** The **EASIEST** way to convert your music is to use the standalone converter scripts:
+> - **Windows:** Double-click `win_convert_opus.bat` in the bot folder
+> - **Linux:** Run `./linux_convert_opus.sh` in the bot folder
 
 ---
 
@@ -79,6 +83,7 @@ Remove original files after successful conversion:
    ```
 
 > **WARNING:** This permanently deletes files. Test your `.opus` files first!
+> 
 > **Note:** The bot accepts `.opus` files with any case (`.opus`, `.OPUS`, `.Opus`).
 
 ---
@@ -127,6 +132,7 @@ Remove original files after successful conversion:
 3. Select all files of the original format (e.g., all `.mp3` files) and delete them
 
 > **WARNING:** This permanently deletes files. Test your `.opus` files first!
+> 
 > **Note:** The bot accepts `.opus` files with any case (`.opus`, `.OPUS`, `.Opus`).
 
 ---

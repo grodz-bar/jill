@@ -161,9 +161,9 @@ echo ========================================
 echo.
 
 if exist ".env" (
-    echo WARNING: .env file already exists.
+    echo You already have a .env configuration file.
     echo.
-    set /p "OVERWRITE=Do you want to overwrite it? (y/N): "
+    set /p "OVERWRITE=Do you want to reconfigure it? (y/N): "
     for /f "tokens=1" %%A in ("!OVERWRITE!") do set "OVERWRITE=%%A"
     set "OVERWRITE=!OVERWRITE:~0,1!"
     if /i not "!OVERWRITE!"=="y" (
@@ -174,7 +174,7 @@ if exist ".env" (
         exit /b 0
     )
     echo.
-    echo Overwriting existing .env file...
+    echo Updating .env file with new configuration...
     echo.
     timeout /t 2 /nobreak >nul
 )
@@ -434,9 +434,13 @@ set /p "CONVERT_FILES=Start the guided conversion now? (y/N): "
 if /i "%CONVERT_FILES%"=="y" (
     call :RUN_CONVERSION
 ) else (
+    echo.
     echo Skipping conversion.
+    echo.
     timeout /t 2 /nobreak >nul
 )
+
+REM Jump to completion message
 goto AFTER_CONVERSION
 
 :RUN_CONVERSION
@@ -796,9 +800,12 @@ exit /b
 :AFTER_CONVERSION
 
 echo.
-timeout /t 1 /nobreak >nul
+echo.
+echo.
 echo ========================================
-echo SETUP COMPLETED - SAFE TO CLOSE SCRIPT
+echo ========================================
+echo    SETUP COMPLETED SUCCESSFULLY!
+echo ========================================
 echo ========================================
 echo.
 echo Your bartender is now fully configured!
@@ -816,15 +823,24 @@ if "%CONVERSION_SUCCESS%"=="true" (
     echo.
     echo Songs converted: !TOTAL_CONVERTED_COUNT!
     echo.
-    echo NEXT STEP: Run start-jill.bat (inside Jill's folder).
+    echo NEXT STEPS:
+    echo   1. Run start-jill.bat to start your bot
+    echo   2. To convert MORE files later, run: win_convert_opus.bat
 ) else (
     echo.
-    echo Next steps:
-    echo   1. Add .opus music files to your music folder.
-    echo      See 04-Converting-To-Opus.txt for help converting audio files.
-    echo   2. Run start-jill.bat (inside Jill's folder).
+    echo NEXT STEPS:
+    echo   1. CONVERT YOUR MUSIC: Run win_convert_opus.bat
+    echo      ^(Converts MP3/FLAC/WAV/etc to .opus format - HIGHLY RECOMMENDED^)
+    echo.
+    echo   2. START YOUR BOT: Run start-jill.bat
+    echo.
+    echo   Note: You can also manually add .opus files to your music folder.
 )
 echo.
 echo For help, see the README folder or 06-troubleshooting.txt
 echo.
+echo ========================================
+echo.
 pause
+echo.
+echo Exiting setup...

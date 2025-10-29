@@ -210,7 +210,12 @@ async def _play_current(guild_id: int, bot) -> None:
 
             if error:
                 error_str = str(error)
-                if "Bad file descriptor" not in error_str and "_MissingSentinel" not in error_str:
+                # Filter out benign errors from voice disconnect/cleanup
+                # - "Bad file descriptor" (Linux socket close during cleanup)
+                # - "WinError 10038" (Windows socket close during cleanup)
+                # - "_MissingSentinel" (Discord.py internal cleanup)
+                benign_errors = ["Bad file descriptor", "WinError 10038", "_MissingSentinel"]
+                if not any(benign in error_str for benign in benign_errors):
                     logger.error(f'Guild {guild_id} playback error: {error}')
 
             # Clean up audio source

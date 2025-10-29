@@ -2,97 +2,146 @@
 WINDOWS MANUAL SETUP GUIDE (Step-by-Step Commands)
 ================================================================================
 
-This guide will help you set up jill on Windows 10/11 manually using command-line
-instructions. For automated setup using the wizard, see 03-Windows-Quick-Setup.txt
+This guide will help you set up jill on Windows 10/11 manually using
+command-line instructions.
+
+For automated setup using the wizard, see 03-Windows-Quick-Setup.txt
+(Recommended)
 
 ================================================================================
-STEP 1: INSTALL PYTHON
+STEP 1: INSTALL PYTHON AND FFMPEG (MANUAL METHOD)
 ================================================================================
 
-Download and install Python from: https://www.python.org/downloads/
+Install Python
+--------------
 
-IMPORTANT INSTALLATION NOTES:
-- When installing, CHECK "Add Python to PATH" on the first screen
-- This is CRITICAL for the bot to work
-- If you forget this, you'll need to reinstall Python or manually add it to PATH
+1. Download Python from: https://www.python.org/downloads/
+2. Run the installer
+3. IMPORTANT: CHECK "Add Python to PATH" on the first screen
+4. Click "Install Now"
+5. Wait for installation to complete
+6. Click "Close"
 
-Adding Python to PATH Manually (if needed):
-1. Find your Python installation directory (usually C:\Users\YourName\AppData\Local\Programs\Python\Python3XX\)
+Adding Python to PATH Manually (if you forgot to check the box)
+----------------------------------------------------------------
+
+1. Find your Python installation directory
+   (usually C:\Users\YourName\AppData\Local\Programs\Python\Python3XX\)
 2. Press Windows key, search "Environment Variables"
 3. Click "Edit the system environment variables"
 4. Click "Environment Variables" button
 5. Under "System variables", find and select "Path", then click "Edit"
 6. Click "New" and add your Python directory path
-7. Click "New" again and add your Python Scripts directory (same path but add \Scripts at the end)
+7. Click "New" again and add your Python Scripts directory
+   (same path but add \Scripts at the end)
 8. Click OK on all windows
 9. Restart your computer for changes to take effect
 
-Verify installation:
+Verify Python Installation
+---------------------------
+
 1. Press Windows key + R
 2. Type "cmd" and press Enter
-3. Type "python --version" and press Enter
-4. You should see "Python 3.11+ (e.g., 3.12.x/3.13.x/3.14.x)"
-5. Type "python -m pip --version" and press Enter
+3. Type: python --version
+4. You should see "Python 3.11+" (e.g., 3.12.x/3.13.x/3.14.x)
+5. Type: python -m pip --version
 6. You should see "pip" with a version number
 7. Close the Command Prompt window
 
 If python --version doesn't work:
-   - Restart your computer (PATH change might need a reboot)
-   - Reinstall Python and choose "Add to PATH" if prompted
-   - Try: python3 --version
-   - Or see 06-troubleshooting.txt for manual PATH configuration
+- Restart your computer (PATH change might need a reboot)
+- Reinstall Python and choose "Add to PATH" if prompted
+- Try: python3 --version
+- Or see 06-troubleshooting.txt for manual PATH configuration
+
+Install FFmpeg
+--------------
+
+1. Download FFmpeg from: https://ffmpeg.org/download.html#build-windows
+   (Click "Windows builds from gyan.dev" or similar trusted source)
+2. Download the "ffmpeg-release-essentials.zip" file
+3. Extract the zip file to C:\ffmpeg
+   (You should have C:\ffmpeg\bin\ffmpeg.exe when done)
+4. Add FFmpeg to PATH:
+   - Press Windows key, search "Environment Variables"
+   - Click "Edit the system environment variables"
+   - Click "Environment Variables" button
+   - Under "System variables", find and select "Path", then click "Edit"
+   - Click "New" and add: C:\ffmpeg\bin
+   - Click OK on all windows
+5. Restart your computer for changes to take effect
+
+Verify FFmpeg Installation
+---------------------------
+
+1. Press Windows key + R
+2. Type "cmd" and press Enter
+3. Type: ffmpeg -version
+4. You should see FFmpeg version information
+5. Close the Command Prompt window
+
+If ffmpeg -version doesn't work:
+- Restart your computer (PATH change might need a reboot)
+- Verify C:\ffmpeg\bin\ffmpeg.exe exists
+- Or see 06-troubleshooting.txt for more help
 
 ================================================================================
 STEP 2: GET DISCORD BOT TOKEN
 ================================================================================
 
-See '02-Getting-Discord-Token.txt' for instructions on creating a Discord bot
-and getting your token. You will need this in STEP 4.
+See 02-Getting-Discord-Token.txt for instructions on creating a Discord bot
+and getting your token. You will need this in Step 4.
 
 ================================================================================
-STEP 3: DOWNLOAD BOT (if you somehow haven't)
+STEP 3: DOWNLOAD BOT
 ================================================================================
 
 Download the bot to your system:
 
-Method 1 - Download Release ZIP:
+Download Release ZIP
+--------------------
+
 1. Go to the project's releases page
 2. Download the latest release ZIP file
 3. Extract the zip file to C:\jill\
+
 NOTE: Ensure files are in C:\jill\ (not C:\jill\jill\)
 
-Method 2 - Using Git:
-1. Open Command Prompt
-2. Navigate to C:\:
-    cd C:\
-3. Clone the repository:
-    git clone https://github.com/grodz-bar/jill.git jill
-
-NOTE: You can extract jill into any folder you want, but this guide assumes
-you've placed it in C:\jill\ , change instructions to fit your use case.
+NOTE: Extract jill to any folder you want, but this guide assumes she's in
+C:\jill\
 
 ================================================================================
 STEP 4: MANUAL SETUP
 ================================================================================
 
-VERIFY PYTHON FIRST:
-1. Open Command Prompt
-2. Type: python --version
-3. Verify you see "Python 3.11+" or newer
-4. If not, go back to STEP 1 and install/configure Python
+1. Open CMD and navigate to bot directory:
 
-SETUP STEPS:
-1. Navigate to bot directory: cd C:\jill
-2. Create virtual environment: python -m venv venv
-3. Activate virtual environment: venv\Scripts\activate
-4. Install dependencies: python -m pip install -r requirements.txt
+   cd C:\jill
+
+2. Create virtual environment:
+
+   python -m venv venv
+
+3. Activate virtual environment:
+
+   venv\Scripts\activate
+
+4. Install dependencies:
+
+   python -m pip install -r requirements.txt
+
 5. Create .env file in C:\jill\:
    - Create a file named ".env" (including the dot)
    - Add: DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN
-   - (Optional) Add: MUSIC_FOLDER=C:\jill\music\ (leave blank to use default: music\ folder)
+   - (Optional) Add: MUSIC_FOLDER=C:\jill\music\
+
+   Note: Not adding and changing this line will make Jill use her default
+   music folder \jill\music\ (keeps her portable)
+
 6. Create start script "start-jill.bat" in C:\jill\:
    - Create a file named "start-jill.bat"
    - Add these lines:
+
      @echo off
      if not exist "venv\Scripts\activate.bat" (
          echo ERROR: Virtual environment not found.
@@ -104,7 +153,6 @@ SETUP STEPS:
      echo Starting Jill Discord Bot...
      python bot.py
      pause
-7. Proceed to STEP 5 of this setup guide
 
 ================================================================================
 STEP 5: CONVERT YOUR MUSIC
@@ -118,38 +166,44 @@ You can run the standalone converter anytime:
 
 The bot supports MP3, FLAC, WAV, M4A, OGG, and OPUS formats. However,
 converting to .opus is HIGHLY RECOMMENDED for:
-  - Lower CPU usage (especially important on lower-end systems)
-  - Best audio quality (Discord-native format, no double compression)
-  - Guaranteed stability (zero transcoding overhead)
+- Way fewer Discord audio bugs
+- Lower CPU usage
+- Best audio quality
 
-See 04-Converting-To-Opus.txt for detailed information about audio conversion.
+See 04-Converting-To-Opus.txt for information about audio conversion and steps
+to do it manually.
 
 ================================================================================
 STEP 6: FILE NAMING FORMAT
 ================================================================================
 
-IMPORTANT: Your music files MUST follow this naming format for proper playback!
+IMPORTANT: Your music files MUST follow this naming format for proper playback.
 
 Files MUST start with numbers for proper sorting. The bot expects:
 
-    01 - Track Name.opus
-    02 - Track Name.opus
-    03 - Track Name.opus
-    ...
-    10 - Track Name.opus
+01 - Track Name.opus
+02 - Track Name.opus
+03 - Track Name.opus
+...
+10 - Track Name.opus
 
-Format rules:
+Format Rules
+------------
+
 - Start with digits (01, 02, 03... or 1, 2, 3...)
 - Follow with space, dash, space: " - "
 - Then your track name
 - End with .opus extension (or other supported format)
 
-Example good names:
+Examples
+--------
+
+Good names:
 ✓ 01 - Hopes and Dreams.opus
 ✓ 02 - Every Day Is Night.opus
 ✓ 10 - Drive Me Wild.opus
 
-Example bad names:
+Bad names:
 ✗ Hopes and Dreams.opus (no number - won't sort correctly)
 ✗ Track 01.opus (number not at start)
 ✗ Song_01.opus (number not at start)
@@ -157,8 +211,8 @@ Example bad names:
 NOTE: If you're using PLAYLISTS (subfolders inside your music folder), they
 should also use the same numeric naming format.
 
-BATCH RENAMING TIP: PowerRename from Microsoft PowerToys can batch-rename files
-easily on Windows.
+Batch Renaming Tip: PowerRename from Microsoft PowerToys can batch-rename
+files easily on Windows.
 
 ================================================================================
 STEP 7: RUN THE BOT
@@ -169,7 +223,8 @@ STEP 7: RUN THE BOT
 
 You should see:
 - "Bot connected as YourBot#1234"
-- "Discovered X playlists with Y total songs" (or "Loaded X songs from music folder")
+- "Discovered X playlists with Y total songs"
+  (or "Loaded X songs from music folder")
 
 To stop the bot, press Ctrl+C in the console window.
 
@@ -179,7 +234,8 @@ STEP 8: AUTO-START ON BOOT (OPTIONAL)
 
 NOTE: Do this so bot will start automatically after Windows starts.
 
-Create a Windows Task Scheduler task:
+Create a Windows Task Scheduler task
+-------------------------------------
 
 1. Open Task Scheduler (search "Task Scheduler" in Start menu)
 2. Click "Create Basic Task"
@@ -196,30 +252,43 @@ UPDATING THE BOT
 To update the bot:
 
 1. Stop the bot (Ctrl+C if running manually, or disable Task Scheduler task)
-2. Download new version
-3. Replace files (keep your .env file)
+2. Download latest release from:
+   https://github.com/grodz-bar/jill/releases/latest
+3. Replace files
+
+   Make sure to keep your .env file and music folder.
+
 4. Restart the bot
 
 To update dependencies:
 
 1. Open Command Prompt
 2. Navigate to bot directory:
-    cd C:\jill
+
+   cd C:\jill
+
 3. Activate virtual environment:
-    C:\jill\venv\Scripts\activate
+
+   C:\jill\venv\Scripts\activate
+
 4. Update packages:
-    python -m pip install -r requirements.txt --upgrade
+
+   python -m pip install -r requirements.txt --upgrade
 
 ================================================================================
 CUSTOMIZATION
 ================================================================================
 
-HOW TO EDIT CONFIG FILES:
+How to Edit Config Files
 -------------------------
+
 Config files are just text files - edit them with Notepad:
 1. Right-click any .py file in C:\jill\config\
 2. Select "Open with" → "Notepad"
 3. Make changes and save (Ctrl+S)
+
+Config Files
+------------
 
 Edit files in the config/ folder to customize:
 - config/aliases.py - Command aliases
@@ -238,7 +307,3 @@ TROUBLESHOOTING
 ================================================================================
 
 For troubleshooting, see 06-troubleshooting.txt
-
-================================================================================
-
-

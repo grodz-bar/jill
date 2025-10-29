@@ -5,17 +5,18 @@ This guide will help you set up jill on Windows 10/11 manually using command-lin
 
 ---
 
-## Step 1: Install Python
+## Step 1: Install Python and FFmpeg (Manual Method)
 
-Download and install Python from: [python.org/downloads](https://www.python.org/downloads/)
+### Install Python
 
-### Important Installation Notes
+1. Download Python from: [python.org/downloads](https://www.python.org/downloads/)
+2. Run the installer
+3. **IMPORTANT:** CHECK **"Add Python to PATH"** on the first screen
+4. Click **"Install Now"**
+5. Wait for installation to complete
+6. Click **"Close"**
 
-- When installing, **CHECK "Add Python to PATH"** on the first screen
-- Python's New "Python Install Manager" should do this automatically
-- This is critical for the bot to work
-
-### Adding Python to PATH Manually (if needed)
+### Adding Python to PATH Manually (if you forgot to check the box)
 
 1. Find your Python installation directory (usually `C:\Users\YourName\AppData\Local\Programs\Python\Python3XX\`)
 2. Press Windows key, search **"Environment Variables"**
@@ -25,23 +26,52 @@ Download and install Python from: [python.org/downloads](https://www.python.org/
 6. Click **"New"** and add your Python directory path
 7. Click **"New"** again and add your Python Scripts directory (same path but add `\Scripts` at the end)
 8. Click **OK** on all windows
+9. **Restart your computer** for changes to take effect
 
-### Verify Installation
+### Verify Python Installation
 
 1. Press **Windows key + R**
 2. Type `cmd` and press Enter
-3. Type `python --version` and press Enter
+3. Type: `python --version`
 4. You should see **"Python 3.11+"** (e.g., 3.12.x/3.13.x/3.14.x)
-5. Type `python -m pip --version` and press Enter
+5. Type: `python -m pip --version`
 6. You should see "pip" with a version number
 7. Close the Command Prompt window
 
-### If `python --version` doesn't work:
-
-- Restart your computer (**PATH change might need a reboot**)
+**If `python --version` doesn't work:**
+- Restart your computer (PATH change might need a reboot)
 - Reinstall Python and choose **"Add to PATH"** if prompted
 - Try: `python3 --version`
-- Or see [Troubleshooting](06-troubleshooting.md)
+- Or see [Troubleshooting](06-troubleshooting.md) for manual PATH configuration
+
+### Install FFmpeg
+
+1. Download FFmpeg from: [ffmpeg.org/download.html](https://ffmpeg.org/download.html#build-windows)
+   (Click "Windows builds from gyan.dev" or similar trusted source)
+2. Download the "ffmpeg-release-essentials.zip" file
+3. Extract the zip file to `C:\ffmpeg`
+   (You should have `C:\ffmpeg\bin\ffmpeg.exe` when done)
+4. **Add FFmpeg to PATH:**
+   - Press Windows key, search **"Environment Variables"**
+   - Click **"Edit the system environment variables"**
+   - Click **"Environment Variables"** button
+   - Under "System variables", find and select **"Path"**, then click **"Edit"**
+   - Click **"New"** and add: `C:\ffmpeg\bin`
+   - Click **OK** on all windows
+5. **Restart your computer** for changes to take effect
+
+### Verify FFmpeg Installation
+
+1. Press **Windows key + R**
+2. Type `cmd` and press Enter
+3. Type: `ffmpeg -version`
+4. You should see FFmpeg version information
+5. Close the Command Prompt window
+
+**If `ffmpeg -version` doesn't work:**
+- Restart your computer (PATH change might need a reboot)
+- Verify `C:\ffmpeg\bin\ffmpeg.exe` exists
+- Or see [Troubleshooting](06-troubleshooting.md) for more help
 
 ---
 

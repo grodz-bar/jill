@@ -1,32 +1,35 @@
 ================================================================================
-HOW TO CONVERT MUSIC TO OPUS FORMAT (Linux and Windows Guide)
+HOW TO MANUALLY CONVERT MUSIC TO OPUS FORMAT
 ================================================================================
 
-IMPORTANT: Converting to OPUS is HIGHLY RECOMMENDED for:
-- Lower CPU usage (especially critical on Raspberry Pi)
-- Guaranteed stability and audio quality
-- Zero transcoding overhead (native Discord format)
+Linux and Windows guide for converting audio to .opus format.
 
-Other formats work but require real-time transcoding, which increases CPU usage.
+IMPORTANT: The bot supports multiple audio formats (MP3, FLAC, WAV, M4A, OGG,
+OPUS). However, converting to .opus is HIGHLY recommended for:
+- Way fewer Discord audio bugs (for some reason)
+- Lower CPU usage (especially important on Raspberry Pi)
+- Best audio quality (Discord-native format, no double compression)
+- Higher stability (zero transcoding overhead)
 
-EASIEST METHOD - USE THE STANDALONE CONVERTERS:
------------------------------------------------
-The bot includes smart converter scripts that auto-detect your music folder:
-  - Windows: Double-click "win_convert_opus.bat" in the bot folder
-  - Linux: Run "./linux_convert_opus.sh" in the bot folder
+Other formats work but require real-time transcoding, which increases CPU
+usage.
 
-These scripts intelligently detect your music folder from .env and handle
-everything automatically, including recursive conversion of playlists.
+NOTE: The EASIEST way to convert your music is to use the standalone converter
+scripts:
+- Windows: Double-click "win_convert_opus.bat" in the bot folder
+- Linux: Run "./linux_convert_opus.sh" in the bot folder
 
-ALTERNATIVE METHODS:
-- Setup wizard (win_setup.bat / linux_setup.sh) can convert during initial setup
-- Manual conversion using FFmpeg commands (see below)
+================================================================================
+RECOMMENDED FORMAT SPECIFICATIONS
+================================================================================
 
 The recommended .opus specifications are:
 - 48kHz sample rate
 - Stereo (2 channels)
 - 256kbps VBR (Variable Bit Rate)
 - 20ms frame duration
+
+Why these specifications:
 
 Using the correct format ensures:
 - Minimal CPU overhead (native passthrough)
@@ -37,89 +40,125 @@ Using the correct format ensures:
 LINUX / RASPBERRY PI
 ================================================================================
 
-INSTALL FFMPEG:
+Install FFmpeg
 --------------
-1. Update package list:
-    sudo apt update
-2. Install ffmpeg:
-    sudo apt install ffmpeg
 
-BATCH CONVERT ALL FILES:
-----------------------------------
+1. Update package list:
+
+   sudo apt update
+
+2. Install ffmpeg:
+
+   sudo apt install ffmpeg
+
+Batch Convert All Files
+------------------------
+
 Convert ALL audio files in a folder to .opus:
 
 1. Navigate to where your music files are stored:
-    cd /path/to/your/music/files
-2. IMPORTANT: Change TWO things in the command below: '*.mp3' → '*.YOURFORMAT' AND '${file%.mp3}' → '${file%.YOURFORMAT}':
-    for file in *.mp3; do
-        ffmpeg -i "$file" -c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20 "${file%.mp3}.opus"
-    done
 
-CLEANUP (OPTIONAL):
+   cd /path/to/your/music/files
+
+2. IMPORTANT: Change BOTH variables to match your use case:
+   - .mp3 → .YOURFORMAT
+
+   NOTE: You need to change TWO variables below:
+
+   for file in *.mp3; do
+       ffmpeg -i "$file" -c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20 "${file%.mp3}.opus"
+   done
+
+Cleanup (Optional)
 ------------------
+
 Remove original files after successful conversion:
 
 1. Check what file types you have:
-    ls *.mp3 *.flac *.wav *.m4a 2>/dev/null
-2. Remove files (replace *.mp3 with YOUR FORMAT):
-    rm *.mp3
 
-WARNING: This permanently deletes files. Test your .opus files first!
+   ls *.mp3 *.flac *.wav *.m4a 2>/dev/null
+
+2. Remove files (replace *.mp3 with YOUR FORMAT):
+
+   rm *.mp3
+
+WARNING: This permanently deletes files. Test your .opus files first.
+
 NOTE: The bot accepts .opus files with any case (.opus, .OPUS, .Opus).
 
 ================================================================================
 WINDOWS
 ================================================================================
 
-INSTALL FFMPEG:
+Install FFmpeg
 --------------
+
 1. Download from: https://ffmpeg.org/download.html and extract to C:\ffmpeg
+
 2. Add to PATH:
    - Right-click "This PC" → Properties
    - Advanced system settings → Environment Variables
    - Under System Variables, find "Path" → Edit
    - Click "New" and add: C:\ffmpeg\bin
    - Click OK on all windows
-3. Open Command Prompt (Windows key + R, type "cmd", press Enter) to test:
-       ffmpeg -version
 
-BATCH CONVERT ALL FILES:
+3. Open Command Prompt (Windows key + R, type "cmd", press Enter) to test:
+
+   ffmpeg -version
+
+Batch Convert All Files
 ------------------------
+
 Convert ALL audio files in a folder to .opus:
 
 1. Open Command Prompt
-2. Navigate to where your music files are stored:
-    cd /d "C:\path\to\your\music\files"
-3. Use the command for YOUR-FORMAT (replace *.mp3 with YOUR FORMAT):
-    for %f in (*.mp3) do ffmpeg -i "%f" -c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20 "%~nf.opus"
 
-CLEANUP (OPTIONAL):
+2. Navigate to where your music files are stored:
+
+   cd /d "C:\path\to\your\music\files"
+
+3. IMPORTANT: Change BOTH variables to match your use case:
+
+   NOTE: You need to change TWO variables below:
+
+   for %f in (*.mp3) do ffmpeg -i "%f" -c:a libopus -b:a 256k -ar 48000 -ac 2 -frame_duration 20 "%~nf.opus"
+
+Cleanup (Optional)
 ------------------
+
 Remove original files after successful conversion:
 
 1. Open File Explorer and navigate to your music folder
 2. Sort by "Type" to group files by extension
-3. Select all files of the original format (e.g., all .mp3 files) and delete them
+3. Select all files of the original format (e.g., all .mp3 files) and delete
+   them
 
-WARNING: This permanently deletes files. Test your .opus files first!
+WARNING: This permanently deletes files. Test your .opus files first.
+
 NOTE: The bot accepts .opus files with any case (.opus, .OPUS, .Opus).
 
 ================================================================================
 QUALITY NOTES
 ================================================================================
 
-SOURCE QUALITY:
+Source Quality
+--------------
+
 - Garbage in, garbage out
 - Use quality sources (320kbps MP3 or FLAC)
 - Avoid low-quality YouTube rips
 
-OPUS BITRATE:
+Opus Bitrate
+------------
+
 - 256kbps is overkill for most music (sounds great)
 - Discord compresses to ~96kbps anyway
 - You can use 128kbps for smaller files: -b:a 128k
 - Don't go below 96kbps (noticeable quality loss)
 
-FILE SIZES:
+File Sizes
+----------
+
 - 256kbps opus ≈ 1.9 MB per minute
 - 128kbps opus ≈ 0.95 MB per minute
 - Average song ≈ ~5 MB at 256kbps
@@ -132,6 +171,3 @@ TROUBLESHOOTING
 ================================================================================
 
 For troubleshooting audio conversion issues, see 06-troubleshooting.txt
-
-================================================================================
-

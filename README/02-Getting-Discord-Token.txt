@@ -1,41 +1,54 @@
-=====================================================================================
+================================================================================
 HOW TO GET A DISCORD BOT TOKEN
-=====================================================================================
+================================================================================
 
+A step-by-step guide for creating your Discord bot and getting your token.
+
+================================================================================
 STEP 1: CREATE APPLICATION
-----------------------------------------------------------
+================================================================================
+
 1. Go to: https://discord.com/developers/applications
 2. Click "New Application"
 3. Name it (e.g., "jill music")
 4. Click "Create"
 
+================================================================================
 STEP 2: CREATE BOT USER
-----------------------------------------------------------
+================================================================================
+
 1. Click "Bot" in left sidebar
 2. Click "Add Bot"
-3. Confirm "Yes, do it!"
-NOTE: Sometime's it's auto-created.
+3. Confirm "Yes, do it."
 
+NOTE: Sometimes it's auto-created.
+
+================================================================================
 STEP 3: CONFIGURE BOT
-----------------------------------------------------------
-1. Under "Privileged Gateway Intents", enable:
+================================================================================
 
-   - SERVER MEMBERS INTENT     (for auto-pause and disconnect)
-   - MESSAGE CONTENT INTENT    (to read command messages)
+Under "Privileged Gateway Intents", enable:
 
+- [X] SERVER MEMBERS INTENT (for auto-pause and disconnect)
+- [X] MESSAGE CONTENT INTENT (to read command messages)
+
+================================================================================
 STEP 4: GET TOKEN
-----------------------------------------------------------
+================================================================================
+
 1. Under "Token" section, click "Reset Token"
 2. Confirm, then copy the token
 3. Save it somewhere safe (you'll need it later)
 
-IMPORTANT: NEVER share your token! It's like a password.
-IMPORTANT: If your token is leaked, reset it immediately in the developer portal.
+IMPORTANT: NEVER share your token. It's like a password. If your token is
+leaked, reset it immediately in the developer portal.
 
+================================================================================
 STEP 5: INVITE BOT TO SERVER
-----------------------------------------------------------
+================================================================================
+
 1. Click "OAuth2" in left sidebar
-2. Find "OAuth2 URL Generator" and "Scopes", select:
+2. Find "OAuth2 URL Generator" and under "Scopes", select:
    - bot
    - applications.commands
 
@@ -52,11 +65,20 @@ STEP 5: INVITE BOT TO SERVER
 6. Select your server
 7. Click "Authorize"
 
+================================================================================
 STEP 6: CONTINUE WITH PLATFORM SETUP
-----------------------------------------------------------
+================================================================================
 
-1. If you're following a platform setup guide (see 03-Windows-Quick-Setup.txt,
-03-Windows-Manual-Setup.txt, 03-Linux-Quick-Setup.txt, or 03-Linux-Manual-Setup.txt),
-continue from it. You will need this token in the setup wizard.
+If you are following a platform setup guide, continue from that guide. You
+will need this token for the setup.
 
-NOTE: For troubleshooting, see 06-troubleshooting.txt
+- 03-Linux-Quick-Setup.txt
+- 03-Windows-Quick-Setup.txt
+- 03-Windows-Manual-Setup.txt
+- 03-Linux-Manual-Setup.txt
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+For troubleshooting, see 06-troubleshooting.txt

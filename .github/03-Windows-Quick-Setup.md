@@ -8,33 +8,29 @@ This guide will help you set up jill on Windows 10/11.
 
 ## Step 1: Install Python and FFmpeg
 
-- Download and install Python from: [python.org](https://www.python.org/downloads/)
-- Download and install FFmpeg from: [ffmpeg.org](https://www.ffmpeg.org/download.html#build-windows)
+### THE EASY WAY (Recommended)
 
-### Important Installation Notes
+1. Press the Windows key
+2. Type **"PowerShell"** and press Enter
+3. Copy and paste this command, then press Enter:
+   ```powershell
+   winget install Python.Python.3.13 && winget install Gyan.FFmpeg
+   ```
+4. Wait for it to finish (you'll see "Successfully installed" messages)
+5. Close PowerShell
+6. **Restart your computer**
+7. Done. Both Python and FFmpeg are installed with PATH set automatically
 
-- When installing, **CHECK "Add Python to PATH"** on the first screen
-- Python's New "Python Install Manager" should do this automatically
-- This is critical for the bot to work
-
-### Adding Python to PATH Manually (if needed)
-
-1. Find your Python installation directory (usually `C:\Users\YourName\AppData\Local\Programs\Python\Python3XX\`)
-2. Press Windows key, search **"Environment Variables"**
-3. Click **"Edit the system environment variables"**
-4. Click **"Environment Variables"** button
-5. Under "System variables", find and select **"Path"**, then click **"Edit"**
-6. Click **"New"** and add your Python directory path
-7. Click **"New"** again and add your Python Scripts directory (same path but add `\Scripts` at the end)
-8. Click **OK** on all windows
-9. **Restart your computer** for changes to take effect
-
-> #### Verify Installation
+> #### Verify it worked
 >
-> 1. Press **Windows key + R**
-> 2. Type `cmd` and press Enter
-> 3. Type `python --version` and press Enter
-> 4. You should see **"Python 3.11+"** (e.g., 3.12.x/3.13.x/3.14.x)
+> 1. Press **Windows key**, type **"cmd"** and press Enter
+> 2. Type `python --version`
+> 3. Type `ffmpeg -version`
+> 4. If both show version numbers, you're good.
+
+### If the Easy Way Doesn't Work
+
+If you can't use winget (older Windows versions or it's not installed), see the manual installation instructions in [Windows Manual Setup](03-Windows-Manual-Setup.md) under "Step 1: Install Python and FFmpeg (Manual Method)".
 
 ---
 

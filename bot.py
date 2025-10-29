@@ -36,21 +36,39 @@ import os
 # Load environment variables
 load_dotenv()
 
+# Import command prefix and logging config early (needed for bot initialization)
+from config.features import COMMAND_PREFIX, LOG_LEVEL, SUPPRESS_LIBRARY_LOGS
+
 # =============================================================================
 # LOGGING SETUP
 # =============================================================================
 
+# Map string log level to logging constant
+LOG_LEVEL_MAP = {
+    'DEBUG': logging.DEBUG,
+    'INFO': logging.INFO,
+    'WARNING': logging.WARNING,
+    'ERROR': logging.ERROR,
+    'CRITICAL': logging.CRITICAL,
+}
+
 logging.basicConfig(
-    level=logging.INFO,
+    level=LOG_LEVEL_MAP[LOG_LEVEL],
     format='[%(asctime)s] [%(levelname)-8s] %(name)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger('jill')
 
-# Reduce disnake noise
-logging.getLogger('disnake').setLevel(logging.WARNING)
-logging.getLogger('disnake.player').setLevel(logging.WARNING)
-logging.getLogger('disnake.voice_state').setLevel(logging.WARNING)
+# Reduce disnake noise (if enabled)
+if SUPPRESS_LIBRARY_LOGS:
+    logging.getLogger('disnake').setLevel(logging.WARNING)
+    logging.getLogger('disnake.player').setLevel(logging.WARNING)
+    logging.getLogger('disnake.voice_state').setLevel(logging.WARNING)
+else:
+    # Show disnake logs at configured level
+    logging.getLogger('disnake').setLevel(LOG_LEVEL_MAP[LOG_LEVEL])
+    logging.getLogger('disnake.player').setLevel(LOG_LEVEL_MAP[LOG_LEVEL])
+    logging.getLogger('disnake.voice_state').setLevel(LOG_LEVEL_MAP[LOG_LEVEL])
 
 # =============================================================================
 # ASYNCIO EXCEPTION HANDLER
@@ -86,7 +104,7 @@ intents.voice_states = True
 intents.members = True
 
 bot = commands.Bot(
-    command_prefix='!',
+    command_prefix=COMMAND_PREFIX,
     intents=intents,
     help_command=None
 )

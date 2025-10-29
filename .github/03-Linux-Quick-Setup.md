@@ -38,7 +38,7 @@ See [Getting a Discord Token](02-Getting-Discord-Token.md) for instructions on c
 ## Step 3: Download Bot
 
 Download the bot to your home directory:
-> **Note:** Extract jill to any folder you want, but this guide assumes she's in `C:\jill\`.
+> **Note:** Extract jill to any folder you want, but this guide assumes she's in `~/jill/`.
 > 
 > **Note:** Ensure files are in `~/jill/` (not `~/jill/jill/`)
 

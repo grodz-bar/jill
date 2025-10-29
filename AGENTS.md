@@ -13,11 +13,12 @@ Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.1
 ## File Map (Where to Look)
 
 **Config** (`/config/` - user customization only):
-- `features.py` — toggles (shuffle, queue, cleanup, auto-pause, transcoding). Validates BOT_STATUS at import.
+- `features.py` — feature toggles (shuffle, queue, cleanup, auto-pause, transcoding), command prefix, logging level. Validates BOT_STATUS, COMMAND_PREFIX, LOG_LEVEL at import.
 - `messages.py` — all user-facing text
 - `aliases.py` — command aliases
+- `filename_patterns.py` — file naming pattern (how to strip numeric prefixes from track/playlist names)
 - `paths.py` — file paths
-- `timing.py` — all timing constants (TTLs, cooldowns, debounce). TTLs still schedule cleanup even when smart message management edits in place.
+- `timing.py` — all timing constants (TTLs, cooldowns, debounce, skip settle delay). TTLs still schedule cleanup even when smart message management edits in place.
 
 **Implementation:**
 - `bot.py` — entry point, event handlers, watchdog setup
@@ -35,7 +36,9 @@ Quick start: `python3 bot.py` (needs `.env` with `DISCORD_BOT_TOKEN`, Python 3.1
 
 ## Commands
 
-All user commands implemented in `handlers/commands.py`. Context-aware (e.g., `!play` resumes OR jumps to track). Aliases in `config/aliases.py`.
+All user commands implemented in `handlers/commands.py`. Context-aware (e.g., `!play` resumes OR jumps to track). Aliases in `config/aliases.py`. Command prefix configurable via `config/features.py` (default: `!`).
+
+Available commands: play, pause, skip, stop, previous, shuffle, queue, tracks, playlists, help, aliases.
 
 ## Critical Rules (DO NOT BREAK)
 
@@ -97,3 +100,4 @@ All user commands implemented in `handlers/commands.py`. Context-aware (e.g., `!
 - Complex logic with inline comments (explain *why*, not *what*)
 - Update this AGENTS.md if you add new files or change architecture
 - Update .txts and .pys to reflect up-to-date behavior after making changes, but only if applicable.
+- New config options should have clear comments explaining purpose, valid values, and restart requirements

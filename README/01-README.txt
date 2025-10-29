@@ -15,14 +15,17 @@ raw code. If it sings, credit the ensemble. If it glitches, that's on me.
 ================================================================================
 FEATURES
 ================================================================================
-- Customization: Rename commands, rewrite messages, flip features on or off,
-  make it yours
+- Customization: Rename commands, change prefix, rewrite messages, flip
+  features on or off, adjust file naming patterns, make it yours
 - Multiple playlists: You're using subfolders. Now it's a playlist.
 - Spam protection: Hammer it all you want, debounce, cooldowns, and limits
   keep it sane
 - Smart: Jill reads the room, pauses when alone, cleans up after herself
 - Shuffle mode: Toggle it on or off, she'll auto-reshuffle as well.
 - Quick search: Just say the song name or track number (works on playlists too)
+- Flexible naming: Multiple file naming patterns supported (01 - Track.opus,
+  01_Track.mp3, 01. Track.flac, etc.)
+- Configurable logging: Debug mode for troubleshooting, quiet mode for production
 
 ================================================================================
 QUICK START
@@ -65,14 +68,19 @@ COMMANDS
 !playlist [name]  # switch to a playlist (!playlist dome keeper)
 !playlists        # show all available playlists
 !shuffle          # toggle shuffle
+!aliases          # show all command aliases (or !aliases [command] for specific)
 !help             # show help
+
+NOTE: The command prefix (!) is configurable via config/features.py
 
 ================================================================================
 CONFIG
 ================================================================================
 - config/messages.py - Customize bot responses
-- config/features.py - Turn features on/off
+- config/features.py - Turn features on/off, set command prefix, logging level
 - config/aliases.py - Change command aliases
+- config/filename_patterns.py - Set file naming pattern (01 - Song, 01_Song, etc.)
+- config/timing.py - Adjust timing, cooldowns, debounce windows
 
 ================================================================================
 DOCS

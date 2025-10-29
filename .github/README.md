@@ -12,12 +12,12 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 ---
 
 ## Features
-- **Customization**: Rename commands, rewrite messages, flip features on or off, make it yours
+- **Customization**: Rename commands, rewrite messages, flip features on or off, make it yours.
 - **Multiple playlists**: You're using subfolders? Now it's a playlist!
-- **Spam protection**: Hammer it all you want, debounce, cooldowns, and limits keep it sane
-- **Smart**: Jill reads the room, pauses when alone, cleans up after herself
+- **Spam protection**: Hammer it all you want, debounce, cooldowns, and limits keep it sane.
+- **Smart**: Jill reads the room, pauses when alone, cleans up after herself.
 - **Shuffle mode**: Toggle it on or off, she'll auto-reshuffle as well!
-- **Quick search**: Just say the song name or track number (works on playlists too!)
+- **Quick search**: Just say the name or track number, works on playlists too!
 
 ---
 
@@ -34,10 +34,10 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 6. Done.
 
 **Setup guides:**
-- **Linux (Quick):** [Linux Quick Setup](03-Linux-Quick-Setup.md) - Using the wizard
-- **Linux (Manual):** [Linux Manual Setup](03-Linux-Manual-Setup.md) - Step-by-step commands
-- **Windows (Quick):** [Windows Quick Setup](03-Windows-Quick-Setup.md) - Using the wizard
-- **Windows (Manual):** [Windows Manual Setup](03-Windows-Manual-Setup.md) - Step-by-step commands
+  - [Windows Quick Setup](03-Windows-Quick-Setup.md) - Recommended.
+  - [Windows Manual Setup](03-Windows-Manual-Setup.md) - Manual setup.
+  - [Linux Quick Setup](03-Linux-Quick-Setup.md) - Recommended.
+  - [Linux Manual Setup](03-Linux-Manual-Setup.md) - Manual setup.
 
 ---
 > Supports OPUS, MP3, FLAC, WAV, M4A, and OGG files.
@@ -64,9 +64,9 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 
 ## Config
 
-- [`config/messages.py`](../config/messages.py) — Customize bot responses
-- [`config/features.py`](../config/features.py) — Turn features on/off
-- [`config/aliases.py`](../config/aliases.py) — Change command aliases
+- [`config/messages.py`](../config/messages.py) — Customize bot responses.
+- [`config/features.py`](../config/features.py) — Turn features on/off.
+- [`config/aliases.py`](../config/aliases.py) — Change command aliases.
 
 ---
 
@@ -75,16 +75,16 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 - **Files overview:** [Files Reference](05-Files.md)
 - **Discord Token guide:** [Getting Discord Token](02-Getting-Discord-Token.md)
 - **Setup guides:**
-  - [Windows Quick Setup](03-Windows-Quick-Setup.md) - (Recommended)
-  - [Windows Manual Setup](03-Windows-Manual-Setup.md) - Manual setup
-  - [Linux Quick Setup](03-Linux-Quick-Setup.md) - (Recommended)
-  - [Linux Manual Setup](03-Linux-Manual-Setup.md) - Manual setup
+  - [Windows Quick Setup](03-Windows-Quick-Setup.md)
+  - [Windows Manual Setup](03-Windows-Manual-Setup.md)
+  - [Linux Quick Setup](03-Linux-Quick-Setup.md)
+  - [Linux Manual Setup](03-Linux-Manual-Setup.md)
 - **Converting to Opus guide:** [Converting to Opus](04-Converting-To-Opus.md)
 - **Troubleshooting:** [Troubleshooting](06-troubleshooting.md)
 
 ---
 
 ## Notes
-- Zero telemetry or spying
-- Requires [Python 3.11+](https://www.python.org/downloads/) and [FFmpeg](https://ffmpeg.org/download.html)
-- Built on the [Disnake](https://docs.disnake.dev) API
+- Zero telemetry or spying.
+- Requires [Python 3.11+](https://www.python.org/downloads/) and [FFmpeg](https://ffmpeg.org/download.html).
+- Built on the [Disnake](https://docs.disnake.dev) API.

@@ -187,6 +187,13 @@ VOICE_CONNECTION_MAX_WAIT = 0.5          # Max wait for voice connection (500ms)
 VOICE_CONNECTION_CHECK_INTERVAL = 0.05   # Check voice connection every 50ms
 FRAME_DURATION = 0.02                    # Opus frame duration (20ms) for graceful stops
 
+# Skip/Jump Settling - Wait time before stopping playback during skip/previous/jump operations
+# This delay prevents the "scratchy" sound that occurs when playback is stopped abruptly
+# during track changes. Giving the audio stream time to settle reduces audio artifacts.
+SKIP_SETTLE_DELAY = 0.05                 # Wait after pause before stop (50ms = 2.5 Opus frames)
+                                         # LOWER = faster skip response, HIGHER = cleaner audio transition
+                                         # Recommended: 0.05 (50ms) for balance, 0.1 (100ms) if still scratchy
+
 # FFmpeg Audio Options - Controls playback latency and buffering behavior
 # Format: Space-separated command-line options passed to FFmpeg before reading input
 # Default optimizes for low latency and real-time playback of opus files

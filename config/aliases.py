@@ -44,6 +44,7 @@ COMMAND_ALIASES = {
     'tracks': ['playlist', 'album', 'library', 'songs', 'list', 'allsongs', 'all', 'fullqueue'],
     'playlists': ['libraries', 'albums', 'lists', 'collections'],
     'help': ['commands', 'jill'],
+    'aliases': [],  # Command to show all aliases (no aliases for the aliases command itself!)
 }
 
 def validate_command_aliases() -> None:

@@ -161,6 +161,78 @@ if BOT_STATUS not in ALLOWED_BOT_STATUSES:
     raise ValueError(f"Invalid BOT_STATUS '{BOT_STATUS}'. Allowed: {sorted(ALLOWED_BOT_STATUSES)}")
 
 # =========================================================================================================
+# COMMAND PREFIX
+# =========================================================================================================
+
+# Command Prefix (what users type before commands)
+# This is for "prefix commands" (traditional text-based Discord commands)
+#
+# Examples:
+#   '!' = !play, !skip, !queue (default)
+#   '$' = $play, $skip, $queue
+#   '?' = ?play, ?skip, ?queue
+#   '!!' = !!play, !!skip, !!queue (multi-character works!)
+#   '🎵' = 🎵play, 🎵skip, 🎵queue (emoji works!)
+#
+# Note: This does NOT affect Discord slash commands (/play), only text commands
+# Note: All aliases automatically work with your chosen prefix
+# Note: If you change this, consider updating config/messages.py to match
+#       (search for '!' and replace with your new prefix in command examples)
+#
+# Restart required after changing this setting
+COMMAND_PREFIX = '!'
+
+# Validation (prevents common mistakes)
+if not COMMAND_PREFIX or len(COMMAND_PREFIX) > 5:
+    raise ValueError(f"Invalid COMMAND_PREFIX '{COMMAND_PREFIX}'. Must be 1-5 characters.")
+
+# Reserved prefixes that conflict with Discord features
+if COMMAND_PREFIX in ['/', '@', '#']:
+    raise ValueError(
+        f"COMMAND_PREFIX '{COMMAND_PREFIX}' conflicts with Discord features. "
+        f"Choose a different prefix (/, @, # are reserved by Discord)."
+    )
+
+# =========================================================================================================
+# LOGGING CONFIGURATION
+# =========================================================================================================
+
+# Logging Level - Controls how much the bot logs to console/terminal
+# This affects how verbose the bot's output is when running
+#
+# Levels (from most verbose to least):
+#   'DEBUG'    - Everything including diagnostic info (very noisy, use for debugging)
+#   'INFO'     - Normal operation messages (recommended for most users)
+#   'WARNING'  - Only warnings and errors (quiet mode)
+#   'ERROR'    - Only errors and critical issues (very quiet)
+#   'CRITICAL' - Only critical failures that might crash the bot (silent unless dying)
+#
+# When to use each level:
+#   - DEBUG: When troubleshooting issues or tracking down bugs
+#   - INFO: Normal everyday use (default, recommended)
+#   - WARNING: Production environments where you only care about problems
+#   - ERROR: When you only want to see actual failures
+#   - CRITICAL: Extreme cases (rarely useful)
+#
+# Restart required after changing this setting
+LOG_LEVEL = 'INFO'
+
+# Suppress Library Logs - Reduce noise from Discord library (disnake)
+# The Discord library (disnake) can be very chatty with INFO messages
+# This setting keeps disnake at WARNING level even when LOG_LEVEL is DEBUG/INFO
+#
+# True  = Disnake only logs warnings/errors (recommended, much cleaner)
+# False = Disnake logs at the same level as LOG_LEVEL (very noisy)
+#
+# Restart required after changing this setting
+SUPPRESS_LIBRARY_LOGS = True
+
+# Validation (prevents typos)
+ALLOWED_LOG_LEVELS = {'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'}
+if LOG_LEVEL not in ALLOWED_LOG_LEVELS:
+    raise ValueError(f"Invalid LOG_LEVEL '{LOG_LEVEL}'. Allowed: {sorted(ALLOWED_LOG_LEVELS)}")
+
+# =========================================================================================================
 # FUTURE FEATURES (WIP)
 # =========================================================================================================
 

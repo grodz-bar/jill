@@ -69,8 +69,8 @@ MESSAGES = {
     'error_fight_me': "👺 Fight me.",
     'error_cant_connect': "❌ Can't join that channel: {error}",
     'error_invalid_track': "❌ Track #{number} doesn't exist. Current playlist has {total} tracks.",
-    'error_track_not_found': "❌ '{query}'? Try !tracks to see what we have.",
-    'error_playlist_not_found': '❌ I ran out of \'{query}\'. Try `!playlists` to see the menu.',
+    'error_track_not_found': "❌ '{query}'? Try `{prefix}tracks` to see what we have.",
+    'error_playlist_not_found': '❌ I ran out of \'{query}\'. Try `{prefix}playlists` to see the menu.',
     'error_playlist_already_active': '😑 Already using that playlist.',
     'error_no_playlists': '❌ No playlists found. Music must be in subfolders.',
     
@@ -144,6 +144,15 @@ MESSAGES = {
     'playlists_next_page': '\nUse `!playlists {next_page}` for next page.',
     'playlists_help': '\nUse `!playlist [name or number]` to switch playlists.',
     'playlist_switched': '✅ {message}',
+
+    # ===================================================================================================================
+    # ALIASES - Command alias information messages
+    # ===================================================================================================================
+    'aliases_header': '**🔤 Command Aliases**\n',
+    'aliases_for': '**Aliases for `{command}`:** {aliases}',
+    'aliases_none': '`{command}` has no aliases.',
+    'aliases_unknown': '❌ Unknown command: `{command}`. Use `{prefix}help` to see all commands.',
+    'aliases_footer': '\n💡 _All aliases work exactly like their main command_',
         }
 
 # =======================================================================================================================

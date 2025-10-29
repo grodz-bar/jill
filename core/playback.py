@@ -67,6 +67,7 @@ from config.timing import (
     CALLBACK_MIN_INTERVAL,
     VOICE_CONNECTION_MAX_WAIT,
     VOICE_CONNECTION_CHECK_INTERVAL,
+    SKIP_SETTLE_DELAY,
 )
 from config.features import (
     SMART_MESSAGE_MANAGEMENT,
@@ -155,6 +156,15 @@ async def _play_current(guild_id: int, bot) -> None:
         is_paused = False
 
     if is_playing or is_paused:
+        # Pause first to reduce scratchy audio artifacts when stopping
+        # (gives audio stream time to settle before FFmpeg termination)
+        if is_playing:
+            try:
+                player.voice_client.pause()
+                await asyncio.sleep(SKIP_SETTLE_DELAY)
+            except (AttributeError, RuntimeError) as e:
+                logger.debug("Guild %s: pause before stop failed: %s", guild_id, e)
+
         # Use context manager to safely suppress callbacks, even if exceptions occur
         with suppress_callbacks(player):
             player.voice_client.stop()

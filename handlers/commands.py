@@ -51,7 +51,7 @@ from config.timing import (
     PLAYLISTS_DEBOUNCE_WINDOW, PLAYLISTS_COOLDOWN, PLAYLISTS_SPAM_THRESHOLD,
     HELP_DEBOUNCE_WINDOW, HELP_COOLDOWN, HELP_SPAM_THRESHOLD,
     PLAY_JUMP_DEBOUNCE_WINDOW, PLAY_JUMP_COOLDOWN, PLAY_JUMP_SPAM_THRESHOLD,
-    VOICE_CONNECT_DELAY, USER_COMMAND_TTL,
+    VOICE_CONNECT_DELAY, USER_COMMAND_TTL, SKIP_SETTLE_DELAY,
 )
 from config.features import (
     SHUFFLE_MODE_ENABLED,
@@ -61,6 +61,7 @@ from config.features import (
     QUEUE_DISPLAY_COUNT,
     LIBRARY_PAGE_SIZE,
     PLAYLIST_PAGE_SIZE,
+    COMMAND_PREFIX,
 )
 from config.messages import MESSAGES, HELP_TEXT
 from utils.discord_helpers import can_connect_to_channel, safe_disconnect, update_presence, sanitize_for_format
@@ -265,7 +266,7 @@ def setup(bot):
                 # Was a name but not found
                 await player.cleanup_manager.send_with_ttl(
                     player.text_channel,
-                    MESSAGES['error_track_not_found'].format(query=sanitize_for_format(track_arg)),
+                    MESSAGES['error_track_not_found'].format(query=sanitize_for_format(track_arg), prefix=COMMAND_PREFIX),
                     'error',
                     ctx.message
                 )
@@ -353,7 +354,7 @@ def setup(bot):
         if state in [PlaybackState.PLAYING, PlaybackState.PAUSED]:
             if state == PlaybackState.PLAYING:
                 player.voice_client.pause()
-                await asyncio.sleep(0.02)
+                await asyncio.sleep(SKIP_SETTLE_DELAY)
             with suppress_callbacks(player):
                 player.voice_client.stop()
             await player.spam_protector.queue_command(
@@ -861,6 +862,107 @@ def setup(bot):
         await player.cleanup_manager.send_with_ttl(
             player.text_channel or ctx.channel,
             help_msg,
+            'help',
+            ctx.message
+        )
+
+    # =========================================================================
+    # ALIASES COMMAND
+    # =========================================================================
+
+    @bot.command(name='aliases', aliases=COMMAND_ALIASES['aliases'])
+    @commands.guild_only()
+    async def aliases_command(ctx, *, command_name: str | None = None):
+        """Show command aliases."""
+        player = await get_player(ctx.guild.id, bot, bot.user.id)
+
+        if await player.spam_protector.check_user_spam(ctx.author.id, "aliases"):
+            return
+
+        if player.spam_protector.check_global_rate_limit():
+            return
+
+        await player.spam_protector.debounce_command(
+            "aliases",
+            lambda c=ctx, cmd=command_name: _execute_aliases(c, cmd, bot),
+            HELP_DEBOUNCE_WINDOW,  # Reuse help command timing (similar usage pattern)
+            HELP_COOLDOWN,
+            HELP_SPAM_THRESHOLD,
+            None
+        )
+
+    async def _execute_aliases(ctx, command_name: str | None, bot):
+        """Execute aliases command."""
+        player = await get_player(ctx.guild.id, bot, bot.user.id)
+
+        # Show specific command aliases
+        if command_name:
+            # Normalize input (remove ! prefix if present)
+            cmd = command_name.lstrip('!')
+
+            if cmd not in COMMAND_ALIASES:
+                await player.cleanup_manager.send_with_ttl(
+                    player.text_channel or ctx.channel,
+                    MESSAGES['aliases_unknown'].format(command=f'{COMMAND_PREFIX}{cmd}', prefix=COMMAND_PREFIX),
+                    'error',
+                    ctx.message
+                )
+                return
+
+            aliases = COMMAND_ALIASES[cmd]
+            if aliases:
+                alias_str = ', '.join(f'`{COMMAND_PREFIX}{a}`' for a in aliases)
+                msg = MESSAGES['aliases_for'].format(command=f'{COMMAND_PREFIX}{cmd}', aliases=alias_str)
+            else:
+                msg = MESSAGES['aliases_none'].format(command=f'{COMMAND_PREFIX}{cmd}')
+
+            await player.cleanup_manager.send_with_ttl(
+                player.text_channel or ctx.channel,
+                msg,
+                'help',
+                ctx.message
+            )
+            return
+
+        # Show all aliases (organized by command, filtered by enabled features)
+        msg = MESSAGES['aliases_header']
+
+        # Playback commands (always enabled)
+        for cmd_name in ['play', 'pause', 'skip', 'stop', 'previous']:
+            if COMMAND_ALIASES[cmd_name]:
+                alias_str = ', '.join(f'`{COMMAND_PREFIX}{a}`' for a in COMMAND_ALIASES[cmd_name])
+                msg += f"`{COMMAND_PREFIX}{cmd_name}` → {alias_str}\n"
+
+        # Queue command (if enabled)
+        if QUEUE_DISPLAY_ENABLED and COMMAND_ALIASES['queue']:
+            alias_str = ', '.join(f'`{COMMAND_PREFIX}{a}`' for a in COMMAND_ALIASES['queue'])
+            msg += f"`{COMMAND_PREFIX}queue` → {alias_str}\n"
+
+        # Tracks command (if enabled)
+        if LIBRARY_DISPLAY_ENABLED and COMMAND_ALIASES['tracks']:
+            alias_str = ', '.join(f'`{COMMAND_PREFIX}{a}`' for a in COMMAND_ALIASES['tracks'])
+            msg += f"`{COMMAND_PREFIX}tracks` → {alias_str}\n"
+
+        # Playlists command (if playlist structure exists and enabled)
+        if has_playlist_structure() and PLAYLIST_SWITCHING_ENABLED and COMMAND_ALIASES['playlists']:
+            alias_str = ', '.join(f'`{COMMAND_PREFIX}{a}`' for a in COMMAND_ALIASES['playlists'])
+            msg += f"`{COMMAND_PREFIX}playlists` → {alias_str}\n"
+
+        # Shuffle command (if enabled)
+        if SHUFFLE_MODE_ENABLED and COMMAND_ALIASES['shuffle']:
+            alias_str = ', '.join(f'`{COMMAND_PREFIX}{a}`' for a in COMMAND_ALIASES['shuffle'])
+            msg += f"`{COMMAND_PREFIX}shuffle` → {alias_str}\n"
+
+        # Help command (always shown)
+        if COMMAND_ALIASES['help']:
+            alias_str = ', '.join(f'`{COMMAND_PREFIX}{a}`' for a in COMMAND_ALIASES['help'])
+            msg += f"`{COMMAND_PREFIX}help` → {alias_str}\n"
+
+        msg += MESSAGES['aliases_footer']
+
+        await player.cleanup_manager.send_with_ttl(
+            player.text_channel or ctx.channel,
+            msg,
             'help',
             ctx.message
         )

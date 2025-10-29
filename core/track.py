@@ -32,9 +32,11 @@ logger = logging.getLogger(__name__)
 # Import from config
 from config.paths import MUSIC_FOLDER
 from config.features import ALLOW_TRANSCODING, SUPPORTED_AUDIO_FORMATS
+from config.filename_patterns import COMPILED_PATTERN
 
 # Module-level regex pattern for numeric prefix removal (DRY - used by both Playlist and Track)
-_PREFIX_PATTERN = re.compile(r'^\d+\s*-\s*')
+# Pattern is now configurable via config/filename_patterns.py
+_PREFIX_PATTERN = COMPILED_PATTERN
 
 
 def _collect_audio_files(target_path: Path, guild_id: int = 0) -> List[Path]:

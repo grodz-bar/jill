@@ -19,8 +19,11 @@
 Watchdog Systems
 
 Background monitoring tasks for detecting and recovering from edge cases:
-1. Playback Watchdog - Detects hung FFmpeg processes
+1. Playback Watchdog - Detects hung FFmpeg processes and monitors voice health
 2. Alone Watchdog - Monitors for auto-pause/disconnect triggers
+
+The playback watchdog includes adaptive voice health monitoring that detects
+degraded connections and auto-reconnects to fix stuttering audio.
 """
 
 import asyncio
@@ -38,82 +41,99 @@ from utils.context_managers import suppress_callbacks
 
 async def playback_watchdog(bot, players: Dict[int, 'MusicPlayer']):
     """
-    Monitor playback for hung FFmpeg processes.
+    Monitor playback for hung FFmpeg processes and degraded voice connections.
 
-    Runs in background, checks every WATCHDOG_INTERVAL seconds.
-
-    Detection logic:
-    - If same track is playing for >WATCHDOG_TIMEOUT seconds → hung
-    - Force stop to trigger callback and restart playback
-
-    Why this is needed:
-    - FFmpeg rarely hangs but when it does, bot appears stuck
-    - Callback never fires because FFmpeg never finishes
-    - Watchdog detects this and forces restart
-
-    Args:
-        bot: Discord bot instance
-        players: Dict of guild_id → MusicPlayer instances
-
-    Side effects:
-    - Calls voice_client.stop() if hung detected
-    - Queues next track manually
+    Uses adaptive monitoring that checks more frequently when issues are detected.
     """
+    from utils.discord_helpers import check_voice_health_and_reconnect, get_health_monitor, ConnectionHealth
+    from config.features import VOICE_HEALTH_CHECK_IN_WATCHDOG
+
     await bot.wait_until_ready()
-    logger.debug("Playback watchdog started")
+    logger.debug("Playback watchdog started with adaptive voice health monitoring")
 
     while not bot.is_closed():
         try:
-            # Adaptive sleep: reduce polling when no active voice connections
-            sleep_interval = WATCHDOG_INTERVAL
-            if not any(p.voice_client and p.voice_client.is_connected() for p in players.values()):
-                # When idle, check at least every base interval, but not more than once per 5 min
-                sleep_interval = max(WATCHDOG_INTERVAL, 300)  # At least 5 min when idle
+            # Find shortest needed check interval across all active players
+            min_interval = WATCHDOG_INTERVAL  # Default to normal watchdog interval
 
-            await asyncio.sleep(sleep_interval)
+            # Quick pass to find minimum interval needed
+            if VOICE_HEALTH_CHECK_IN_WATCHDOG:
+                for guild_id, player in players.items():
+                    if player.voice_client and player.voice_client.is_connected():
+                        state = player.voice_manager.get_playback_state()
+                        if state == PlaybackState.PLAYING:
+                            # Get this guild's health monitor
+                            monitor = get_health_monitor(guild_id)
+                            if monitor.should_check_now():
+                                # This guild needs checking soon
+                                min_interval = min(min_interval, 1)  # Check within 1 second
+                            else:
+                                # Calculate when this guild needs next check
+                                next_check_in = monitor.get_next_check_interval() - (_now() - monitor.last_check)
+                                min_interval = min(min_interval, max(1, next_check_in))
 
-            # Snapshot iteration to prevent crashes during modifications
+            # Sleep for the minimum interval needed
+            await asyncio.sleep(min(min_interval, 60))  # Cap at 60s to stay responsive
+
+            # Check each guild
             for guild_id, player in list(players.items()):
                 # Skip if not playing
                 if not player.voice_client or not player.voice_client.is_connected():
                     continue
 
                 state = player.voice_manager.get_playback_state()
-                if state != PlaybackState.PLAYING:
-                    continue
 
-                current_time = _now()
-                current_track = player.now_playing
-
-                # Check if stuck on same track
-                if current_track and current_track.track_id == player._last_track_id:
-                    time_on_track = current_time - player._last_track_start
-
-                    if time_on_track > WATCHDOG_TIMEOUT:
-                        logger.error(f"Guild {guild_id}: Playback hung, restarting")
-                        try:
-                            # Stop hung track and manually advance to next
-                            with suppress_callbacks(player):
-                                player.voice_client.stop()
-
-                            # Manually queue next track since we suppressed the callback (priority=True for internal commands)
-                            from core.playback import _play_next
-                            await player.spam_protector.queue_command(
-                                lambda gid=guild_id: _play_next(gid, bot),
-                                priority=True
+                # Adaptive voice health check (only when playing)
+                if VOICE_HEALTH_CHECK_IN_WATCHDOG and state == PlaybackState.PLAYING:
+                    monitor = get_health_monitor(guild_id)
+                    if monitor.should_check_now():
+                        guild = bot.get_guild(guild_id)
+                        if guild:
+                            # Log at DEBUG level for routine checks
+                            logger.debug(
+                                f"Guild {guild_id}: Watchdog health check "
+                                f"(state: {ConnectionHealth(monitor.state).name})"
                             )
 
-                        except Exception:
-                            logger.exception("Watchdog stop failed")
+                            healthy = await check_voice_health_and_reconnect(player, guild, bot)
 
-                else:
-                    # Track changed, update tracking
-                    if current_track:
-                        player._last_track_id = current_track.track_id
-                        player._last_track_start = current_time
+                            if not healthy:
+                                logger.warning(
+                                    f"Guild {guild_id}: Voice unhealthy after reconnect attempt, "
+                                    f"playback may be affected"
+                                )
+                                # Continue to hung track detection even if unhealthy
+
+                # Original hung track detection (unchanged)
+                if state == PlaybackState.PLAYING:
+                    current_time = _now()
+                    current_track = player.now_playing
+
+                    # Check if stuck on same track
+                    if current_track and current_track.track_id == player._last_track_id:
+                        time_on_track = current_time - player._last_track_start
+
+                        if time_on_track > WATCHDOG_TIMEOUT:
+                            logger.error(f"Guild {guild_id}: Playback hung, forcing restart")
+                            try:
+                                # Stop hung track and advance
+                                with suppress_callbacks(player):
+                                    player.voice_client.stop()
+
+                                from core.playback import _play_next
+                                await player.spam_protector.queue_command(
+                                    lambda gid=guild_id: _play_next(gid, bot),
+                                    priority=True
+                                )
+                            except Exception:
+                                logger.exception("Watchdog stop failed")
+                    else:
+                        # Track changed, update tracking
+                        if current_track:
+                            player._last_track_id = current_track.track_id
+                            player._last_track_start = current_time
 
         except asyncio.CancelledError:
-            # Task was cancelled during shutdown - exit cleanly
             logger.debug("Playback watchdog cancelled, shutting down")
             break
         except Exception:

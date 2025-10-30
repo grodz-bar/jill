@@ -216,3 +216,28 @@ WATCHDOG_TIMEOUT = 660                   # Consider playback stuck after 11 minu
 
 CALLBACK_MIN_INTERVAL = 1.0              # Min time between callback-triggered track advances
 ALONE_WATCHDOG_INTERVAL = 10             # Check alone status every 10 seconds
+
+# =========================================================================================================
+# VOICE HEALTH ADAPTIVE MONITORING
+# =========================================================================================================
+
+# Voice Health Adaptive Monitoring
+# The bot adjusts check frequency based on connection quality:
+# - Normal (35s): Everything is fine, relaxed monitoring
+# - Suspicious (10s): Marginal latency detected, watching closely
+# - Post-Reconnect (8s): Just reconnected, verify fix worked quickly
+# - Recovery (20s): Fix is working but staying vigilant
+#
+# These are the default intervals used by the adaptive system:
+VOICE_HEALTH_NORMAL_INTERVAL: Final[float] = 35.0      # Check interval when healthy
+VOICE_HEALTH_SUSPICIOUS_INTERVAL: Final[float] = 10.0  # Check interval when issues detected
+VOICE_HEALTH_POST_RECONNECT_INTERVAL: Final[float] = 8.0  # Check after reconnect
+VOICE_HEALTH_RECOVERY_INTERVAL: Final[float] = 20.0    # Check during recovery phase
+
+# Latency thresholds (in seconds)
+VOICE_HEALTH_MARGINAL_LATENCY: Final[float] = 0.150   # 150ms - start watching closely
+VOICE_HEALTH_BAD_LATENCY: Final[float] = 0.250       # 250ms - reconnect needed
+
+# Recovery settings
+VOICE_HEALTH_GOOD_CHECKS_FOR_NORMAL: Final[int] = 3  # Good checks before returning to normal
+VOICE_HEALTH_RECONNECT_COOLDOWN: Final[float] = 30.0 # Minimum seconds between reconnects

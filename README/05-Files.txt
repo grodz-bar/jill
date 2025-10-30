@@ -43,10 +43,10 @@ DIRECTORY STRUCTURE
 │   ├── spam_protection.py            # 5-layer spam protection
 │   ├── cleanup.py                    # Message cleanup (TTL + history)
 │   ├── voice_manager.py              # Voice operations & auto-pause
-│   └── watchdog.py                   # Playback monitoring
+│   └── watchdog.py                   # Playback & voice health monitoring
 ├── /utils/                           # Utility helpers (jill's code)
 │   ├── __init__.py                   # Python package marker
-│   ├── discord_helpers.py            # Discord API helpers
+│   ├── discord_helpers.py            # Discord API helpers & voice health
 │   ├── persistence.py                # Channel persistence
 │   └── context_managers.py           # Context helpers
 ├── /README/                          # Documentation folder

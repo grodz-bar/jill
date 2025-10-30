@@ -145,6 +145,12 @@ BATCH_DELETE_ENABLED = True        # Delete messages in batches (faster cleanup)
 VOICE_RECONNECT_ENABLED = True     # Auto-reconnect on voice errors
                                    # False = manual reconnection required
 
+# Voice Health Monitoring - Auto-fix stuttering from network issues
+# This feature detects degraded voice connections (high latency, dead WebSocket)
+# and automatically reconnects to fix stuttering audio
+VOICE_HEALTH_CHECK_ENABLED = True  # Check voice health before each track
+VOICE_HEALTH_CHECK_IN_WATCHDOG = True  # Also monitor during playback (recommended!)
+
 # =========================================================================================================
 # BOT APPEARANCE
 # =========================================================================================================

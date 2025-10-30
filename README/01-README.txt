@@ -21,6 +21,8 @@ FEATURES
 - Spam protection: Hammer it all you want, debounce, cooldowns, and limits
   keep it sane
 - Smart: Jill reads the room, pauses when alone, cleans up after herself
+- Auto-fix stuttering: Adaptive voice health monitoring detects degraded
+  connections and auto-reconnects to fix audio stuttering (no user action needed)
 - Shuffle mode: Toggle it on or off, she'll auto-reshuffle as well.
 - Quick search: Just say the song name or track number (works on playlists too)
 - Flexible naming: Multiple file naming patterns supported (01 - Track.opus,

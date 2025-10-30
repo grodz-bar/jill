@@ -109,6 +109,29 @@ Audio sounds weird/distorted
 - User might have a bad connection to Discord
 - Discord is just weird sometimes
 
+Audio stuttering or skipping
+-----------------------------
+
+The bot has built-in voice health monitoring that auto-fixes stuttering:
+- Monitors voice connection latency every 35 seconds (when healthy)
+- Detects degraded connections (latency >150ms) and checks more frequently
+- Auto-reconnects when latency exceeds 250ms to fix stuttering
+- Should fix itself within 10-35 seconds without user intervention
+
+If stuttering persists:
+- Check your network connection stability
+- Verify Discord API status: https://discordstatus.com
+- Check bot logs for repeated reconnection attempts
+- Disable voice health monitoring if causing issues:
+  - Edit config/features.py
+  - Set VOICE_HEALTH_CHECK_ENABLED = False
+  - Restart bot
+
+If you disabled it and stuttering occurs:
+- Manually restart the bot (!stop then !play)
+- Check Discord voice region settings
+- Try switching voice channels
+
 Bot won't play opus files
 --------------------------
 

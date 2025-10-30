@@ -18,7 +18,11 @@
 """
 Playback Functions
 
-Core music playback functionality including track playing, callbacks, and queue advancement.
+Core music playback functionality including track playing, callbacks, queue advancement,
+and voice health checking.
+
+Voice health monitoring is integrated before each track to detect and fix degraded
+connections that could cause stuttering audio.
 
 CRITICAL: FFmpeg callbacks run in audio thread. See AGENTS.md "Thread Safety" section.
 - READS: GIL-atomic (booleans, integers, references) - safe without synchronization
@@ -80,6 +84,7 @@ from utils.discord_helpers import (
     safe_voice_state_change,
     update_presence,
     sanitize_for_format,
+    check_voice_health_and_reconnect,
 )
 from utils.context_managers import suppress_callbacks
 
@@ -122,6 +127,29 @@ async def _play_current(guild_id: int, bot) -> None:
     guild = bot.get_guild(guild_id)
     if not guild:
         logger.error(f"Guild {guild_id} not found")
+        return
+
+    # Check voice connection health and reconnect if degraded
+    # This prevents stuttering from degraded UDP sockets caused by network issues
+    # The adaptive monitor will check more frequently if issues are detected
+    logger.debug(f"Guild {guild_id}: Checking voice health before playback")
+    healthy = await check_voice_health_and_reconnect(player, guild, bot)
+
+    if not healthy:
+        logger.error(
+            f"Guild {guild_id}: Voice connection unhealthy and could not reconnect, "
+            f"skipping playback to avoid stuttering"
+        )
+        # Try to skip to next track since this one can't play properly
+        await player.spam_protector.queue_command(
+            lambda gid=guild_id: _play_next(gid, bot),
+            priority=True
+        )
+        return
+
+    # Validate voice client again after potential reconnect
+    if not player.voice_client or not player.voice_client.is_connected():
+        logger.warning(f"Guild {guild_id}: Lost connection during health check")
         return
 
     # Self-deafen (bot doesn't need to hear users)

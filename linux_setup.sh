@@ -336,31 +336,100 @@ run_conversion() {
     TOTAL_CONVERTED_COUNT=0
     FORMATS_CONVERTED=""
     CONVERSION_SUCCESS=false
-    
+
+    echo ""
+    echo "========================================"
+    echo "Source Folder Selection"
+    echo "========================================"
+    echo ""
+    echo "Where are your music files located?"
+    echo "(Subdirectories will be searched automatically)"
+    echo ""
+
+    while true; do
+        read -p "Source folder: " SOURCE_FOLDER
+
+        if [ -z "$SOURCE_FOLDER" ]; then
+            echo ""
+            echo "Skipping conversion."
+            sleep 2
+            return
+        fi
+
+        # Clean up path
+        SOURCE_FOLDER="${SOURCE_FOLDER%\"}"
+        SOURCE_FOLDER="${SOURCE_FOLDER#\"}"
+
+        # Add trailing slash if not present
+        if [[ ! "$SOURCE_FOLDER" =~ /$ ]]; then
+            SOURCE_FOLDER="$SOURCE_FOLDER/"
+        fi
+
+        # Validate source folder
+        if [ ! -d "$SOURCE_FOLDER" ]; then
+            echo ""
+            echo "ERROR: Folder does not exist: $SOURCE_FOLDER"
+            echo "Please check the path and try again."
+            echo ""
+            continue
+        fi
+
+        break
+    done
+
+    echo ""
+    echo "Source folder: $SOURCE_FOLDER"
+    sleep 1
+
+    # Scan for available formats
+    echo ""
+    echo "Scanning for audio files..."
+    echo ""
+
+    SCAN_FORMATS="mp3 flac wav m4a ogg opus wma aac aiff ape"
+    FOUND_FORMATS=""
+    declare -A FOUND_COUNTS
+
+    for format in $SCAN_FORMATS; do
+        count=$(find "$SOURCE_FOLDER" -type f -iname "*.$format" 2>/dev/null | wc -l)
+
+        if [ "$count" -gt 0 ]; then
+            if [ -z "$FOUND_FORMATS" ]; then
+                FOUND_FORMATS="$format"
+            else
+                FOUND_FORMATS="$FOUND_FORMATS $format"
+            fi
+            FOUND_COUNTS[$format]=$count
+            echo "Found $count .$format file(s)"
+        fi
+    done
+
+    if [ -z "$FOUND_FORMATS" ]; then
+        echo ""
+        echo "ERROR: No audio files found in: $SOURCE_FOLDER"
+        echo ""
+        echo "Supported formats: $SCAN_FORMATS"
+        echo ""
+        echo "Press any key to continue without conversion..."
+        read -n 1 -s
+        return
+    fi
+
     echo ""
     echo "========================================"
     echo "Audio Format Selection"
     echo "========================================"
     echo ""
-    echo "The bot supports MP3, FLAC, WAV, M4A, OGG, and OPUS formats."
-    echo ""
-    echo "HOWEVER, converting to .opus format is HIGHLY RECOMMENDED for:"
-    echo "  • Lower CPU usage (especially important on Raspberry Pi)"
-    echo "  • Best audio quality (Discord-native format, no double compression)"
-    echo "  • Guaranteed stability (zero transcoding overhead)"
-    echo ""
-    echo "Other formats work but require real-time transcoding (higher CPU usage)."
-    echo ""
     echo "Which audio formats would you like to convert to .opus?"
     echo ""
-    echo "Common formats: mp3, flac, wav, m4a, ogg, wma, aac, aiff, ape"
+    echo "Available formats in your source folder: $FOUND_FORMATS"
     echo ""
-    echo "Enter ALL the formats you want to convert, separated by spaces."
-    echo "Example: flac mp3 wav"
-    echo "Or just press Enter to skip conversion."
+    echo "Enter formats separated by spaces (e.g., flac mp3 wav)"
+    echo "Or type 'all' to convert all found formats"
+    echo "Or press Enter to skip conversion"
     echo ""
     read -p "Formats to convert: " USER_FORMATS
-    
+
     # Check if user wants to skip conversion
     if [ -z "$USER_FORMATS" ]; then
         echo ""
@@ -368,7 +437,14 @@ run_conversion() {
         sleep 2
         return
     fi
-    
+
+    # Handle 'all' option
+    if [[ "$USER_FORMATS" =~ ^[Aa][Ll][Ll]$ ]]; then
+        USER_FORMATS="$FOUND_FORMATS"
+        echo ""
+        echo "Converting all found formats: $FOUND_FORMATS"
+    fi
+
     # Check for FFmpeg once before starting
     echo ""
     echo "Checking for FFmpeg..."
@@ -384,7 +460,7 @@ run_conversion() {
     fi
     echo "FFmpeg found."
     sleep 1
-    
+
     # Check FFmpeg capabilities once
     echo "Checking FFmpeg capabilities..."
     SUPPORTS_FRAME_DURATION=false
@@ -399,7 +475,7 @@ run_conversion() {
         echo "WARNING: FFmpeg doesn't have libopus support. Will try alternative method."
         sleep 2
     fi
-    
+
     # Clean up and validate formats
     FORMATS_TO_CONVERT=""
     FORMAT_COUNT=0
@@ -407,34 +483,48 @@ run_conversion() {
         # Remove dots if present
         CLEAN_FORMAT="${format#.}"
         CLEAN_FORMAT=$(echo "$CLEAN_FORMAT" | tr '[:upper:]' '[:lower:]')
-        
-        # Add to list if not already there
-        if [[ ! " $FORMATS_TO_CONVERT " =~ " $CLEAN_FORMAT " ]]; then
-            if [ -z "$FORMATS_TO_CONVERT" ]; then
-                FORMATS_TO_CONVERT="$CLEAN_FORMAT"
-            else
-                FORMATS_TO_CONVERT="$FORMATS_TO_CONVERT $CLEAN_FORMAT"
+
+        # Check if this format was actually found
+        if [[ " $FOUND_FORMATS " =~ " $CLEAN_FORMAT " ]]; then
+            # Add to list if not already there
+            if [[ ! " $FORMATS_TO_CONVERT " =~ " $CLEAN_FORMAT " ]]; then
+                if [ -z "$FORMATS_TO_CONVERT" ]; then
+                    FORMATS_TO_CONVERT="$CLEAN_FORMAT"
+                else
+                    FORMATS_TO_CONVERT="$FORMATS_TO_CONVERT $CLEAN_FORMAT"
+                fi
+                ((FORMAT_COUNT++))
             fi
-            ((FORMAT_COUNT++))
+        else
+            echo "Warning: Format '$CLEAN_FORMAT' not found in source folder, skipping."
         fi
     done
-    
+
+    if [ -z "$FORMATS_TO_CONVERT" ]; then
+        echo ""
+        echo "ERROR: None of the selected formats were found in the source folder."
+        echo ""
+        echo "Press any key to continue without conversion..."
+        read -n 1 -s
+        return
+    fi
+
     echo ""
     echo "Will convert these $FORMAT_COUNT format(s): $FORMATS_TO_CONVERT"
     echo ""
     sleep 2
-    
+
     echo "========================================"
     echo "Conversion Process"
     echo "========================================"
-    
+
     # Process each format the user selected
     for FILE_FORMAT in $FORMATS_TO_CONVERT; do
         echo ""
         echo "----------------------------------------"
         echo "Processing .$FILE_FORMAT files"
         echo "----------------------------------------"
-        
+
         convert_format "$FILE_FORMAT"
     done
     
@@ -468,55 +558,15 @@ run_conversion() {
 # Subroutine: Convert a single format
 convert_format() {
     local FILE_FORMAT="$1"
-    
+
     echo ""
-    echo "Where are your .$FILE_FORMAT files located?"
-    echo ""
-    echo "Options:"
-    echo "- Enter the folder path (subdirectories will be searched automatically)"
-    echo "- Type 'skip' to skip this format"
-    echo ""
-    read -p "Source folder path: " SOURCE_FOLDER
-    
-    if [[ "$SOURCE_FOLDER" == "skip" ]]; then
-        echo "Skipping .$FILE_FORMAT format."
-        sleep 1
-        return
-    fi
-    
-    # Clean up the path
-    if [ -z "$SOURCE_FOLDER" ]; then
-        echo "No path entered. Skipping .$FILE_FORMAT format."
-        sleep 1
-        return
-    fi
-    
-    # Remove surrounding quotes if present
-    SOURCE_FOLDER="${SOURCE_FOLDER%\"}"
-    SOURCE_FOLDER="${SOURCE_FOLDER#\"}"
-    
-    # Add trailing slash if not present
-    if [[ ! "$SOURCE_FOLDER" =~ /$ ]]; then
-        SOURCE_FOLDER="$SOURCE_FOLDER/"
-    fi
-    
-    # Validate source folder
-    if [ ! -d "$SOURCE_FOLDER" ]; then
-        echo ""
-        echo "ERROR: Folder does not exist: $SOURCE_FOLDER"
-        echo "Skipping .$FILE_FORMAT format."
-        sleep 2
-        return
-    fi
-    
+
     # Count files
     FILE_COUNT=$(find "$SOURCE_FOLDER" -type f -iname "*.$FILE_FORMAT" 2>/dev/null | wc -l)
-    
+
     if [ "$FILE_COUNT" -eq 0 ]; then
-        echo ""
-        echo "No .$FILE_FORMAT files found in: $SOURCE_FOLDER or its subdirectories"
-        echo "Skipping this format."
-        sleep 2
+        echo "No .$FILE_FORMAT files found. Skipping."
+        sleep 1
         return
     fi
     

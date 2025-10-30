@@ -10,7 +10,7 @@ echo "You can press Ctrl+C at any time to exit."
 echo ""
 
 # ============================================
-# STEP 1: Check for .env and determine destination
+# STEP 1: Determine DESTINATION folder
 # ============================================
 
 JILL_MUSIC_FOLDER=""
@@ -62,8 +62,8 @@ if [ "$ENV_FILE_EXISTS" = false ]; then
     while true; do
         echo "Where should converted .opus files be saved?"
         echo ""
-        read -p "Destination folder: " MUSIC_PATH
-        if [ -n "$MUSIC_PATH" ]; then
+        read -p "Destination folder: " DEST_PATH
+        if [ -n "$DEST_PATH" ]; then
             break
         fi
         echo ""
@@ -80,30 +80,30 @@ else
     echo "- Press Enter to use Jill's music folder (recommended)"
     echo "- Type a custom path"
     echo ""
-    read -p "Destination folder [$JILL_MUSIC_FOLDER]: " MUSIC_PATH
+    read -p "Destination folder [$JILL_MUSIC_FOLDER]: " DEST_PATH
 
     # If empty, use Jill's folder
-    if [ -z "$MUSIC_PATH" ]; then
-        MUSIC_PATH="$JILL_MUSIC_FOLDER"
+    if [ -z "$DEST_PATH" ]; then
+        DEST_PATH="$JILL_MUSIC_FOLDER"
         echo ""
-        echo "Using Jill's music folder: $MUSIC_PATH"
+        echo "Using Jill's music folder: $DEST_PATH"
     fi
 fi
 
 # Clean up path
-MUSIC_PATH="${MUSIC_PATH%\"}"
-MUSIC_PATH="${MUSIC_PATH#\"}"
+DEST_PATH="${DEST_PATH%\"}"
+DEST_PATH="${DEST_PATH#\"}"
 
 # Add trailing slash if not present
-if [[ ! "$MUSIC_PATH" =~ /$ ]]; then
-    MUSIC_PATH="$MUSIC_PATH/"
+if [[ ! "$DEST_PATH" =~ /$ ]]; then
+    DEST_PATH="$DEST_PATH/"
 fi
 
 # Create destination folder if needed
-if [ ! -d "$MUSIC_PATH" ]; then
+if [ ! -d "$DEST_PATH" ]; then
     echo ""
-    echo "Destination folder does not exist. Creating: $MUSIC_PATH"
-    if ! mkdir -p "$MUSIC_PATH" 2>/dev/null; then
+    echo "Destination folder does not exist. Creating: $DEST_PATH"
+    if ! mkdir -p "$DEST_PATH" 2>/dev/null; then
         echo "ERROR: Could not create destination folder."
         echo "Please check the path and try again."
         read -p "Press Enter to exit..."
@@ -117,9 +117,94 @@ echo ""
 sleep 1
 
 # ============================================
-# STEP 2: Audio Format Selection
+# STEP 2: Determine SOURCE folder
 # ============================================
 
+echo "========================================"
+echo "Source Folder Selection"
+echo "========================================"
+echo ""
+echo "Where are your music files located?"
+echo "(Subdirectories will be searched automatically)"
+echo ""
+
+while true; do
+    read -p "Source folder: " SOURCE_PATH
+
+    if [ -z "$SOURCE_PATH" ]; then
+        echo ""
+        echo "ERROR: Source folder is required."
+        echo ""
+        continue
+    fi
+
+    # Clean up path
+    SOURCE_PATH="${SOURCE_PATH%\"}"
+    SOURCE_PATH="${SOURCE_PATH#\"}"
+
+    # Add trailing slash if not present
+    if [[ ! "$SOURCE_PATH" =~ /$ ]]; then
+        SOURCE_PATH="$SOURCE_PATH/"
+    fi
+
+    # Validate source folder
+    if [ ! -d "$SOURCE_PATH" ]; then
+        echo ""
+        echo "ERROR: Folder does not exist: $SOURCE_PATH"
+        echo "Please check the path and try again."
+        echo ""
+        continue
+    fi
+
+    break
+done
+
+echo ""
+echo "Source folder: $SOURCE_PATH"
+sleep 1
+
+# ============================================
+# STEP 3: Scan for available formats
+# ============================================
+
+echo ""
+echo "Scanning for audio files..."
+echo ""
+
+# Supported formats to scan for
+SCAN_FORMATS="mp3 flac wav m4a ogg opus wma aac aiff ape"
+FOUND_FORMATS=""
+declare -A FOUND_COUNTS
+
+for format in $SCAN_FORMATS; do
+    count=$(find "$SOURCE_PATH" -type f -iname "*.$format" 2>/dev/null | wc -l)
+
+    if [ "$count" -gt 0 ]; then
+        if [ -z "$FOUND_FORMATS" ]; then
+            FOUND_FORMATS="$format"
+        else
+            FOUND_FORMATS="$FOUND_FORMATS $format"
+        fi
+        FOUND_COUNTS[$format]=$count
+        echo "Found $count .$format file(s)"
+    fi
+done
+
+if [ -z "$FOUND_FORMATS" ]; then
+    echo ""
+    echo "ERROR: No audio files found in: $SOURCE_PATH"
+    echo ""
+    echo "Supported formats: $SCAN_FORMATS"
+    echo ""
+    read -p "Press Enter to exit..."
+    exit 1
+fi
+
+# ============================================
+# STEP 4: Format Selection
+# ============================================
+
+echo ""
 echo "========================================"
 echo "Audio Format Selection"
 echo "========================================"
@@ -135,11 +220,11 @@ echo "Other formats work but require real-time transcoding (higher CPU usage)."
 echo ""
 echo "Which audio formats would you like to convert to .opus?"
 echo ""
-echo "Common formats: mp3, flac, wav, m4a, ogg, wma, aac, aiff, ape"
+echo "Available formats in your source folder: $FOUND_FORMATS"
 echo ""
-echo "Enter ALL the formats you want to convert, separated by spaces."
-echo "Example: flac mp3 wav"
-echo "Or just press Enter to cancel."
+echo "Enter formats separated by spaces (e.g., flac mp3 wav)"
+echo "Or type 'all' to convert all found formats"
+echo "Or press Enter to cancel"
 echo ""
 read -p "Formats to convert: " USER_FORMATS
 
@@ -151,8 +236,15 @@ if [ -z "$USER_FORMATS" ]; then
     exit 0
 fi
 
+# Handle 'all' option
+if [[ "$USER_FORMATS" =~ ^[Aa][Ll][Ll]$ ]]; then
+    USER_FORMATS="$FOUND_FORMATS"
+    echo ""
+    echo "Converting all found formats: $FOUND_FORMATS"
+fi
+
 # ============================================
-# STEP 3: Check for FFmpeg
+# STEP 5: Check for FFmpeg
 # ============================================
 
 echo ""
@@ -187,7 +279,7 @@ else
 fi
 
 # ============================================
-# STEP 4: Conversion Process
+# STEP 6: Validate and prepare formats
 # ============================================
 
 # Clean up and validate formats
@@ -198,21 +290,38 @@ for format in $USER_FORMATS; do
     CLEAN_FORMAT="${format#.}"
     CLEAN_FORMAT=$(echo "$CLEAN_FORMAT" | tr '[:upper:]' '[:lower:]')
 
-    # Add to list if not already there
-    if [[ ! " $FORMATS_TO_CONVERT " =~ " $CLEAN_FORMAT " ]]; then
-        if [ -z "$FORMATS_TO_CONVERT" ]; then
-            FORMATS_TO_CONVERT="$CLEAN_FORMAT"
-        else
-            FORMATS_TO_CONVERT="$FORMATS_TO_CONVERT $CLEAN_FORMAT"
+    # Check if this format was actually found
+    if [[ " $FOUND_FORMATS " =~ " $CLEAN_FORMAT " ]]; then
+        # Add to list if not already there
+        if [[ ! " $FORMATS_TO_CONVERT " =~ " $CLEAN_FORMAT " ]]; then
+            if [ -z "$FORMATS_TO_CONVERT" ]; then
+                FORMATS_TO_CONVERT="$CLEAN_FORMAT"
+            else
+                FORMATS_TO_CONVERT="$FORMATS_TO_CONVERT $CLEAN_FORMAT"
+            fi
+            ((FORMAT_COUNT++))
         fi
-        ((FORMAT_COUNT++))
+    else
+        echo "Warning: Format '$CLEAN_FORMAT' not found in source folder, skipping."
     fi
 done
+
+if [ -z "$FORMATS_TO_CONVERT" ]; then
+    echo ""
+    echo "ERROR: None of the selected formats were found in the source folder."
+    echo ""
+    read -p "Press Enter to exit..."
+    exit 1
+fi
 
 echo ""
 echo "Will convert these $FORMAT_COUNT format(s): $FORMATS_TO_CONVERT"
 echo ""
 sleep 2
+
+# ============================================
+# STEP 7: Conversion Process
+# ============================================
 
 echo "========================================"
 echo "Conversion Process"
@@ -233,61 +342,21 @@ convert_format() {
     echo "Processing .$FILE_FORMAT files"
     echo "----------------------------------------"
     echo ""
-    echo "Where are your .$FILE_FORMAT files located?"
-    echo ""
-    echo "Options:"
-    echo "- Enter the folder path (subdirectories will be searched automatically)"
-    echo "- Type 'skip' to skip this format"
-    echo ""
-    read -p "Source folder path: " SOURCE_FOLDER
-
-    if [[ "$SOURCE_FOLDER" == "skip" ]]; then
-        echo "Skipping .$FILE_FORMAT format."
-        sleep 1
-        return
-    fi
-
-    # Clean up the path
-    if [ -z "$SOURCE_FOLDER" ]; then
-        echo "No path entered. Skipping .$FILE_FORMAT format."
-        sleep 1
-        return
-    fi
-
-    # Remove surrounding quotes if present
-    SOURCE_FOLDER="${SOURCE_FOLDER%\"}"
-    SOURCE_FOLDER="${SOURCE_FOLDER#\"}"
-
-    # Add trailing slash if not present
-    if [[ ! "$SOURCE_FOLDER" =~ /$ ]]; then
-        SOURCE_FOLDER="$SOURCE_FOLDER/"
-    fi
-
-    # Validate source folder
-    if [ ! -d "$SOURCE_FOLDER" ]; then
-        echo ""
-        echo "ERROR: Folder does not exist: $SOURCE_FOLDER"
-        echo "Skipping .$FILE_FORMAT format."
-        sleep 2
-        return
-    fi
 
     # Count files
-    FILE_COUNT=$(find "$SOURCE_FOLDER" -type f -iname "*.$FILE_FORMAT" 2>/dev/null | wc -l)
+    FILE_COUNT=$(find "$SOURCE_PATH" -type f -iname "*.$FILE_FORMAT" 2>/dev/null | wc -l)
 
     if [ "$FILE_COUNT" -eq 0 ]; then
-        echo ""
-        echo "No .$FILE_FORMAT files found in: $SOURCE_FOLDER or its subdirectories"
-        echo "Skipping this format."
-        sleep 2
+        echo "No .$FILE_FORMAT files found. Skipping."
+        sleep 1
         return
     fi
 
-    echo "Found $FILE_COUNT .$FILE_FORMAT file(s) in $SOURCE_FOLDER and subdirectories."
+    echo "Found $FILE_COUNT .$FILE_FORMAT file(s) in $SOURCE_PATH and subdirectories."
     echo "Starting conversion..."
     echo ""
 
-    SOURCE_BASE="$SOURCE_FOLDER"
+    SOURCE_BASE="$SOURCE_PATH"
     SUCCESSFUL=0
     SKIPPED=0
     FAILED=0
@@ -297,9 +366,9 @@ convert_format() {
         ((CURRENT_COUNT++))
         CURRENT_FILE="$file"
         REL_PATH="${CURRENT_FILE#$SOURCE_BASE}"
-        DEST_PATH="$MUSIC_PATH$REL_PATH"
-        DEST_DIR="$(dirname "$DEST_PATH")"
-        DEST_FILE="${DEST_PATH%.*}"
+        DEST_FILE_PATH="$DEST_PATH$REL_PATH"
+        DEST_DIR="$(dirname "$DEST_FILE_PATH")"
+        DEST_FILE="${DEST_FILE_PATH%.*}"
         BASENAME="$(basename "$file")"
 
         # Create destination directory if needed
@@ -332,7 +401,7 @@ convert_format() {
                 ((FAILED++))
             fi
         fi
-    done < <(find "$SOURCE_FOLDER" -type f -iname "*.$FILE_FORMAT" -print0)
+    done < <(find "$SOURCE_PATH" -type f -iname "*.$FILE_FORMAT" -print0)
 
     echo ""
     echo "Format Summary: $FILE_FORMAT"
@@ -371,6 +440,10 @@ if [ "$TOTAL_CONVERTED_COUNT" -gt 0 ]; then
 
     # Proceed to deletion phase
     delete_originals
+else
+    echo ""
+    echo "No files were converted."
+    echo ""
 fi
 
 # Delete originals function
@@ -393,7 +466,7 @@ delete_originals() {
     echo "You have successfully converted files in these formats: $FORMATS_CONVERTED"
     echo "Total original files that can be deleted: $TOTAL_CONVERTED_COUNT"
     echo ""
-    echo "The converted .opus files are safely in: $MUSIC_PATH"
+    echo "The converted .opus files are safely in: $DEST_PATH"
     echo ""
     echo "Delete ALL $TOTAL_CONVERTED_COUNT original files to free up disk space?"
     echo ""
@@ -478,7 +551,7 @@ echo "========================================"
 echo "Conversion Complete"
 echo "========================================"
 echo ""
-echo "Your .opus files are in: $MUSIC_PATH"
+echo "Your .opus files are in: $DEST_PATH"
 echo ""
 if [ "$ENV_FILE_EXISTS" = true ]; then
     echo "Jill is ready to play your music!"

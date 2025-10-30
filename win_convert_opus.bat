@@ -10,7 +10,7 @@ echo You can press Ctrl+C at any time to exit.
 echo.
 
 REM ============================================
-REM STEP 1: Check for .env and determine destination
+REM STEP 1: Determine DESTINATION folder
 REM ============================================
 
 set "JILL_MUSIC_FOLDER="
@@ -62,13 +62,14 @@ if "%ENV_FILE_EXISTS%"=="false" (
 
     REM For users without .env, require explicit destination
     :ASK_DEST_NO_ENV
-    set "MUSIC_PATH="
+    set "DEST_PATH="
     echo Where should converted .opus files be saved?
     echo.
-    set /p "MUSIC_PATH=Destination folder: "
-    if "!MUSIC_PATH!"=="" (
+    set /p "DEST_PATH=Destination folder: "
+    if "!DEST_PATH!"=="" (
         echo.
         echo ERROR: Destination folder is required.
+        echo.
         goto ASK_DEST_NO_ENV
     )
 ) else (
@@ -81,25 +82,25 @@ if "%ENV_FILE_EXISTS%"=="false" (
     echo - Press Enter to use Jill's music folder (recommended)
     echo - Type a custom path
     echo.
-    set /p "MUSIC_PATH=Destination folder [!JILL_MUSIC_FOLDER!]: "
+    set /p "DEST_PATH=Destination folder [!JILL_MUSIC_FOLDER!]: "
 
     REM If empty, use Jill's folder
-    if "!MUSIC_PATH!"=="" (
-        set "MUSIC_PATH=!JILL_MUSIC_FOLDER!"
+    if "!DEST_PATH!"=="" (
+        set "DEST_PATH=!JILL_MUSIC_FOLDER!"
         echo.
-        echo Using Jill's music folder: !MUSIC_PATH!
+        echo Using Jill's music folder: !DEST_PATH!
     )
 )
 
 REM Clean up path
-set "MUSIC_PATH=!MUSIC_PATH:"=!"
-if not "!MUSIC_PATH:~-1!"=="\" set "MUSIC_PATH=!MUSIC_PATH!\"
+set "DEST_PATH=!DEST_PATH:"=!"
+if not "!DEST_PATH:~-1!"=="\" set "DEST_PATH=!DEST_PATH!\"
 
 REM Create destination folder if needed
-if not exist "!MUSIC_PATH!" (
+if not exist "!DEST_PATH!" (
     echo.
-    echo Destination folder does not exist. Creating: !MUSIC_PATH!
-    mkdir "!MUSIC_PATH!" 2>nul
+    echo Destination folder does not exist. Creating: !DEST_PATH!
+    mkdir "!DEST_PATH!" 2>nul
     if errorlevel 1 (
         echo ERROR: Could not create destination folder.
         echo Please check the path and try again.
@@ -114,9 +115,91 @@ echo.
 timeout /t 1 /nobreak >nul
 
 REM ============================================
-REM STEP 2: Audio Format Selection
+REM STEP 2: Determine SOURCE folder
 REM ============================================
 
+echo ========================================
+echo Source Folder Selection
+echo ========================================
+echo.
+echo Where are your music files located?
+echo (Subdirectories will be searched automatically)
+echo.
+
+:ASK_SOURCE
+set "SOURCE_PATH="
+set /p "SOURCE_PATH=Source folder: "
+
+if "!SOURCE_PATH!"=="" (
+    echo.
+    echo ERROR: Source folder is required.
+    echo.
+    goto ASK_SOURCE
+)
+
+REM Clean up path
+set "SOURCE_PATH=!SOURCE_PATH:"=!"
+if not "!SOURCE_PATH:~-1!"=="\" set "SOURCE_PATH=!SOURCE_PATH!\"
+
+REM Validate source folder
+if not exist "!SOURCE_PATH!" (
+    echo.
+    echo ERROR: Folder does not exist: !SOURCE_PATH!
+    echo Please check the path and try again.
+    echo.
+    goto ASK_SOURCE
+)
+
+echo.
+echo Source folder: !SOURCE_PATH!
+timeout /t 1 /nobreak >nul
+
+REM ============================================
+REM STEP 3: Scan for available formats
+REM ============================================
+
+echo.
+echo Scanning for audio files...
+echo.
+
+REM Supported formats to scan for
+set "SCAN_FORMATS=mp3 flac wav m4a ogg opus wma aac aiff ape"
+set "FOUND_FORMATS="
+set "FOUND_COUNTS="
+
+for %%F in (%SCAN_FORMATS%) do (
+    set "FORMAT=%%F"
+    set "COUNT=0"
+
+    for /f %%c in ('dir /s /b "!SOURCE_PATH!*.!FORMAT!" 2^>nul ^| find /c /v ""') do set "COUNT=%%c"
+
+    if !COUNT! GTR 0 (
+        if "!FOUND_FORMATS!"=="" (
+            set "FOUND_FORMATS=!FORMAT!"
+            set "FOUND_COUNTS=!COUNT!"
+        ) else (
+            set "FOUND_FORMATS=!FOUND_FORMATS! !FORMAT!"
+            set "FOUND_COUNTS=!FOUND_COUNTS! !COUNT!"
+        )
+        echo Found !COUNT! .!FORMAT! file(s)
+    )
+)
+
+if "!FOUND_FORMATS!"=="" (
+    echo.
+    echo ERROR: No audio files found in: !SOURCE_PATH!
+    echo.
+    echo Supported formats: %SCAN_FORMATS%
+    echo.
+    pause
+    exit /b 1
+)
+
+REM ============================================
+REM STEP 4: Format Selection
+REM ============================================
+
+echo.
 echo ========================================
 echo Audio Format Selection
 echo ========================================
@@ -132,11 +215,11 @@ echo Other formats work but require real-time transcoding (higher CPU usage).
 echo.
 echo Which audio formats would you like to convert to .opus?
 echo.
-echo Common formats: mp3, flac, wav, m4a, ogg, wma, aac, aiff, ape
+echo Available formats in your source folder: !FOUND_FORMATS!
 echo.
-echo Enter ALL the formats you want to convert, separated by spaces.
-echo Example: flac mp3 wav
-echo Or just press Enter to cancel.
+echo Enter formats separated by spaces (e.g., flac mp3 wav)
+echo Or type 'all' to convert all found formats
+echo Or press Enter to cancel
 echo.
 set "USER_FORMATS="
 set /p "USER_FORMATS=Formats to convert: "
@@ -149,8 +232,15 @@ if "!USER_FORMATS!"=="" (
     exit /b 0
 )
 
+REM Handle 'all' option
+if /i "!USER_FORMATS!"=="all" (
+    set "USER_FORMATS=!FOUND_FORMATS!"
+    echo.
+    echo Converting all found formats: !FOUND_FORMATS!
+)
+
 REM ============================================
-REM STEP 3: Check for FFmpeg
+REM STEP 5: Check for FFmpeg
 REM ============================================
 
 echo.
@@ -183,7 +273,7 @@ if errorlevel 1 (
 )
 
 REM ============================================
-REM STEP 4: Conversion Process
+REM STEP 6: Validate and prepare formats
 REM ============================================
 
 REM Clean up and validate formats
@@ -194,22 +284,40 @@ for %%F in (!USER_FORMATS!) do (
     REM Remove dots if present
     set "CLEAN_FORMAT=!CLEAN_FORMAT:.=!"
 
-    REM Add to list if not already there
-    echo !FORMATS_TO_CONVERT! | findstr /i "\<!CLEAN_FORMAT!\>" >nul 2>&1
-    if errorlevel 1 (
-        if "!FORMATS_TO_CONVERT!"=="" (
-            set "FORMATS_TO_CONVERT=!CLEAN_FORMAT!"
-        ) else (
-            set "FORMATS_TO_CONVERT=!FORMATS_TO_CONVERT! !CLEAN_FORMAT!"
+    REM Check if this format was actually found
+    echo !FOUND_FORMATS! | findstr /i "\<!CLEAN_FORMAT!\>" >nul 2>&1
+    if not errorlevel 1 (
+        REM Add to list if not already there
+        echo !FORMATS_TO_CONVERT! | findstr /i "\<!CLEAN_FORMAT!\>" >nul 2>&1
+        if errorlevel 1 (
+            if "!FORMATS_TO_CONVERT!"=="" (
+                set "FORMATS_TO_CONVERT=!CLEAN_FORMAT!"
+            ) else (
+                set "FORMATS_TO_CONVERT=!FORMATS_TO_CONVERT! !CLEAN_FORMAT!"
+            )
+            set /a FORMAT_COUNT+=1
         )
-        set /a FORMAT_COUNT+=1
+    ) else (
+        echo Warning: Format '!CLEAN_FORMAT!' not found in source folder, skipping.
     )
+)
+
+if "!FORMATS_TO_CONVERT!"=="" (
+    echo.
+    echo ERROR: None of the selected formats were found in the source folder.
+    echo.
+    pause
+    exit /b 1
 )
 
 echo.
 echo Will convert these !FORMAT_COUNT! format(s): !FORMATS_TO_CONVERT!
 echo.
 timeout /t 2 /nobreak >nul
+
+REM ============================================
+REM STEP 7: Conversion Process
+REM ============================================
 
 echo ========================================
 echo Conversion Process
@@ -257,7 +365,7 @@ echo ========================================
 echo Conversion Complete
 echo ========================================
 echo.
-echo Your .opus files are in: !MUSIC_PATH!
+echo Your .opus files are in: !DEST_PATH!
 echo.
 if "%ENV_FILE_EXISTS%"=="true" (
     echo Jill is ready to play your music!
@@ -274,71 +382,34 @@ REM SUBROUTINE: Convert a single format
 REM ============================================
 :CONVERT_FORMAT
 echo.
-echo Where are your .!FILE_FORMAT! files located?
-echo.
-echo Options:
-echo - Enter the folder path (subdirectories will be searched automatically)
-echo - Type 'skip' to skip this format
-echo.
-set "SOURCE_FOLDER="
-set /p "SOURCE_FOLDER=Source folder path: "
-
-if /i "!SOURCE_FOLDER!"=="skip" (
-    echo Skipping .!FILE_FORMAT! format.
-    timeout /t 1 /nobreak >nul
-    exit /b
-)
-
-REM Clean up the path
-if "!SOURCE_FOLDER!"=="" (
-    echo No path entered. Skipping .!FILE_FORMAT! format.
-    timeout /t 1 /nobreak >nul
-    exit /b
-)
-
-set "SOURCE_FOLDER=!SOURCE_FOLDER:"=!"
-if not "!SOURCE_FOLDER:~-1!"=="\" set "SOURCE_FOLDER=!SOURCE_FOLDER!\"
-
-REM Validate source folder
-if not exist "!SOURCE_FOLDER!" (
-    echo.
-    echo ERROR: Folder does not exist: !SOURCE_FOLDER!
-    echo Skipping .!FILE_FORMAT! format.
-    timeout /t 2 /nobreak >nul
-    exit /b
-)
 
 REM Count files
 set "FILE_COUNT=0"
-for /f "delims=" %%f in ('dir /s /b "!SOURCE_FOLDER!*.!FILE_FORMAT!" 2^>nul') do (
-    set /a FILE_COUNT+=1
-)
+for /f %%c in ('dir /s /b "!SOURCE_PATH!*.!FILE_FORMAT!" 2^>nul ^| find /c /v ""') do set "FILE_COUNT=%%c"
 
 if !FILE_COUNT! EQU 0 (
-    echo.
-    echo No .!FILE_FORMAT! files found in: !SOURCE_FOLDER! or its subdirectories
-    echo Skipping this format.
-    timeout /t 2 /nobreak >nul
+    echo No .!FILE_FORMAT! files found. Skipping.
+    timeout /t 1 /nobreak >nul
     exit /b
 )
 
-echo Found !FILE_COUNT! .!FILE_FORMAT! file(s) in !SOURCE_FOLDER! and subdirectories.
+echo Found !FILE_FORMAT! file(s) in !SOURCE_PATH! and subdirectories.
 echo Starting conversion...
 echo.
 
-set "SOURCE_BASE=!SOURCE_FOLDER!"
+set "SOURCE_BASE=!SOURCE_PATH!"
 set "SUCCESSFUL=0"
 set "SKIPPED=0"
 set "FAILED=0"
 set "CURRENT_COUNT=0"
 
-for /f "delims=" %%f in ('dir /s /b "!SOURCE_FOLDER!*.!FILE_FORMAT!" 2^>nul') do (
+for /f "delims=" %%f in ('dir /s /b "!SOURCE_PATH!*.!FILE_FORMAT!" 2^>nul') do (
     set /a CURRENT_COUNT+=1
     set "CURRENT_FILE=%%f"
     set "REL_PATH=!CURRENT_FILE:%SOURCE_BASE%=!"
-    set "DEST_PATH=!MUSIC_PATH!!REL_PATH!"
-    for %%I in ("!DEST_PATH!") do set "DEST_DIR=%%~dpI"
-    for %%I in ("!DEST_PATH!") do set "DEST_FILE=%%~dpnI"
+    set "DEST_FILE_PATH=!DEST_PATH!!REL_PATH!"
+    for %%I in ("!DEST_FILE_PATH!") do set "DEST_DIR=%%~dpI"
+    for %%I in ("!DEST_FILE_PATH!") do set "DEST_FILE=%%~dpnI"
     set "BASENAME=%%~nxf"
 
     if not exist "!DEST_DIR!" mkdir "!DEST_DIR!" >nul 2>&1
@@ -411,7 +482,7 @@ echo.
 echo You have successfully converted files in these formats: !FORMATS_CONVERTED!
 echo Total original files that can be deleted: !TOTAL_CONVERTED_COUNT!
 echo.
-echo The converted .opus files are safely in: !MUSIC_PATH!
+echo The converted .opus files are safely in: !DEST_PATH!
 echo.
 echo Delete ALL !TOTAL_CONVERTED_COUNT! original files to free up disk space?
 echo.

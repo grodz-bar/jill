@@ -453,16 +453,91 @@ set "CONVERSION_SUCCESS=false"
 
 echo.
 echo ========================================
+echo Source Folder Selection
+echo ========================================
+echo.
+echo Where are your music files located?
+echo (Subdirectories will be searched automatically)
+echo.
+
+:ASK_CONVERSION_SOURCE
+set "SOURCE_FOLDER="
+set /p "SOURCE_FOLDER=Source folder: "
+
+if "!SOURCE_FOLDER!"=="" (
+    echo.
+    echo Skipping conversion.
+    timeout /t 2 /nobreak >nul
+    goto AFTER_CONVERSION
+)
+
+REM Clean up path
+set "SOURCE_FOLDER=!SOURCE_FOLDER:"=!"
+if not "!SOURCE_FOLDER:~-1!"=="\" set "SOURCE_FOLDER=!SOURCE_FOLDER!\"
+
+REM Validate source folder
+if not exist "!SOURCE_FOLDER!" (
+    echo.
+    echo ERROR: Folder does not exist: !SOURCE_FOLDER!
+    echo Please check the path and try again.
+    echo.
+    goto ASK_CONVERSION_SOURCE
+)
+
+echo.
+echo Source folder: !SOURCE_FOLDER!
+timeout /t 1 /nobreak >nul
+
+REM Scan for available formats
+echo.
+echo Scanning for audio files...
+echo.
+
+set "SCAN_FORMATS=mp3 flac wav m4a ogg opus wma aac aiff ape"
+set "FOUND_FORMATS="
+set "FOUND_COUNTS="
+
+for %%F in (%SCAN_FORMATS%) do (
+    set "FORMAT=%%F"
+    set "COUNT=0"
+
+    for /f %%c in ('dir /s /b "!SOURCE_FOLDER!*.!FORMAT!" 2^>nul ^| find /c /v ""') do set "COUNT=%%c"
+
+    if !COUNT! GTR 0 (
+        if "!FOUND_FORMATS!"=="" (
+            set "FOUND_FORMATS=!FORMAT!"
+            set "FOUND_COUNTS=!COUNT!"
+        ) else (
+            set "FOUND_FORMATS=!FOUND_FORMATS! !FORMAT!"
+            set "FOUND_COUNTS=!FOUND_COUNTS! !COUNT!"
+        )
+        echo Found !COUNT! .!FORMAT! file(s)
+    )
+)
+
+if "!FOUND_FORMATS!"=="" (
+    echo.
+    echo ERROR: No audio files found in: !SOURCE_FOLDER!
+    echo.
+    echo Supported formats: %SCAN_FORMATS%
+    echo.
+    echo Press any key to continue without conversion...
+    pause >nul
+    goto AFTER_CONVERSION
+)
+
+echo.
+echo ========================================
 echo Audio Format Selection
 echo ========================================
 echo.
 echo Which audio formats would you like to convert to .opus?
 echo.
-echo Common formats: mp3, flac, wav, m4a, ogg, wma, aac, aiff, ape
+echo Available formats in your source folder: !FOUND_FORMATS!
 echo.
-echo Enter ALL the formats you want to convert, separated by spaces.
-echo Example: flac mp3 wav
-echo Or just press Enter to skip conversion.
+echo Enter formats separated by spaces (e.g., flac mp3 wav)
+echo Or type 'all' to convert all found formats
+echo Or press Enter to skip conversion
 echo.
 set "USER_FORMATS="
 set /p "USER_FORMATS=Formats to convert: "
@@ -473,6 +548,13 @@ if "!USER_FORMATS!"=="" (
     echo Skipping conversion.
     timeout /t 2 /nobreak >nul
     goto AFTER_CONVERSION
+)
+
+REM Handle 'all' option
+if /i "!USER_FORMATS!"=="all" (
+    set "USER_FORMATS=!FOUND_FORMATS!"
+    echo.
+    echo Converting all found formats: !FOUND_FORMATS!
 )
 
 REM Check for FFmpeg once before starting
@@ -511,17 +593,32 @@ for %%F in (!USER_FORMATS!) do (
     set "CLEAN_FORMAT=%%F"
     REM Remove dots if present
     set "CLEAN_FORMAT=!CLEAN_FORMAT:.=!"
-    
-    REM Add to list if not already there
-    echo !FORMATS_TO_CONVERT! | findstr /i "\<!CLEAN_FORMAT!\>" >nul 2>&1
-    if errorlevel 1 (
-        if "!FORMATS_TO_CONVERT!"=="" (
-            set "FORMATS_TO_CONVERT=!CLEAN_FORMAT!"
-        ) else (
-            set "FORMATS_TO_CONVERT=!FORMATS_TO_CONVERT! !CLEAN_FORMAT!"
+
+    REM Check if this format was actually found
+    echo !FOUND_FORMATS! | findstr /i "\<!CLEAN_FORMAT!\>" >nul 2>&1
+    if not errorlevel 1 (
+        REM Add to list if not already there
+        echo !FORMATS_TO_CONVERT! | findstr /i "\<!CLEAN_FORMAT!\>" >nul 2>&1
+        if errorlevel 1 (
+            if "!FORMATS_TO_CONVERT!"=="" (
+                set "FORMATS_TO_CONVERT=!CLEAN_FORMAT!"
+            ) else (
+                set "FORMATS_TO_CONVERT=!FORMATS_TO_CONVERT! !CLEAN_FORMAT!"
+            )
+            set /a FORMAT_COUNT+=1
         )
-        set /a FORMAT_COUNT+=1
+    ) else (
+        echo Warning: Format '!CLEAN_FORMAT!' not found in source folder, skipping.
     )
+)
+
+if "!FORMATS_TO_CONVERT!"=="" (
+    echo.
+    echo ERROR: None of the selected formats were found in the source folder.
+    echo.
+    echo Press any key to continue without conversion...
+    pause >nul
+    goto AFTER_CONVERSION
 )
 
 echo.
@@ -571,51 +668,14 @@ goto AFTER_CONVERSION
 REM ===== SUBROUTINE: Convert a single format =====
 :CONVERT_FORMAT
 echo.
-echo Where are your .!FILE_FORMAT! files located?
-echo.
-echo Options:
-echo - Enter the folder path (subdirectories will be searched automatically)
-echo - Type 'skip' to skip this format
-echo.
-set "SOURCE_FOLDER="
-set /p "SOURCE_FOLDER=Source folder path: "
-
-if /i "!SOURCE_FOLDER!"=="skip" (
-    echo Skipping .!FILE_FORMAT! format.
-    timeout /t 1 /nobreak >nul
-    exit /b
-)
-
-REM Clean up the path
-if "!SOURCE_FOLDER!"=="" (
-    echo No path entered. Skipping .!FILE_FORMAT! format.
-    timeout /t 1 /nobreak >nul
-    exit /b
-)
-
-set "SOURCE_FOLDER=!SOURCE_FOLDER:"=!"
-if not "!SOURCE_FOLDER:~-1!"=="\" set "SOURCE_FOLDER=!SOURCE_FOLDER!\"
-
-REM Validate source folder
-if not exist "!SOURCE_FOLDER!" (
-    echo.
-    echo ERROR: Folder does not exist: !SOURCE_FOLDER!
-    echo Skipping .!FILE_FORMAT! format.
-    timeout /t 2 /nobreak >nul
-    exit /b
-)
 
 REM Count files (including in subdirectories)
 set "FILE_COUNT=0"
-for /f "delims=" %%f in ('dir /s /b "!SOURCE_FOLDER!*.!FILE_FORMAT!" 2^>nul') do (
-    set /a FILE_COUNT+=1
-)
+for /f %%c in ('dir /s /b "!SOURCE_FOLDER!*.!FILE_FORMAT!" 2^>nul ^| find /c /v ""') do set "FILE_COUNT=%%c"
 
 if !FILE_COUNT! EQU 0 (
-    echo.
-    echo No .!FILE_FORMAT! files found in: !SOURCE_FOLDER! or its subdirectories
-    echo Skipping this format.
-    timeout /t 2 /nobreak >nul
+    echo No .!FILE_FORMAT! files found. Skipping.
+    timeout /t 1 /nobreak >nul
     exit /b
 )
 

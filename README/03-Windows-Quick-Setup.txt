@@ -17,7 +17,7 @@ THE EASY WAY (Recommended)
 2. Type "PowerShell" and press Enter
 3. Copy and paste this command, then press Enter:
 
-   winget install Python.Python.3.13 && winget install Gyan.FFmpeg
+   winget install Python.Python.3.13; winget install Gyan.FFmpeg
 
 4. Wait for it to finish (you'll see "Successfully installed" messages)
 5. Close PowerShell

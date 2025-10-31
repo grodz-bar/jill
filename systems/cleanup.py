@@ -118,16 +118,16 @@ class CleanupManager:
             return
 
         if not AUTO_CLEANUP_ENABLED:
-            logger.info(f"Guild {self.guild_id}: Auto cleanup disabled - skipping workers")
+            logger.debug(f"Guild {self.guild_id}: Auto cleanup disabled - skipping workers")
             return
 
         if not self._ttl_task:
             self._ttl_task = asyncio.create_task(self._ttl_cleanup_worker())
-            logger.info(f"Guild {self.guild_id}: TTL cleanup worker started")
+            logger.debug(f"Guild {self.guild_id}: TTL cleanup worker started")
 
         if not self._history_task:
             self._history_task = asyncio.create_task(self._history_cleanup_worker())
-            logger.info(f"Guild {self.guild_id}: History cleanup worker started")
+            logger.debug(f"Guild {self.guild_id}: History cleanup worker started")
 
     async def shutdown(self):
         """
@@ -151,7 +151,7 @@ class CleanupManager:
             except asyncio.CancelledError:
                 pass
 
-        logger.info(f"Guild {self.guild_id}: Cleanup manager shutdown complete")
+        logger.debug(f"Guild {self.guild_id}: Cleanup manager shutdown complete")
 
     # =========================================================================
     # WORKER 1: TTL Cleanup (Scheduled Deletion)

@@ -91,7 +91,7 @@ class ControlPanelManager:
                 # Create new panel
                 await self.create_panel(guild_id, channel)
 
-                logger.info(f"Initialized control panel for guild {guild_id}")
+                logger.debug(f"Initialized control panel for guild {guild_id}")
 
             except Exception as e:
                 logger.error(f"Failed to initialize panel for guild {guild_id}: {e}")

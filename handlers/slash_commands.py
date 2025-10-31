@@ -53,7 +53,7 @@ def setup(bot):
     """Register slash commands with the bot."""
 
     if COMMAND_MODE != 'slash':
-        logger.info("Slash commands disabled (prefix mode)")
+        logger.debug("Slash commands disabled (prefix mode)")
         return
 
     logger.info("Registering slash commands...")

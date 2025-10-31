@@ -21,7 +21,11 @@ MESSAGE_SETTLE_DELAY = 0.5  # Seconds to wait for new messages to settle
 
 # Connection delays (shared with prefix but may differ)
 VOICE_CONNECT_DELAY = 0.5  # Delay after connecting to voice
-SKIP_SETTLE_DELAY = 0.3  # Delay after skip to let audio settle
+
+# Track Change Settling - Wait time after stopping before starting new track
+# This delay allows Discord's audio buffers to fully drain after stop(), preventing
+# pop and scratchiness artifacts when the next track starts playing.
+TRACK_CHANGE_SETTLE_DELAY = 1.0  # Wait after stop before playing next track (1000ms)
 
 # Core playback timing (shared with playback.py)
 VOICE_SETTLE_DELAY = 0.05  # Let voice settle between tracks (prevents audio glitches)
@@ -44,7 +48,7 @@ __all__ = [
     'MESSAGE_UPDATE_COOLDOWN',
     'MESSAGE_SETTLE_DELAY',
     'VOICE_CONNECT_DELAY',
-    'SKIP_SETTLE_DELAY',
+    'TRACK_CHANGE_SETTLE_DELAY',
     'VOICE_SETTLE_DELAY',
     'VOICE_RECONNECT_DELAY',
     'VOICE_CONNECTION_MAX_WAIT',

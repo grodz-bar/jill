@@ -99,13 +99,14 @@ else
 fi
 echo ""
 
-echo "Installing dependencies..."
+echo "Installing dependencies (this may take a moment)..."
 # Upgrade pip first (quietly)
 python -m pip install --upgrade pip --quiet
 # Install requirements
-if ! python -m pip install -r requirements.txt; then
+if ! python -m pip install -r requirements.txt --quiet; then
     echo ""
     echo "ERROR: Failed to install dependencies"
+    echo "Please check your internet connection and try again."
     read -p "Press Enter to exit..."
     exit 1
 fi
@@ -168,8 +169,16 @@ sleep 1
 echo ""
 echo "========================================="
 echo "Choose command style:"
-echo "1) Classic (!play) - Text commands with auto-cleanup"
+echo "1) Classic (!play) - Text commands with auto message cleanup"
 echo "2) Modern (/play) - Slash commands with buttons"
+echo ""
+echo "Classic Mode: Traditional text commands (e.g., !play, !skip)"
+echo "  - Bot messages auto-delete after a short time"
+echo "  - Great for keeping your music channel clean"
+echo ""
+echo "Modern Mode: Slash commands with a persistent control panel"
+echo "  - Interactive buttons for play/pause/skip"
+echo "  - Control panel updates in place (no message spam)"
 echo "========================================="
 echo ""
 read -p "Choice (1 or 2) [default: 1]: " command_choice
@@ -196,19 +205,12 @@ echo ""
 echo "Options:"
 echo "- Press Enter to use the default location (recommended for portability)"
 echo "- Type a custom path (e.g., /home/user/Music/jill/)"
-echo "- Type 'exit' to cancel setup"
 echo ""
 echo "If the folder doesn't exist, this script will create it for you."
 echo ""
 
 DEFAULT_PATH=0
 read -p "Music folder path: " MUSIC_PATH
-if [[ "$MUSIC_PATH" == "exit" ]]; then
-    echo ""
-    echo "Setup cancelled."
-    read -p "Press Enter to exit..."
-    exit 0
-fi
 
 if [ -z "$MUSIC_PATH" ]; then
     MUSIC_PATH="music"
@@ -350,6 +352,19 @@ echo "========================================"
 echo "OPTIONAL: Audio Conversion"
 echo "========================================"
 CONVERSION_SUCCESS=false
+echo ""
+echo "Jill supports MP3, FLAC, WAV, M4A, OGG, and OPUS formats."
+echo ""
+echo "HOWEVER, converting to .opus format is HIGHLY RECOMMENDED!"
+echo ""
+echo "When using .opus, you will experience:"
+echo "  - WAY fewer audio artifacts and warping issues (if any)"
+echo "  - Lower CPU usage (important on lower-end systems)"
+echo "  - Best audio quality (.opus is Discord's native format)"
+echo "  - Often smaller file sizes"
+echo ""
+echo "Other formats will technically work, but are NOT recommended."
+echo ""
 
 # Multi-format conversion function
 run_conversion() {
@@ -399,10 +414,6 @@ run_conversion() {
 
         break
     done
-
-    echo ""
-    echo "Source folder: $SOURCE_FOLDER"
-    sleep 1
 
     # Scan for available formats
     echo ""
@@ -758,13 +769,11 @@ delete_originals() {
 }
 
 # Prompt user for conversion
-echo "Ready to convert and move your music files into $MUSIC_PATH as .opus files."
-echo ""
-echo "In this step, we'll:"
-echo "1. Ask which formats you want to convert (all at once)"
-echo "2. Convert each format to .opus"
-echo "3. Organize them in your music folder"
-echo "4. Optionally delete the original files (with confirmation)"
+echo "If you choose to use this conversion tool, we'll:"
+echo "1. Scan a folder for music files"
+echo "2. Convert them to .opus (with recommended flags)"
+echo "3. Make sure they're inside Jill's music folder"
+echo "4. Optionally delete the pre-conversion music files"
 echo "Note: The subfolder structure will stay the exact same"
 echo ""
 echo ""

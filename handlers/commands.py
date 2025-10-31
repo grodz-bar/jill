@@ -54,7 +54,7 @@ from config import (
     PLAYLISTS_DEBOUNCE_WINDOW, PLAYLISTS_COOLDOWN, PLAYLISTS_SPAM_THRESHOLD,
     HELP_DEBOUNCE_WINDOW, HELP_COOLDOWN, HELP_SPAM_THRESHOLD,
     PLAY_JUMP_DEBOUNCE_WINDOW, PLAY_JUMP_COOLDOWN, PLAY_JUMP_SPAM_THRESHOLD,
-    VOICE_CONNECT_DELAY, USER_COMMAND_TTL, SKIP_SETTLE_DELAY,
+    VOICE_CONNECT_DELAY, USER_COMMAND_TTL,
     SHUFFLE_MODE_ENABLED,
     QUEUE_DISPLAY_ENABLED,
     LIBRARY_DISPLAY_ENABLED,
@@ -68,7 +68,6 @@ from config import (
 from utils.discord_helpers import can_connect_to_channel, safe_disconnect, update_presence, sanitize_for_format, get_guild_player, ensure_voice_connected, send_player_message, spam_protected_execute
 from utils.permission_checks import permission_check
 from systems.voice_manager import PlaybackState
-from utils.context_managers import suppress_callbacks
 
 
 def setup(bot):
@@ -307,11 +306,7 @@ def setup(bot):
 
         state = player.voice_manager.get_playback_state()
         if state in [PlaybackState.PLAYING, PlaybackState.PAUSED]:
-            if state == PlaybackState.PLAYING:
-                player.voice_client.pause()
-                await asyncio.sleep(SKIP_SETTLE_DELAY)
-            with suppress_callbacks(player):
-                player.voice_client.stop()
+            # Queue next track - _play_current() handles stopping current track cleanly
             await player.spam_protector.queue_command(
                 lambda: _play_next(player.guild_id, bot)
             )

@@ -28,7 +28,8 @@ from typing import Optional, Tuple
 from enum import Enum
 import disnake
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)  # For debug/error logs
+user_logger = logging.getLogger('jill')  # For user-facing messages
 
 # Import from config
 from config import (
@@ -215,7 +216,7 @@ class VoiceManager:
                 # Check for auto-pause
                 if AUTO_PAUSE_ENABLED and alone_duration >= ALONE_PAUSE_DELAY:
                     if current_state == PlaybackState.PLAYING and not self._was_playing_before_alone:
-                        logger.info(f"Guild {self.guild_id}: Auto-pausing (alone for {alone_duration:.1f}s)")
+                        user_logger.info(f"Auto-pausing (alone for {alone_duration:.1f}s)")
                         self.voice_client.pause()
                         self._was_playing_before_alone = True
 
@@ -231,7 +232,7 @@ class VoiceManager:
 
                 # Check for auto-disconnect
                 if AUTO_DISCONNECT_ENABLED and alone_duration >= ALONE_DISCONNECT_DELAY:
-                    logger.info(f"Guild {self.guild_id}: Auto-disconnecting (alone for {alone_duration:.1f}s)")
+                    user_logger.info(f"Auto-disconnecting (alone for {alone_duration:.1f}s)")
 
                     # Send message before disconnecting
                     if self._send_message_callback and self.text_channel:
@@ -270,7 +271,7 @@ class VoiceManager:
 
                 # Auto-resume if we auto-paused
                 if AUTO_PAUSE_ENABLED and current_state == PlaybackState.PAUSED and self._was_playing_before_alone:
-                    logger.info(f"Guild {self.guild_id}: Auto-resuming (someone joined)")
+                    user_logger.info(f"Auto-resuming (someone joined)")
                     self.voice_client.resume()
 
                     # Send message

@@ -219,7 +219,7 @@ class MusicPlayer:
             shuffle: If provided, override shuffle_enabled
         """
         if not self.library:
-            logger.warning(f"Guild {self.guild_id}: Cannot reset queue - library empty")
+            logger.debug(f"Guild {self.guild_id}: Cannot reset queue - library empty")
             return
 
         # Determine shuffle state
@@ -366,7 +366,7 @@ class MusicPlayer:
                 channel = await bot.fetch_channel(channel_id)
                 if isinstance(channel, disnake.TextChannel):
                     self.set_text_channel(channel)
-                    logger.info(f"Guild {self.guild_id}: Restored channel {channel.name}")
+                    logger.debug(f"Guild {self.guild_id}: Restored channel {channel.name}")
             except (disnake.NotFound, disnake.Forbidden, disnake.HTTPException) as e:
                 logger.debug(f"Guild {self.guild_id}: Could not restore channel: {e}")
 

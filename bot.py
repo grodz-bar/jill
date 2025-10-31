@@ -57,10 +57,48 @@ LOG_LEVEL_MAP = {
     'CRITICAL': logging.CRITICAL,
 }
 
+# Custom formatter for clean 4-char level names
+class JillFormatter(logging.Formatter):
+    """
+    Custom formatter with 4-character level names for clean, aligned logs.
+
+    Maps Python's standard log levels to 4-character names:
+    - DEBUG    → [DBUG] - Technical details for debugging
+    - INFO     → [INFO] - Normal operation messages
+    - WARNING  → [WARN] - Issues that don't stop operation
+    - ERROR    → [FAIL] - Recoverable failures
+    - CRITICAL → [CRIT] - Catastrophic failures
+
+    CAUTION: Changing LEVEL_NAMES may break log parsing or monitoring tools.
+    Only modify if you know what you're doing.
+    """
+
+    LEVEL_NAMES = {
+        'DEBUG': 'DBUG',
+        'INFO': 'INFO',
+        'WARNING': 'WARN',
+        'ERROR': 'FAIL',
+        'CRITICAL': 'CRIT',
+    }
+
+    def format(self, record):
+        # Temporarily replace levelname for formatting, then restore original
+        # This prevents mutation side effects if multiple handlers exist
+        original_levelname = record.levelname
+        record.levelname = self.LEVEL_NAMES.get(record.levelname, record.levelname)
+        result = super().format(record)
+        record.levelname = original_levelname
+        return result
+
+# Configure logging with custom formatter
+handler = logging.StreamHandler()
+handler.setFormatter(JillFormatter(
+    fmt='[%(asctime)s] [%(levelname)s] %(name)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+))
 logging.basicConfig(
     level=LOG_LEVEL_MAP[LOG_LEVEL],
-    format='[%(asctime)s] [%(levelname)-8s] %(name)s: %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    handlers=[handler]
 )
 logger = logging.getLogger('jill')
 
@@ -171,12 +209,15 @@ async def on_ready():
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     """)
     print("="*60 + "\n")
-    
+
+    # Copyright and license info (as required by GPL 3.0)
+    logger.info('Jill v1.0.0 - Copyright (C) 2025 grodz')
+    logger.info('Licensed under GPL 3.0 - See LICENSE.md for details')
+    print()  # Blank line without timestamp/level
+
+    # Bot status
     logger.info(f'Bot connected as {bot.user}')
     logger.info(f'Command mode: {COMMAND_MODE}')
-    logger.info('Jill v1.0.0 - Copyright (C) 2025 grodz-bar')
-    logger.info('Licensed under GPL 3.0 - See LICENSE.md for details')
-    logger.info("Press Ctrl+C or send SIGTERM to shutdown gracefully")
 
     # Display music library summary
     if has_playlist_structure():
@@ -190,7 +231,10 @@ async def on_ready():
         if library:
             logger.info(f"Loaded {len(library)} songs from music folder")
         else:
-            logger.warning("No .opus files found in music folder")
+            logger.error("No audio files found in music folder")
+
+    # Show shutdown instruction last
+    logger.info("Press Ctrl+C or send SIGTERM to shutdown")
 
     # Restore players for guilds with saved channels
     # This ensures cleanup workers resume automatically on restart
@@ -213,7 +257,7 @@ async def on_ready():
             player = await get_player(guild_id, bot, bot.user.id)
             player.set_text_channel(text_channel)
 
-            logger.info(f"Guild {guild_id}: Restored cleanup on channel #{text_channel.name}")
+            logger.debug(f"Guild {guild_id}: Restored cleanup on channel #{text_channel.name}")
 
         except Exception as e:
             logger.warning(f"Guild {guild_id}: Failed to restore player: {e}")
@@ -230,7 +274,7 @@ async def on_ready():
 
         # Setup button handler
         setup_buttons(bot)
-        logger.info("Button handler registered")
+        logger.debug("Button handler registered")
 
         # Sync slash commands
         try:
@@ -238,8 +282,6 @@ async def on_ready():
             logger.info("Slash commands synced")
         except Exception as e:
             logger.error(f"Failed to sync slash commands: {e}")
-    else:
-        logger.info("Using prefix command mode")
 
 @bot.event
 async def on_disconnect():
@@ -457,7 +499,7 @@ else:
 if __name__ == '__main__':
     token = os.getenv('DISCORD_BOT_TOKEN')
     if not token:
-        logger.error("DISCORD_BOT_TOKEN not found in environment!")
+        logger.critical("DISCORD_BOT_TOKEN not found in environment - bot cannot start!")
         exit(1)
 
     # Register signal handlers for graceful shutdown

@@ -157,7 +157,7 @@ def setup(bot):
     """Add cog to bot."""
     if COMMAND_MODE == 'slash':
         bot.add_cog(ButtonHandler(bot))
-        logger.info("Button handler registered")
+        logger.debug("Button handler registered")
 
 
 __all__ = ['ButtonHandler', 'setup']

@@ -181,18 +181,19 @@ PLAYLISTS_SPAM_THRESHOLD = 4       # Times user can spam before warning
 # =========================================================================================================
 
 VOICE_CONNECT_DELAY = 0.15               # Wait for Discord voice handshake (prevents crashes)
-VOICE_SETTLE_DELAY = 0.05                # Let voice settle between tracks (prevents audio glitches)
+VOICE_SETTLE_DELAY = 0.15                # Let voice settle between tracks (prevents audio glitches)
 VOICE_RECONNECT_DELAY = 0.30             # Wait during voice reconnection (prevents race conditions)
 VOICE_CONNECTION_MAX_WAIT = 0.5          # Max wait for voice connection (500ms)
 VOICE_CONNECTION_CHECK_INTERVAL = 0.05   # Check voice connection every 50ms
 FRAME_DURATION = 0.02                    # Opus frame duration (20ms) for graceful stops
 
-# Skip/Jump Settling - Wait time before stopping playback during skip/previous/jump operations
-# This delay prevents the "scratchy" sound that occurs when playback is stopped abruptly
-# during track changes. Giving the audio stream time to settle reduces audio artifacts.
-SKIP_SETTLE_DELAY = 0.05                 # Wait after pause before stop (50ms = 2.5 Opus frames)
-                                         # LOWER = faster skip response, HIGHER = cleaner audio transition
-                                         # Recommended: 0.05 (50ms) for balance, 0.1 (100ms) if still scratchy
+# Track Change Settling - Wait time after stopping before starting new track
+# This delay allows Discord's audio buffers to fully drain after stop(), preventing
+# pop and scratchiness artifacts when the next track starts playing.
+# Based on testing: direct stop() + 1s delay = clean audio (matches manual pause workflow)
+TRACK_CHANGE_SETTLE_DELAY = 1.0          # Wait after stop before playing next track (1000ms)
+                                         # LOWER = faster track changes, HIGHER = cleaner audio transition
+                                         # 1s prevents pop/scratchiness when next track starts
 
 # FFmpeg Audio Options - Controls playback latency and buffering behavior
 # Format: Space-separated command-line options passed to FFmpeg before reading input

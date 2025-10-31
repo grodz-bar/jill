@@ -71,7 +71,7 @@ from config import (
     CALLBACK_MIN_INTERVAL,
     VOICE_CONNECTION_MAX_WAIT,
     VOICE_CONNECTION_CHECK_INTERVAL,
-    SKIP_SETTLE_DELAY,
+    TRACK_CHANGE_SETTLE_DELAY,
     SMART_MESSAGE_MANAGEMENT,
     TTL_CLEANUP_ENABLED,
     MESSAGES, DRINK_EMOJIS,
@@ -118,7 +118,7 @@ async def _play_current(guild_id: int, bot) -> None:
 
     # Validate voice client
     if not player.voice_client or not player.voice_client.is_connected():
-        logger.warning(f"Guild {guild_id}: _play_current called but not connected")
+        logger.debug(f"Guild {guild_id}: Playback requested but not connected to voice")
         return
 
     # Get fresh guild reference
@@ -157,7 +157,7 @@ async def _play_current(guild_id: int, bot) -> None:
     # Get track to play
     track = player.now_playing
     if not track:
-        logger.warning(f"Guild {guild_id}: No track to play")
+        logger.debug(f"Guild {guild_id}: No track to play")
         return
 
     # Validate file exists
@@ -182,16 +182,8 @@ async def _play_current(guild_id: int, bot) -> None:
         is_paused = False
 
     if is_playing or is_paused:
-        # Pause first to reduce scratchy audio artifacts when stopping
-        # (gives audio stream time to settle before FFmpeg termination)
-        if is_playing:
-            try:
-                player.voice_client.pause()
-                await asyncio.sleep(SKIP_SETTLE_DELAY)
-            except (AttributeError, RuntimeError) as e:
-                logger.debug("Guild %s: pause before stop failed: %s", guild_id, e)
-
-        # Use context manager to safely suppress callbacks, even if exceptions occur
+        # Stop current playback directly - pause before stop is not required
+        # Direct stop() with settle delay provides clean audio transitions
         with suppress_callbacks(player):
             player.voice_client.stop()
 
@@ -212,8 +204,9 @@ async def _play_current(guild_id: int, bot) -> None:
                     logger.debug("Guild %s: settle check failed (ignored): %s", guild_id, e)
                     break
 
-    # Small delay to let voice client settle
-    await asyncio.sleep(VOICE_SETTLE_DELAY)
+    # Allow Discord's audio buffers to fully drain after stop before starting new track
+    # This prevents pop/scratchiness artifacts (1s mimics the natural delay from manual pause workflow)
+    await asyncio.sleep(TRACK_CHANGE_SETTLE_DELAY)
 
     audio_source = None
     try:
@@ -297,7 +290,7 @@ async def _play_current(guild_id: int, bot) -> None:
             current_time = _now()
             last_callback_time = getattr(player, '_last_callback_time', 0)
             if current_time - last_callback_time < CALLBACK_MIN_INTERVAL:
-                logger.warning(f"Guild {guild_id}: Callback too quick, skipping")
+                logger.debug(f"Guild {guild_id}: Rapid track advance detected, rate limiting")
                 return
 
             # CRITICAL: Update player attribute so future callbacks see the latest timestamp.

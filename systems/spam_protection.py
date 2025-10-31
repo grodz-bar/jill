@@ -324,7 +324,7 @@ class SpamProtector:
         """
         if not self._processor_task:
             self._processor_task = asyncio.create_task(self._process_commands())
-            logger.info(f"Guild {self.guild_id}: Command processor started")
+            logger.debug(f"Guild {self.guild_id}: Command processor started")
 
     async def _process_commands(self):
         """
@@ -420,7 +420,7 @@ class SpamProtector:
 
         self._aux_tasks.clear()
 
-        logger.info(f"Guild {self.guild_id}: Spam protector shutdown complete")
+        logger.debug(f"Guild {self.guild_id}: Spam protector shutdown complete")
 
     # =========================================================================
     # Configuration

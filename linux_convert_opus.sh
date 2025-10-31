@@ -159,10 +159,6 @@ while true; do
     break
 done
 
-echo ""
-echo "Source folder: $SOURCE_PATH"
-sleep 1
-
 # ============================================
 # STEP 3: Scan for available formats
 # ============================================
@@ -209,14 +205,17 @@ echo "========================================"
 echo "Audio Format Selection"
 echo "========================================"
 echo ""
-echo "The bot supports MP3, FLAC, WAV, M4A, OGG, and OPUS formats."
+echo "Jill supports MP3, FLAC, WAV, M4A, OGG, and OPUS formats."
 echo ""
-echo "HOWEVER, converting to .opus format is HIGHLY RECOMMENDED for:"
-echo "  • Lower CPU usage (especially important on Raspberry Pi)"
-echo "  • Best audio quality (Discord-native format, no double compression)"
-echo "  • Guaranteed stability (zero transcoding overhead)"
+echo "HOWEVER, converting to .opus format is HIGHLY RECOMMENDED!"
 echo ""
-echo "Other formats work but require real-time transcoding (higher CPU usage)."
+echo "When using .opus, you will experience:"
+echo "  - WAY fewer audio artifacts and warping issues (if any)"
+echo "  - Lower CPU usage (important on lower-end systems)"
+echo "  - Best audio quality (.opus is Discord's native format)"
+echo "  - Often smaller file sizes"
+echo ""
+echo "Other formats will technically work, but are NOT recommended."
 echo ""
 echo "Which audio formats would you like to convert to .opus?"
 echo ""

@@ -136,7 +136,7 @@ echo Virtual environment activated successfully.
 timeout /t 1 /nobreak >nul
 echo.
 
-echo Installing dependencies...
+echo Installing dependencies (this may take a moment)...
 python -m pip install --upgrade pip --quiet
 if errorlevel 1 (
     echo.
@@ -144,10 +144,11 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-python -m pip install -r requirements.txt
+python -m pip install -r requirements.txt --quiet
 if errorlevel 1 (
     echo.
     echo ERROR: Failed to install dependencies
+    echo Please check your internet connection and try again.
     pause
     exit /b 1
 )
@@ -236,8 +237,16 @@ REM Command Mode Selection
 echo.
 echo =========================================
 echo Choose command style:
-echo 1) Classic (!play) - Text commands with auto-cleanup
+echo 1) Classic (!play) - Text commands with auto message cleanup
 echo 2) Modern (/play) - Slash commands with buttons
+echo.
+echo Classic Mode: Traditional text commands (e.g., !play, !skip)
+echo   - Bot messages auto-delete after a short time
+echo   - Great for keeping your music channel clean
+echo.
+echo Modern Mode: Slash commands with a persistent control panel
+echo   - Interactive buttons for play/pause/skip
+echo   - Control panel updates in place (no message spam)
 echo =========================================
 echo.
 set /p command_choice="Choice (1 or 2) [default: 1]: "
@@ -261,18 +270,11 @@ echo.
 echo Options:
 echo - Press Enter to use the default location (recommended for portability)
 echo - Type a custom path (e.g., D:\Music\jill\)
-echo - Type 'exit' to cancel setup
 echo.
 echo If the folder doesn't exist, this script will create it for you.
 echo.
 set "DEFAULT_PATH=0"
 set /p "MUSIC_PATH=Music folder path: "
-if /i "%MUSIC_PATH%"=="exit" (
-    echo.
-    echo Setup cancelled.
-    pause
-    exit /b 0
-)
 if "%MUSIC_PATH%"=="" (
     set "MUSIC_PATH=music"
     set "DEFAULT_PATH=1"
@@ -433,22 +435,23 @@ echo OPTIONAL: Audio Conversion
 echo ========================================
 set "CONVERSION_SUCCESS=false"
 echo.
-echo The bot supports MP3, FLAC, WAV, M4A, OGG, and OPUS formats.
+echo Jill supports MP3, FLAC, WAV, M4A, OGG, and OPUS formats.
 echo.
-echo HOWEVER, converting to .opus format is HIGHLY RECOMMENDED for:
-echo   - Lower CPU usage (especially important on lower-end systems)
-echo   - Best audio quality (Discord-native format, no double compression)
-echo   - Guaranteed stability (zero transcoding overhead)
+echo HOWEVER, converting to .opus format is HIGHLY RECOMMENDED!
 echo.
-echo Other formats work but require real-time transcoding (higher CPU usage).
+echo When using .opus, you will experience:
+echo   - WAY fewer audio artifacts and warping issues (if any)
+echo   - Lower CPU usage (important on lower-end systems)
+echo   - Best audio quality (.opus is Discord's native format)
+echo   - Often smaller file sizes
 echo.
-echo Ready to convert and move your music files into !MUSIC_PATH! as .opus files.
+echo Other formats will technically work, but are NOT recommended.
 echo.
-echo In this step, we'll:
+echo If you choose to use this conversion tool, we'll:
 echo 1. Scan a folder for music files
-echo 2. Convert them to .opus
-echo 3. Make sure they're inside the music folder you set for Jill
-echo 4. Delete the pre-conversion music files (IF you want)
+echo 2. Convert them to .opus (with recommended flags)
+echo 3. Make sure they're inside Jill's music folder
+echo 4. Optionally delete the pre-conversion music files
 echo Note: The subfolder structure will stay the exact same
 echo.
 echo.
@@ -505,10 +508,6 @@ if not exist "!SOURCE_FOLDER!" (
     echo.
     goto ASK_CONVERSION_SOURCE
 )
-
-echo.
-echo Source folder: !SOURCE_FOLDER!
-timeout /t 1 /nobreak >nul
 
 REM Scan for available formats
 echo.
@@ -685,7 +684,7 @@ if !TOTAL_CONVERTED_COUNT! GTR 0 (
     timeout /t 2 /nobreak >nul
 )
 
-goto AFTER_CONVERSION
+exit /b
 
 REM ===== SUBROUTINE: Convert a single format =====
 :CONVERT_FORMAT

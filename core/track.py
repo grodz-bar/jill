@@ -27,7 +27,8 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)  # For debug/error logs
+user_logger = logging.getLogger('jill')  # For user-facing messages
 
 # Import from config
 from config import MUSIC_FOLDER, ALLOW_TRANSCODING, SUPPORTED_AUDIO_FORMATS
@@ -254,7 +255,7 @@ def discover_playlists(guild_id: int = 0) -> List[Playlist]:
     """
     music_path = Path(MUSIC_FOLDER)
     if not music_path.exists():
-        logger.warning(f"Guild {guild_id}: Music folder not found: {MUSIC_FOLDER}")
+        user_logger.error(f"Music folder not found: {MUSIC_FOLDER}")
         return []
 
     playlists = []
@@ -280,7 +281,7 @@ def discover_playlists(guild_id: int = 0) -> List[Playlist]:
             return int(match.group(1))
         else:
             # Unnumbered folders sort to end
-            logger.warning(f"Guild {guild_id}: Playlist folder missing numeric prefix (will sort last): {playlist.playlist_id}")
+            logger.debug(f"Playlist missing number prefix, will sort last: {playlist.playlist_id}")
             return 999999
 
     # Sort by number first, then by name (casefold for case-insensitive sorting)
@@ -345,14 +346,14 @@ def load_library(guild_id: int = 0, playlist_path: Optional[Path] = None) -> Tup
     target_path = playlist_path if playlist_path else Path(MUSIC_FOLDER)
 
     if not target_path.exists():
-        logger.warning(f"Guild {guild_id}: Music path not found: {target_path}")
+        user_logger.warning(f"Music path not found: {target_path}")
         return [], {}
 
     # Collect audio files using the new multi-format helper
     files = _collect_audio_files(target_path, guild_id)
     if not files:
         format_msg = "audio files" if ALLOW_TRANSCODING else ".opus files"
-        logger.warning(f"Guild {guild_id}: No {format_msg} found in {target_path}")
+        user_logger.warning(f"No {format_msg} found in {target_path}")
         return [], {}
 
     def get_sort_key(filepath: Path) -> int:
@@ -363,7 +364,7 @@ def load_library(guild_id: int = 0, playlist_path: Optional[Path] = None) -> Tup
             return int(match.group(1))
         else:
             # Unnumbered files sort to end and trigger warning
-            logger.warning(f"Guild {guild_id}: File missing numeric prefix (will sort last): {filename}")
+            logger.debug(f"File missing number prefix, will sort last: {filename}")
             return 999999
 
     # Sort by number first, then by name (casefold for case-insensitive sorting)
@@ -374,5 +375,11 @@ def load_library(guild_id: int = 0, playlist_path: Optional[Path] = None) -> Tup
     # Build fast lookup index
     track_by_index = {track.library_index: track for track in library}
 
-    logger.info("Guild %s: Loaded %d tracks from %s", guild_id, len(library), target_path)
+    # Show clean playlist name, not full path
+    if playlist_path:
+        display_name = target_path.name  # Just the playlist folder name
+    else:
+        display_name = "music folder"
+
+    user_logger.info(f"Loaded {len(library)} tracks from {display_name}")
     return library, track_by_index

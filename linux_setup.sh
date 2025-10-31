@@ -164,6 +164,28 @@ done
 echo ""
 sleep 1
 
+# Command Mode Selection
+echo ""
+echo "========================================="
+echo "Choose command style:"
+echo "1) Classic (!play) - Text commands with auto-cleanup"
+echo "2) Modern (/play) - Slash commands with buttons"
+echo "========================================="
+echo ""
+read -p "Choice (1 or 2) [default: 1]: " command_choice
+
+case "$command_choice" in
+    2)
+        COMMAND_MODE="slash"
+        echo "✓ Using modern slash commands mode"
+        ;;
+    *)
+        COMMAND_MODE="prefix"
+        echo "✓ Using classic prefix commands mode"
+        ;;
+esac
+sleep 1
+
 echo ""
 echo "Step 2: Music Folder Location"
 echo "--------------------------"
@@ -287,6 +309,7 @@ fi
     if [ "$DEFAULT_PATH" -eq 0 ]; then
         echo "MUSIC_FOLDER=$MUSIC_PATH"
     fi
+    echo "JILL_COMMAND_MODE=$COMMAND_MODE"
 } > .env
 
 # Verify .env was created successfully
@@ -826,6 +849,15 @@ echo ""
 echo "For help, see the README folder or 06-troubleshooting.txt"
 echo ""
 echo "========================================"
+if [ "$COMMAND_MODE" = "slash" ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📝 SLASH COMMAND NOTES:"
+    echo "• Commands may take up to 1 hour to appear"
+    echo "• Control panel creates on first /play"
+    echo "• Consider restricting bot to one channel"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+fi
 echo ""
 read -p "Press Enter to exit..."
 echo ""

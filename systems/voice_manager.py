@@ -31,9 +31,11 @@ import disnake
 logger = logging.getLogger(__name__)
 
 # Import from config
-from config.timing import ALONE_PAUSE_DELAY, ALONE_DISCONNECT_DELAY
-from config.features import AUTO_PAUSE_ENABLED, AUTO_DISCONNECT_ENABLED
-from config.messages import MESSAGES
+from config import (
+    ALONE_PAUSE_DELAY, ALONE_DISCONNECT_DELAY,
+    AUTO_PAUSE_ENABLED, AUTO_DISCONNECT_ENABLED,
+    MESSAGES,
+)
 from utils.discord_helpers import safe_disconnect, update_presence, sanitize_for_format
 
 

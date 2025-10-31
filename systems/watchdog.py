@@ -34,7 +34,7 @@ from typing import Dict
 logger = logging.getLogger(__name__)
 
 # Import from config
-from config.timing import WATCHDOG_INTERVAL, WATCHDOG_TIMEOUT, ALONE_WATCHDOG_INTERVAL
+from config import WATCHDOG_INTERVAL, WATCHDOG_TIMEOUT, ALONE_WATCHDOG_INTERVAL
 from systems.voice_manager import PlaybackState
 from utils.context_managers import suppress_callbacks
 
@@ -46,7 +46,7 @@ async def playback_watchdog(bot, players: Dict[int, 'MusicPlayer']):
     Uses adaptive monitoring that checks more frequently when issues are detected.
     """
     from utils.discord_helpers import check_voice_health_and_reconnect, get_health_monitor, ConnectionHealth
-    from config.features import VOICE_HEALTH_CHECK_IN_WATCHDOG
+    from config import VOICE_HEALTH_CHECK_IN_WATCHDOG
 
     await bot.wait_until_ready()
     logger.debug("Playback watchdog started with adaptive voice health monitoring")
@@ -122,7 +122,7 @@ async def playback_watchdog(bot, players: Dict[int, 'MusicPlayer']):
 
                                 from core.playback import _play_next
                                 await player.spam_protector.queue_command(
-                                    lambda gid=guild_id: _play_next(gid, bot),
+                                    lambda: _play_next(guild_id, bot),
                                     priority=True
                                 )
                             except Exception:

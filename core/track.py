@@ -30,13 +30,13 @@ from typing import List, Dict, Tuple, Optional
 logger = logging.getLogger(__name__)
 
 # Import from config
-from config.paths import MUSIC_FOLDER
-from config.features import ALLOW_TRANSCODING, SUPPORTED_AUDIO_FORMATS
-from config.filename_patterns import COMPILED_PATTERN
+from config import MUSIC_FOLDER, ALLOW_TRANSCODING, SUPPORTED_AUDIO_FORMATS
+from config.common.filename_patterns import COMPILED_PATTERNS
 
 # Module-level regex pattern for numeric prefix removal (DRY - used by both Playlist and Track)
 # Pattern is now configurable via config/filename_patterns.py
-_PREFIX_PATTERN = COMPILED_PATTERN
+# Use first pattern (most common: "01 - ", "01. ", etc.)
+_PREFIX_PATTERN = COMPILED_PATTERNS[0]
 
 
 def _collect_audio_files(target_path: Path, guild_id: int = 0) -> List[Path]:

@@ -18,7 +18,11 @@
 """
 Persistence System - Reference Implementation
 
-Manages saving/loading guild state (channels, playlists) to persistent JSON storage.
+Manages saving/loading guild state to persistent JSON storage:
+- Channel IDs (Classic mode only - for message cleanup resumption)
+- Playlist selections (Both modes - remember last playlist)
+- Control panel message IDs (Modern mode only - for panel persistence)
+
 Allows bot to resume state after restart without data loss.
 
 CRITICAL SAFETY PATTERN (MUST FOLLOW FOR ALL PERSISTENCE):
@@ -59,12 +63,12 @@ import json
 import asyncio
 import logging
 import tempfile
-from typing import Dict, Iterable
+from typing import Dict, Iterable, Optional, Any
 
 logger = logging.getLogger(__name__)
 
 # Import from config
-from config.paths import CHANNEL_STORAGE_FILE, PLAYLIST_STORAGE_FILE
+from config import CHANNEL_STORAGE_FILE, PLAYLIST_STORAGE_FILE, MESSAGE_PERSISTENCE_FILE
 
 # =============================================================================
 # CHANNEL PERSISTENCE
@@ -87,6 +91,14 @@ _playlist_cache_loaded = False
 # Async batch save optimization: reduces filesystem writes by batching playlist saves
 _last_playlist_save_task = None
 _pending_playlist_saves = set()
+
+# =============================================================================
+# MESSAGE ID PERSISTENCE
+# =============================================================================
+
+# Message ID cache
+_message_cache: Dict[int, Dict[str, Any]] = {}
+_message_cache_loaded = False
 
 
 def load_last_channels() -> Dict[int, int]:
@@ -397,6 +409,85 @@ def save_last_playlist_immediate(guild_id: int, playlist_id: str) -> None:
         logger.exception("Could not persist playlist storage immediately")
 
 
+# =============================================================================
+# MESSAGE ID PERSISTENCE FUNCTIONS
+# =============================================================================
+
+def load_message_ids() -> Dict[int, Dict[str, Any]]:
+    """Load saved message IDs."""
+    global _message_cache, _message_cache_loaded
+
+    if _message_cache_loaded:
+        return _message_cache.copy()
+
+    if os.path.exists(MESSAGE_PERSISTENCE_FILE):
+        try:
+            with open(MESSAGE_PERSISTENCE_FILE, 'r') as f:
+                data = json.load(f)
+                _message_cache = {int(k): v for k, v in data.items()}
+                logger.debug(f"Loaded message IDs for {len(_message_cache)} guilds")
+        except Exception as e:
+            logger.error(f"Failed to load message IDs: {e}")
+            _message_cache = {}
+    else:
+        _message_cache = {}
+
+    _message_cache_loaded = True
+    return _message_cache.copy()
+
+
+def save_message_ids(guild_id: int, control_panel_id: int = None,
+                     now_playing_id: int = None, channel_id: int = None):
+    """Save message IDs for a guild."""
+    global _message_cache
+
+    if not _message_cache_loaded:
+        load_message_ids()
+
+    if guild_id not in _message_cache:
+        _message_cache[guild_id] = {}
+
+    if control_panel_id is not None:
+        _message_cache[guild_id]['control_panel_id'] = control_panel_id
+    if now_playing_id is not None:
+        _message_cache[guild_id]['now_playing_id'] = now_playing_id
+    if channel_id is not None:
+        _message_cache[guild_id]['channel_id'] = channel_id
+
+    _flush_message_cache()
+
+
+def clear_message_ids(guild_id: int):
+    """Clear saved message IDs."""
+    global _message_cache
+
+    if guild_id in _message_cache:
+        del _message_cache[guild_id]
+        _flush_message_cache()
+
+
+def _flush_message_cache():
+    """Write message cache to disk."""
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', delete=False,
+                                        dir=os.path.dirname(MESSAGE_PERSISTENCE_FILE) or '.') as tmp:
+            json.dump(_message_cache, tmp, indent=2)
+            tmp_path = tmp.name
+
+        os.replace(tmp_path, MESSAGE_PERSISTENCE_FILE)
+        logger.debug("Flushed message ID cache")
+    except Exception as e:
+        logger.error(f"Failed to flush message cache: {e}")
+
+
+def get_message_ids(guild_id: int) -> Optional[Dict[str, Any]]:
+    """Get saved message IDs."""
+    if not _message_cache_loaded:
+        load_message_ids()
+
+    return _message_cache.get(guild_id)
+
+
 async def flush_all_immediately():
     """
     Immediately flush all pending saves to disk without delay.
@@ -424,3 +515,7 @@ async def flush_all_immediately():
         await _flush_playlist_saves(immediate=True)
         if not _pending_playlist_saves:
             break
+
+    # Flush message cache if loaded
+    if _message_cache_loaded:
+        _flush_message_cache()

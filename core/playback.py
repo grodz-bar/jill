@@ -65,19 +65,17 @@ class PlaybackSession:
         self.cancelled = True
 
 # Import from config
-from config.timing import (
+from config import (
     VOICE_SETTLE_DELAY,
     MESSAGE_SETTLE_DELAY,
     CALLBACK_MIN_INTERVAL,
     VOICE_CONNECTION_MAX_WAIT,
     VOICE_CONNECTION_CHECK_INTERVAL,
     SKIP_SETTLE_DELAY,
-)
-from config.features import (
     SMART_MESSAGE_MANAGEMENT,
     TTL_CLEANUP_ENABLED,
+    MESSAGES, DRINK_EMOJIS,
 )
-from config.messages import MESSAGES, DRINK_EMOJIS
 from systems.voice_manager import PlaybackState
 from utils.discord_helpers import (
     make_audio_source,
@@ -142,7 +140,7 @@ async def _play_current(guild_id: int, bot) -> None:
         )
         # Try to skip to next track since this one can't play properly
         await player.spam_protector.queue_command(
-            lambda gid=guild_id: _play_next(gid, bot),
+            lambda: _play_next(guild_id, bot),
             priority=True
         )
         return
@@ -222,6 +220,13 @@ async def _play_current(guild_id: int, bot) -> None:
         # Create audio source (format-aware: opus passthrough or transcoding)
         audio_source = make_audio_source(str(track.file_path))
 
+        # Warmup FFmpeg: First read() takes 3-4 seconds on BOTH FFmpegOpusAudio and FFmpegPCMAudio
+        # If this initialization happens during playback, audio plays too fast at start (warping)
+        # Call it here (async, non-blocking) to trigger FFmpeg subprocess initialization before .play()
+        # Tradeoff: Loses first 20ms of audio (imperceptible) to prevent warping (very noticeable)
+        # This fixes the "fast playback at start" issue for ALL audio formats
+        await asyncio.to_thread(audio_source.read)
+
         # Capture track ID for this specific callback
         callback_track_id = track.track_id
 
@@ -300,9 +305,8 @@ async def _play_current(guild_id: int, bot) -> None:
             bot.loop.call_soon_threadsafe(setattr, player, '_last_callback_time', current_time)
 
             # Queue the next track (priority=True to ensure internal commands aren't dropped)
-            # Bind guild_id in lambda to avoid late-binding surprises
             asyncio.run_coroutine_threadsafe(
-                player.spam_protector.queue_command(lambda gid=guild_id: _play_next(gid, bot), priority=True),
+                player.spam_protector.queue_command(lambda: _play_next(guild_id, bot), priority=True),
                 bot.loop
             )
 

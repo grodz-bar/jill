@@ -71,6 +71,7 @@ STEP 4: RUN SETUP WIZARD
 The wizard will automatically:
 - Create a virtual environment (venv/)
 - Install required Python packages
+- Ask you to choose command mode (Classic !play or Modern /play)
 - Generate your .env configuration file
 - Create the music folder if it doesn't exist
 - Optionally convert your audio files to .opus
@@ -86,7 +87,13 @@ Running the Wizard
 
    ./linux_setup.sh
 
-3. Follow the interactive prompts
+3. Follow the interactive prompts:
+   - Enter your Discord bot token
+   - Choose command mode:
+     * Classic (1): Text commands like !play with auto-cleanup
+     * Modern (2): Slash commands like /play with interactive buttons
+   - Set your music folder location
+   - Optionally convert audio files to .opus
 
 When done → Continue to STEP 5
 
@@ -219,6 +226,7 @@ NOTE: Do this so bot will start automatically after a machine boot.
 
    Environment="DISCORD_BOT_TOKEN=YOUR-BOT-TOKEN"
    Environment="MUSIC_FOLDER=/home/YOUR-USERNAME/jill/music/"
+   Environment="JILL_COMMAND_MODE=prefix"
 
 3. Save and exit (Ctrl+X, Y, Enter in nano)
 
@@ -249,18 +257,44 @@ Config files are just text files - edit them with nano:
 
 1. cd ~/jill/config
 2. ls
-3. nano features.py
+3. nano common/core.py    # or prefix/features.py, etc.
 4. Make changes and save (Ctrl+X, Y, Enter)
+
+Command Mode
+------------
+
+To switch between Classic (!play) and Modern (/play) modes:
+
+1. Edit .env file:
+   nano ~/jill/.env
+
+2. Change JILL_COMMAND_MODE to 'prefix' or 'slash':
+   JILL_COMMAND_MODE=prefix    # Classic mode
+   JILL_COMMAND_MODE=slash     # Modern mode
+
+3. Restart bot:
+   sudo systemctl restart jill.service
 
 Config Files
 ------------
 
-Files in the /config/ folder to customize:
-- config/aliases.py - Command aliases
-- config/features.py - Turn features on/off
-- config/messages.py - Bot text responses
-- config/timing.py - Timing and cooldown settings
-- config/paths.py - File paths
+COMMON (Both Modes):
+- config/common/core.py - Bot settings, logging, voice health
+- config/common/permissions.py - VA-11 HALL-A themed permissions
+- config/common/filename_patterns.py - File naming patterns
+
+CLASSIC MODE (prefix):
+- config/prefix/features.py - Command prefix, feature toggles
+- config/prefix/messages.py - Bot response text
+- config/prefix/aliases.py - Command aliases
+- config/prefix/timing.py - Cooldowns, cleanup timing
+
+MODERN MODE (slash):
+- config/slash/features.py - Feature toggles
+- config/slash/messages.py - Bot response text, button labels
+- config/slash/timing.py - Update throttling
+- config/slash/embeds.py - Rich embed formatting
+- config/slash/buttons.py - Button components
 
 Make sure to restart bot after changes:
 

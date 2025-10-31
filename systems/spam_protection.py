@@ -26,6 +26,9 @@ LAYER 2: Global Rate Limiter - Protects Discord API from rate limiting
 LAYER 3: Command Debouncing - Waits for spam to stop before executing
 LAYER 4: Serial Queue - Executes commands one at a time (prevents race conditions)
 LAYER 5: Post-Execution Cooldowns - Prevents rapid re-execution
+
+NOTE: LAYER 2 (Global Rate Limiter) is skipped in Modern (/play) mode since
+Discord handles rate limiting for slash commands internally.
 """
 
 import asyncio
@@ -36,7 +39,8 @@ from typing import Optional, Callable, Awaitable, Dict, Any
 logger = logging.getLogger(__name__)
 
 # Import from config
-from config.timing import (
+from config import (
+    COMMAND_MODE,
     USER_COMMAND_SPAM_THRESHOLD,
     GLOBAL_RATE_LIMIT,
     USER_SPAM_WARNING_THRESHOLD,
@@ -45,13 +49,11 @@ from config.timing import (
     SPAM_CLEANUP_DELAY,
     COMMAND_QUEUE_MAXSIZE,
     COMMAND_QUEUE_TIMEOUT,
-)
-from config.features import (
     SPAM_PROTECTION_ENABLED,
     SPAM_WARNING_ENABLED,
     AUTO_CLEANUP_ENABLED,
+    MESSAGES,
 )
-from config.messages import MESSAGES
 
 
 class SpamProtector:
@@ -216,6 +218,10 @@ class SpamProtector:
         Returns:
             bool: True if rate limit hit (command should be silently ignored)
         """
+        # Skip rate limiting for slash (Discord handles it)
+        if COMMAND_MODE == 'slash':
+            return False
+
         if not SPAM_PROTECTION_ENABLED:
             return False
 

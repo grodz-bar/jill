@@ -2,6 +2,10 @@
 
 A simple, robust Discord music bot that plays local audio files and supports multiple playlists, auto-cleanup, song selection, spam protection, and more.
 
+**Choose your command style:**
+- **Classic Mode** (`!play`): Text commands with automatic message cleanup
+- **Modern Mode** (`/play`): Slash commands with interactive buttons and live panels
+
 ---
 
 ## About
@@ -12,12 +16,25 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 ---
 
 ## Features
-- **Customization**: Rename commands, rewrite messages, flip features on or off, make it yours.
+- **Dual Command Modes**: Choose Classic (`!play`) or Modern (`/play`) during setup
 - **Multiple playlists**: You're using subfolders? Now it's a playlist!
 - **Spam protection**: Hammer it all you want, debounce, cooldowns, and limits keep it sane.
-- **Smart**: Jill reads the room, pauses when alone, cleans up after herself.
+- **Smart**: Jill reads the room, pauses when alone, manages herself.
 - **Shuffle mode**: Toggle it on or off, she'll auto-reshuffle as well!
 - **Quick search**: Just say the name or track number, works on playlists too!
+
+**Classic Mode** (`!play`):
+- Text-based commands with customizable prefix
+- Automatic message cleanup after 15 seconds
+- Rename commands, change prefix, full customization
+- Traditional Discord bot experience
+
+**Modern Mode** (`/play`):
+- Discord's native slash commands (type `/` to see all)
+- Interactive button controls (pause, skip, shuffle, etc.)
+- Auto-updating control panel with live playback status
+- Ephemeral messages (only you see command responses)
+- Discord handles rate limiting and permissions
 
 ---
 
@@ -25,7 +42,7 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 0. Install [Python 3.11+](https://www.python.org/downloads/) and [FFmpeg](https://www.ffmpeg.org/download.html)
 1. Download the [latest release](https://github.com/grodz-bar/jill/releases/latest)
 2. Get a Discord bot token → [Getting Discord Token](02-Getting-Discord-Token.md)
-3. Run the interactive setup:
+3. Run the interactive setup (choose command mode during setup):
    - **Linux:** [`./linux_setup.sh`](../linux_setup.sh)
    - **Windows:** [`win_setup.bat`](../win_setup.bat)
 5. Run the bot:
@@ -45,6 +62,8 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 > Since .opus is **HIGHLY RECOMMENDED** for the best experience, I've included a very nice converter script.
 ---
 ## Commands
+
+**Classic Mode** (`!play`):
 ```text
 !play             # start/resume playback
 !play [track]     # jump by number or name (!play 5 or !play lonely job)
@@ -57,16 +76,57 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 !playlist [name]  # switch to a playlist (!playlist dome keeper)
 !playlists        # show all available playlists
 !shuffle          # toggle shuffle
+!aliases          # show all command aliases
 !help             # show help
 ```
+> **Note:** Command prefix (`!`) is configurable via `config/prefix/features.py`
+
+**Modern Mode** (`/play`):
+```text
+/play             # start/resume playback
+/play [track]     # jump by number or name (/play track:lonely job)
+/pause            # pause
+/skip             # next track
+/previous         # previous track
+/stop             # disconnect/reset
+/queue            # show the current queue
+/tracks           # show tracks in the current playlist
+/playlist [name]  # switch to a playlist (/playlist name:dome keeper)
+/playlists        # show all available playlists
+/shuffle          # toggle shuffle
+/help             # show help
+```
+**Plus:** Interactive button controls on the control panel
+- Buttons appear after first `/play` command
+- Click to control: play, pause, skip, previous, shuffle, stop
+- Control panel updates automatically with current track info
+
+> **Note:** Type `/` in Discord to see all slash commands with descriptions
 
 ---
 
 ## Config
 
-- [`config/messages.py`](../config/messages.py) — Customize bot responses.
-- [`config/features.py`](../config/features.py) — Turn features on/off.
-- [`config/aliases.py`](../config/aliases.py) — Change command aliases.
+**Command Mode:**
+- [`.env`](../.env) — Set `JILL_COMMAND_MODE` to `prefix` or `slash`
+
+**Common (Both Modes):**
+- [`config/common/core.py`](../config/common/core.py) — Bot settings, logging, voice health
+- [`config/common/permissions.py`](../config/common/permissions.py) — VA-11 HALL-A themed permissions
+- [`config/common/filename_patterns.py`](../config/common/filename_patterns.py) — File naming patterns
+
+**Classic Mode (prefix):**
+- [`config/prefix/features.py`](../config/prefix/features.py) — Command prefix, feature toggles
+- [`config/prefix/messages.py`](../config/prefix/messages.py) — Bot response text
+- [`config/prefix/aliases.py`](../config/prefix/aliases.py) — Command aliases
+- [`config/prefix/timing.py`](../config/prefix/timing.py) — Cooldowns, cleanup timing
+
+**Modern Mode (slash):**
+- [`config/slash/features.py`](../config/slash/features.py) — Feature toggles
+- [`config/slash/messages.py`](../config/slash/messages.py) — Bot response text, button labels
+- [`config/slash/timing.py`](../config/slash/timing.py) — Update throttling
+- [`config/slash/embeds.py`](../config/slash/embeds.py) — Rich embed formatting
+- [`config/slash/buttons.py`](../config/slash/buttons.py) — Button components
 
 ---
 

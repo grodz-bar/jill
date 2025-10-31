@@ -23,10 +23,22 @@ plus adaptive voice health monitoring for auto-fixing stuttering audio.
 
 All functions gracefully handle None values and Discord API errors.
 
+Command Helper Functions (Boilerplate Reducers):
+- get_guild_player(): Get MusicPlayer from any context type (prefix/slash)
+- ensure_voice_connected(): Validate voice connection with automatic error messaging
+- send_player_message(): Send messages with automatic sanitization and TTL cleanup
+- spam_protected_execute(): Apply 3-layer spam protection to command execution
+
 Voice Health Monitoring:
 - VoiceHealthMonitor: Adaptive state machine for connection quality monitoring
 - check_voice_health_and_reconnect(): Main health check function
 - ConnectionHealth: Health state enum (Normal/Suspicious/Post-Reconnect/Recovery)
+
+Utility Functions:
+- sanitize_for_format(): Escape braces in user strings to prevent .format() crashes
+- can_connect_to_channel(): Check if bot has permission to join voice channel
+- safe_disconnect(): Gracefully disconnect from voice with error handling
+- update_presence(): Update bot status with rate limiting
 """
 
 import asyncio
@@ -38,8 +50,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # Import config
-from config.features import BOT_STATUS
-from config.timing import FFMPEG_BEFORE_OPTIONS
+from config import BOT_STATUS, FFMPEG_BEFORE_OPTIONS
 
 # Global presence state (bot-wide, not per-guild)
 _last_presence_update: float = 0
@@ -69,6 +80,248 @@ def sanitize_for_format(text: str) -> str:
         'Now serving: Song {test}.opus'
     """
     return text.replace('{', '{{').replace('}', '}}')
+
+
+# =============================================================================
+# COMMAND HELPER FUNCTIONS
+# =============================================================================
+# These functions reduce boilerplate in command handlers by providing common
+# patterns like player retrieval and voice connection validation.
+
+async def get_guild_player(context, bot):
+    """
+    Get MusicPlayer for a guild from any context type.
+
+    Handles both prefix commands (Context) and slash commands (Interaction),
+    eliminating the need to manually extract guild.id and pass bot.user.id.
+
+    Args:
+        context: disnake.Context, disnake.Interaction, or guild ID (int)
+        bot: Bot instance
+
+    Returns:
+        MusicPlayer: The guild's music player instance
+
+    Example:
+        # Before (33 occurrences):
+        player = await get_player(ctx.guild.id, bot, bot.user.id)
+        player = await get_player(inter.guild.id, bot, bot.user.id)
+
+        # After:
+        player = await get_guild_player(ctx, bot)
+        player = await get_guild_player(inter, bot)
+    """
+    from core.player import get_player
+
+    # Handle different context types
+    if hasattr(context, 'guild'):
+        # Context (prefix) or Interaction (slash)
+        guild_id = context.guild.id
+    else:
+        # Raw guild ID
+        guild_id = context
+
+    return await get_player(guild_id, bot, bot.user.id)
+
+
+async def ensure_voice_connected(player, context, error_message: Optional[str] = None) -> bool:
+    """
+    Validate that player has active voice connection, send error if not.
+
+    Consolidates the common pattern of checking voice connection and
+    sending error messages when disconnected. Reduces 5-6 lines to 2 lines.
+
+    Args:
+        player: MusicPlayer instance to check
+        context: Command context (for error message source)
+        error_message: Custom error message (defaults to error_not_connected)
+
+    Returns:
+        bool: True if connected, False if not (error already sent)
+
+    Example:
+        # Before (10 occurrences):
+        if not player.voice_client or not player.voice_client.is_connected():
+            await player.cleanup_manager.send_with_ttl(
+                player.text_channel,
+                MESSAGES['error_not_connected'],
+                'error',
+                ctx.message
+            )
+            return
+
+        # After:
+        if not await ensure_voice_connected(player, ctx):
+            return
+
+    Note:
+        Automatically determines if context is prefix (has .message) or slash (no .message)
+    """
+    # Check voice connection status
+    if player.voice_client and player.voice_client.is_connected():
+        return True
+
+    # Not connected - send error message
+    from config import MESSAGES
+    msg = error_message or MESSAGES['error_not_connected']
+
+    # Determine source message for TTL cleanup
+    source_msg = context.message if hasattr(context, 'message') else None
+
+    await player.cleanup_manager.send_with_ttl(
+        player.text_channel,
+        msg,
+        'error',
+        source_msg
+    )
+
+    return False
+
+
+async def send_player_message(
+    player,
+    context,
+    message_key: str,
+    ttl_type: str = 'info',
+    **format_kwargs
+) -> Optional[disnake.Message]:
+    """
+    Send message through player's cleanup manager with automatic formatting.
+
+    Consolidates the common pattern of sending formatted messages with TTL cleanup.
+    Automatically handles sanitization and context type detection.
+
+    Args:
+        player: MusicPlayer instance
+        context: Command context (ctx or inter)
+        message_key: Key in MESSAGES dict (e.g., 'now_playing', 'error_not_in_voice')
+        ttl_type: Message type for TTL lookup (default: 'info')
+        **format_kwargs: Arguments for message.format() - strings are auto-sanitized
+
+    Returns:
+        Sent message, or None if send failed
+
+    Example:
+        # Before (5 lines):
+        await player.cleanup_manager.send_with_ttl(
+            player.text_channel,
+            MESSAGES['now_playing'].format(track=sanitize_for_format(track.name)),
+            'now_serving',
+            ctx.message
+        )
+
+        # After (1 line):
+        await send_player_message(player, ctx, 'now_playing', 'now_serving', track=track.name)
+
+    Note:
+        - Automatically sanitizes string arguments for .format() safety
+        - Detects context type (prefix has .message, slash doesn't)
+        - Non-string kwargs (int, bool, etc.) pass through unchanged
+    """
+    from config import MESSAGES
+
+    # Sanitize all string format arguments to prevent .format() crashes
+    safe_kwargs = {}
+    for key, value in format_kwargs.items():
+        if isinstance(value, str):
+            safe_kwargs[key] = sanitize_for_format(value)
+        else:
+            # Non-strings (int, bool, etc.) don't need sanitization
+            safe_kwargs[key] = value
+
+    # Format message with sanitized arguments
+    message_text = MESSAGES[message_key].format(**safe_kwargs) if safe_kwargs else MESSAGES[message_key]
+
+    # Determine source message for TTL cleanup
+    source_msg = context.message if hasattr(context, 'message') else None
+
+    # Determine target channel (with fallback for commands run before voice connection)
+    channel = player.text_channel or (context.channel if hasattr(context, 'channel') else None)
+
+    # Send through cleanup manager
+    return await player.cleanup_manager.send_with_ttl(
+        channel,
+        message_text,
+        ttl_type,
+        source_msg
+    )
+
+
+async def spam_protected_execute(
+    player,
+    ctx,
+    bot,
+    command_name: str,
+    execute_func,
+    debounce_window: float,
+    cooldown: float,
+    spam_threshold: int,
+    spam_message_key: Optional[str] = None
+) -> bool:
+    """
+    Execute a command with full 3-layer spam protection.
+
+    Consolidates the common spam protection pattern:
+    - Layer 1: User spam check (per-user rate limit)
+    - Layer 2: Global rate limit (entire bot)
+    - Layer 3: Command debouncing (prevents rapid duplicate commands)
+
+    Args:
+        player: MusicPlayer instance
+        ctx: Command context
+        bot: Bot instance
+        command_name: Command identifier for spam tracking (e.g., "pause", "skip")
+        execute_func: The _execute_* function to call (e.g., _execute_pause)
+        debounce_window: Debounce window in seconds
+        cooldown: Cooldown period in seconds
+        spam_threshold: Max commands in debounce window before warning
+        spam_message_key: Optional key in MESSAGES for spam warning (e.g., 'spam_pause')
+
+    Returns:
+        True if command was queued for execution, False if blocked by spam protection
+
+    Example:
+        # Before (10 lines):
+        if await player.spam_protector.check_user_spam(ctx.author.id, "pause"):
+            return
+        if player.spam_protector.check_global_rate_limit():
+            return
+        await player.spam_protector.debounce_command(
+            "pause",
+            lambda: _execute_pause(ctx, bot),
+            PAUSE_DEBOUNCE_WINDOW,
+            PAUSE_COOLDOWN,
+            PAUSE_SPAM_THRESHOLD,
+            MESSAGES.get('spam_pause')
+        )
+
+        # After (1 line):
+        await spam_protected_execute(
+            player, ctx, bot, "pause", _execute_pause,
+            PAUSE_DEBOUNCE_WINDOW, PAUSE_COOLDOWN, PAUSE_SPAM_THRESHOLD, 'spam_pause'
+        )
+    """
+    # Layer 1: User spam check (per-user rate limit)
+    if await player.spam_protector.check_user_spam(ctx.author.id, command_name):
+        return False
+
+    # Layer 2: Global rate limit (entire bot)
+    if player.spam_protector.check_global_rate_limit():
+        return False
+
+    # Layer 3: Command debouncing (prevents rapid duplicates, queues execution)
+    from config import MESSAGES
+    spam_msg = MESSAGES.get(spam_message_key) if spam_message_key else None
+
+    await player.spam_protector.debounce_command(
+        command_name,
+        lambda: execute_func(ctx, bot),
+        debounce_window,
+        cooldown,
+        spam_threshold,
+        spam_msg
+    )
+    return True
 
 
 def _get_status_enum() -> disnake.Status:
@@ -411,8 +664,12 @@ class VoiceHealthMonitor:
         needs_reconnect = False
 
         # Evaluate connection health
-        if latency is None:
-            # Can't determine latency, be conservative
+        # Note: Fresh voice connections report latency as inf (infinity) because
+        # metrics aren't available yet. This is normal and should be treated as
+        # "unknown" not "bad". Latency becomes available after 1-3 seconds once
+        # the UDP socket is established and RTT measurements are taken.
+        if latency is None or latency == float('inf'):
+            # Can't determine latency yet (None or inf on fresh connections)
             health_status = "unknown"
         elif latency > self.BAD_LATENCY:
             health_status = "bad"
@@ -488,6 +745,13 @@ async def check_voice_health_and_reconnect(player, guild, bot) -> bool:
     connection quality. Catches degraded connections quickly while
     avoiding unnecessary overhead.
 
+    Fresh Connection Handling:
+        Voice connections report latency as inf (infinity) immediately after
+        connecting because metrics aren't available yet. This is normal Discord
+        behavior - latency becomes available after 1-3 seconds once UDP socket
+        is established and RTT measurements are taken. We treat inf latency as
+        "unknown" (not "bad") to prevent false reconnect loops on fresh connections.
+
     Args:
         player: MusicPlayer instance
         guild: Discord guild
@@ -496,7 +760,7 @@ async def check_voice_health_and_reconnect(player, guild, bot) -> bool:
     Returns:
         True if healthy or successfully reconnected, False if reconnect failed
     """
-    from config.features import VOICE_HEALTH_CHECK_ENABLED
+    from config import VOICE_HEALTH_CHECK_ENABLED
 
     # Feature toggle
     if not VOICE_HEALTH_CHECK_ENABLED:
@@ -546,10 +810,15 @@ async def check_voice_health_and_reconnect(player, guild, bot) -> bool:
 
         # Perform reconnect if needed
         if needs_reconnect:
-            if latency:
+            # Only log latency if it's a valid number (not None or inf)
+            if latency and latency != float('inf'):
                 logger.warning(
                     f"Guild {guild.id}: Voice connection degraded "
                     f"(latency: {latency*1000:.0f}ms), reconnecting to fix stuttering"
+                )
+            else:
+                logger.warning(
+                    f"Guild {guild.id}: Voice connection unhealthy, reconnecting to fix issues"
                 )
             return await _force_voice_reconnect(player, guild, bot, monitor)
 
@@ -577,7 +846,7 @@ async def _force_voice_reconnect(player, guild, bot, monitor: VoiceHealthMonitor
         True if reconnected successfully, False otherwise
     """
     from utils.context_managers import reconnecting_state, suppress_callbacks
-    from config.timing import VOICE_RECONNECT_DELAY
+    from config import VOICE_RECONNECT_DELAY
 
     # Check reconnect cooldown (prevent rapid reconnects)
     time_since_last = _now() - monitor.last_reconnect

@@ -193,7 +193,7 @@ HELP_TEXT = {
     # Playlists section (only shows if has_playlist_structure() = True)
     'playlist_commands': [
         '`!playlists` - Show all available playlists',
-        '`!list [name]` - Switch to different playlist'
+        '`!playlist <name>` - Switch to different playlist'
     ],
     
     # Tracks section (only shows if LIBRARY_DISPLAY_ENABLED = True)

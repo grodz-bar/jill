@@ -16,13 +16,16 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 """
-Message Cleanup System
+Message Cleanup System (Classic Mode Only)
 
 Implements dual cleanup architecture for keeping Discord chat clean:
 1. TTL Cleanup - Scheduled deletion with expiry times
 2. Channel Sweep - Periodic history scanning
 
 Both systems operate independently for redundancy and robustness.
+
+NOTE: Only active in Classic (!play) mode. Modern (/play) mode uses
+ephemeral messages which auto-cleanup. Disabled when COMMAND_MODE='slash'.
 """
 
 import asyncio
@@ -36,7 +39,8 @@ import disnake
 logger = logging.getLogger(__name__)
 
 # Import from config
-from config.timing import (
+from config import (
+    COMMAND_MODE, COMMAND_PREFIX,
     TTL_CHECK_INTERVAL,
     MESSAGE_TTL,
     USER_COMMAND_TTL,
@@ -50,7 +54,7 @@ from config.timing import (
     MESSAGE_BURIAL_THRESHOLD,
     USER_COMMAND_MAX_LENGTH,
 )
-from config.features import (
+from config import (
     AUTO_CLEANUP_ENABLED,
     TTL_CLEANUP_ENABLED,
     BATCH_DELETE_ENABLED,
@@ -80,6 +84,9 @@ class CleanupManager:
             text_channel: Text channel to clean up (can be set later)
             bot_user_id: Bot's Discord user ID for message filtering
         """
+        # Disable entirely in slash mode
+        self.enabled = (COMMAND_MODE == 'prefix')
+
         self.guild_id = guild_id
         self.text_channel = text_channel
         self.bot_user_id = bot_user_id
@@ -106,6 +113,10 @@ class CleanupManager:
 
         Should be called after initialization to begin background cleanup.
         """
+        if not self.enabled:
+            logger.debug(f"Guild {self.guild_id}: Cleanup disabled in slash mode")
+            return
+
         if not AUTO_CLEANUP_ENABLED:
             logger.info(f"Guild {self.guild_id}: Auto cleanup disabled - skipping workers")
             return
@@ -153,6 +164,9 @@ class CleanupManager:
         Checks queue periodically (TTL_CHECK_INTERVAL) and deletes expired messages.
         Uses event-driven wake for efficiency.
         """
+        if not self.enabled:
+            return
+
         while True:
             try:
                 # Event-driven wake: wait for new messages or timeout
@@ -223,6 +237,9 @@ class CleanupManager:
 
         Runs every HISTORY_CLEANUP_INTERVAL seconds to catch missed messages.
         """
+        if not self.enabled:
+            return
+
         # Run initial cleanup
         if self.text_channel and self._last_history_cleanup == 0:
             await self.cleanup_channel_history()
@@ -299,7 +316,7 @@ class CleanupManager:
                     other_bot_messages.append(message)
 
                 # User commands
-                elif message.content.startswith('!') and len(message.content) <= USER_COMMAND_MAX_LENGTH:
+                elif message.content.startswith(COMMAND_PREFIX) and len(message.content) <= USER_COMMAND_MAX_LENGTH:
                     messages_to_delete.append(message)
 
             # Keep most recent other bot message, delete older ones
@@ -377,6 +394,9 @@ class CleanupManager:
         Returns:
             The sent message, or None if send failed
         """
+        if not self.enabled:
+            return await safe_send(channel, content)
+
         if not channel:
             return None
 

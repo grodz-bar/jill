@@ -41,7 +41,8 @@ COMMAND_ALIASES = {
     'stop': ['leave', 'disconnect', 'dc', 'bye'],
     'previous': ['prev', 'back', 'ps'],
     'shuffle': ['mess', 'scramble', 'fix', 'organize'],
-    'tracks': ['playlist', 'album', 'library', 'songs', 'list', 'allsongs', 'all', 'fullqueue'],
+    'tracks': ['album', 'library', 'songs', 'list', 'allsongs', 'all', 'fullqueue'],
+    'playlist': ['switch', 'change', 'load', 'switchplaylist'],
     'playlists': ['libraries', 'albums', 'lists', 'collections'],
     'help': ['commands', 'jill'],
     'aliases': [],  # Command to show all aliases (no aliases for the aliases command itself!)

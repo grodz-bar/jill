@@ -36,8 +36,13 @@ import os
 # Load environment variables
 load_dotenv()
 
-# Import command prefix and logging config early (needed for bot initialization)
-from config.features import COMMAND_PREFIX, LOG_LEVEL, SUPPRESS_LIBRARY_LOGS
+# Import command mode and configuration early (needed for bot initialization)
+from config import COMMAND_MODE, COMMAND_PREFIX, LOG_LEVEL, SUPPRESS_LIBRARY_LOGS
+
+# Conditional imports for slash mode
+if COMMAND_MODE == 'slash':
+    from systems.control_panel import get_control_panel_manager
+    from handlers.buttons import setup as setup_buttons
 
 # =============================================================================
 # LOGGING SETUP
@@ -103,10 +108,16 @@ intents.message_content = True
 intents.voice_states = True
 intents.members = True
 
+# Command sync flags for slash mode
+command_sync_flags = None
+if COMMAND_MODE == 'slash':
+    command_sync_flags = commands.CommandSyncFlags.default()
+
 bot = commands.Bot(
-    command_prefix=COMMAND_PREFIX,
+    command_prefix=COMMAND_PREFIX if COMMAND_MODE == 'prefix' else commands.when_mentioned,
     intents=intents,
-    help_command=None
+    help_command=None,
+    command_sync_flags=command_sync_flags,
 )
 
 # Import our modules
@@ -162,6 +173,7 @@ async def on_ready():
     print("="*60 + "\n")
     
     logger.info(f'Bot connected as {bot.user}')
+    logger.info(f'Command mode: {COMMAND_MODE}')
     logger.info('Jill v1.0.0 - Copyright (C) 2025 grodz-bar')
     logger.info('Licensed under GPL 3.0 - See LICENSE.md for details')
     logger.info("Press Ctrl+C or send SIGTERM to shutdown gracefully")
@@ -209,6 +221,25 @@ async def on_ready():
     # Start watchdogs
     _playback_watchdog_task = bot.loop.create_task(playback_watchdog(bot, players))
     _alone_watchdog_task = bot.loop.create_task(alone_watchdog(bot, players))
+
+    # Slash mode initialization
+    if COMMAND_MODE == 'slash':
+        # Initialize control panel manager
+        control_panel = get_control_panel_manager(bot)
+        logger.info("Control panel manager initialized")
+
+        # Setup button handler
+        setup_buttons(bot)
+        logger.info("Button handler registered")
+
+        # Sync slash commands
+        try:
+            await bot.sync_application_commands()
+            logger.info("Slash commands synced")
+        except Exception as e:
+            logger.error(f"Failed to sync slash commands: {e}")
+    else:
+        logger.info("Using prefix command mode")
 
 @bot.event
 async def on_disconnect():
@@ -294,7 +325,12 @@ async def on_command_error(ctx, error):
         logger.debug(f"Guild {ctx.guild.id if ctx.guild else 'DM'}: Unknown command from {ctx.author}: {ctx.message.content}")
         return
 
-    # For other errors, log them for debugging
+    # Missing required arguments - user error, not code error (clean log at WARNING level)
+    if isinstance(error, commands.MissingRequiredArgument):
+        logger.warning(f"Command error in {ctx.command}: {error}")
+        return
+
+    # For actual errors (code problems, API failures, etc.), log with full traceback
     logger.error(f"Command error in {ctx.command}: {error}", exc_info=error)
 
 # =============================================================================
@@ -347,6 +383,20 @@ async def shutdown_bot():
         except Exception as e:
             logger.error(f"Guild {guild_id}: Error during shutdown: {e}")
 
+    # Clean up control panels in slash mode
+    if COMMAND_MODE == 'slash':
+        logger.info("Cleaning up control panels...")
+        try:
+            control_panel = get_control_panel_manager(bot)
+            if control_panel:
+                for guild_id in list(control_panel.panels.keys()):
+                    try:
+                        await control_panel.delete_panel(guild_id)
+                    except Exception as e:
+                        logger.error(f"Error cleaning panel for guild {guild_id}: {e}")
+        except Exception as e:
+            logger.error(f"Error during control panel cleanup: {e}")
+
     # Flush all pending persistence saves immediately
     logger.info("Flushing persistence to disk...")
     try:
@@ -391,10 +441,14 @@ def handle_shutdown_signal(signum, frame):
 # =============================================================================
 
 # Import and register all commands
-from handlers.commands import setup as setup_commands
-setup_commands(bot)
-
-logger.info("All commands registered")
+if COMMAND_MODE == 'slash':
+    from handlers import slash_commands
+    slash_commands.setup(bot)
+    logger.info("Slash commands loaded")
+else:
+    from handlers.commands import setup as setup_commands
+    setup_commands(bot)
+    logger.info("Prefix commands loaded")
 
 # =============================================================================
 # MAIN

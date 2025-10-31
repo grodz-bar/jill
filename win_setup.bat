@@ -232,6 +232,25 @@ if %TOKEN_LEN% LSS 50 (
 echo.
 timeout /t 1 /nobreak >nul
 
+REM Command Mode Selection
+echo.
+echo =========================================
+echo Choose command style:
+echo 1) Classic (!play) - Text commands with auto-cleanup
+echo 2) Modern (/play) - Slash commands with buttons
+echo =========================================
+echo.
+set /p command_choice="Choice (1 or 2) [default: 1]: "
+
+if "%command_choice%"=="2" (
+    set COMMAND_MODE=slash
+    echo Using modern slash commands mode
+) else (
+    set COMMAND_MODE=prefix
+    echo Using classic prefix commands mode
+)
+timeout /t 1 /nobreak >nul
+
 echo.
 echo Step 2: Music Folder Location
 echo --------------------------
@@ -348,6 +367,9 @@ if "%DEFAULT_PATH%"=="0" (
         exit /b 1
     )
 )
+
+REM Add command mode
+echo JILL_COMMAND_MODE=%COMMAND_MODE%>> .env
 
 if not exist ".env" (
     echo.
@@ -900,6 +922,15 @@ echo.
 echo For help, see the README folder or 06-troubleshooting.txt
 echo.
 echo ========================================
+if "%COMMAND_MODE%"=="slash" (
+    echo.
+    echo =========================================
+    echo SLASH COMMAND NOTES:
+    echo - Commands may take up to 1 hour to appear
+    echo - Control panel creates on first /play
+    echo - Consider restricting bot to one channel
+    echo =========================================
+)
 echo.
 pause
 echo.

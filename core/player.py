@@ -38,8 +38,7 @@ from systems.spam_protection import SpamProtector
 from systems.cleanup import CleanupManager
 from systems.voice_manager import VoiceManager, PlaybackState
 from core.track import Track, load_library, Playlist, discover_playlists, has_playlist_structure
-from config.messages import DRINK_EMOJIS
-from config.timing import MAX_HISTORY
+from config import DRINK_EMOJIS, MAX_HISTORY
 from utils.persistence import (
     load_last_channels,
     save_last_channel,

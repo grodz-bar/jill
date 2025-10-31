@@ -20,19 +20,35 @@ DIRECTORY STRUCTURE
 ├── start-jill.sh                     # Linux launcher (created by setup)
 ├── .env                              # Bot configuration (created during setup)
 ├── /config/                          # Configuration folder (USER CUSTOMIZATION)
-│   ├── __init__.py                   # Python package marker
-│   ├── aliases.py                    # Command aliases
-│   ├── features.py                   # Feature toggles
-│   ├── messages.py                   # Bot messages and responses
-│   ├── timing.py                     # Timing and cooldown settings
-│   └── paths.py                      # File paths configuration
+│   ├── __init__.py                   # Mode-aware config loader
+│   ├── mode.py                       # Command mode detection (prefix/slash)
+│   ├── /common/                      # Shared configuration (both modes)
+│   │   ├── core.py                   # Bot token, music folder, logging
+│   │   ├── permissions.py            # VA-11 HALL-A themed permission system
+│   │   ├── filename_patterns.py      # File naming patterns
+│   │   ├── paths.py                  # Path configuration
+│   │   └── bot_identity.py           # Bot name and avatar
+│   ├── /prefix/                      # Classic mode (!play) configuration
+│   │   ├── features.py               # Command prefix, feature toggles
+│   │   ├── messages.py               # Bot response text
+│   │   ├── aliases.py                # Command aliases
+│   │   └── timing.py                 # Cooldowns, cleanup timing
+│   └── /slash/                       # Modern mode (/play) configuration
+│       ├── features.py               # Feature toggles
+│       ├── messages.py               # Bot response text, button labels
+│       ├── timing.py                 # Update throttling, interaction delays
+│       ├── embeds.py                 # Rich embed formatting functions
+│       └── buttons.py                # Button component builders
 ├── /handlers/                        # Command handlers (implementation)
 │   ├── __init__.py                   # Python package marker
-│   └── commands.py                   # All bot commands
+│   ├── commands.py                   # Classic mode commands (!play)
+│   ├── slash_commands.py             # Modern mode commands (/play)
+│   └── buttons.py                    # Button interaction handler
 ├── /venv/                            # Python virtual environment (created during setup)
 ├── .env                              # Bot configuration (created during setup)
-├── last_channels.json                # Channel persistence (auto-created, managed)
+├── last_channels.json                # Channel persistence (prefix mode, auto-created)
 ├── last_playlists.json               # Playlist persistence (auto-created, managed)
+├── message_ids.json                  # Control panel message IDs (slash mode, auto-created)
 ├── /core/                            # Core music player (jill's code)
 │   ├── __init__.py                   # Python package marker
 │   ├── player.py                     # MusicPlayer class
@@ -40,15 +56,19 @@ DIRECTORY STRUCTURE
 │   └── track.py                      # Track class and library loading
 ├── /systems/                         # Specialized systems (jill's code)
 │   ├── __init__.py                   # Python package marker
-│   ├── spam_protection.py            # 5-layer spam protection
-│   ├── cleanup.py                    # Message cleanup (TTL + history)
+│   ├── spam_protection.py            # 5-layer spam protection (prefix mode)
+│   ├── cleanup.py                    # Message cleanup (prefix mode only)
 │   ├── voice_manager.py              # Voice operations & auto-pause
-│   └── watchdog.py                   # Playback & voice health monitoring
+│   ├── watchdog.py                   # Playback & voice health monitoring
+│   └── control_panel.py              # Control panel manager (slash mode)
 ├── /utils/                           # Utility helpers (jill's code)
 │   ├── __init__.py                   # Python package marker
 │   ├── discord_helpers.py            # Discord API helpers & voice health
-│   ├── persistence.py                # Channel persistence
-│   └── context_managers.py           # Context helpers
+│   ├── persistence.py                # Channel/playlist/message persistence
+│   ├── context_managers.py           # Context helpers
+│   ├── permission_checks.py          # Permission system decorators
+│   ├── context_adapter.py            # Unified context interface (dual mode)
+│   └── response_helper.py            # Unified response sending (dual mode)
 ├── /README/                          # Documentation folder
 │   ├── 01-README.txt                 # Main overview
 │   ├── 02-Getting-Discord-Token.txt  # Bot token guide
@@ -114,15 +134,16 @@ SETUP AND LAUNCHER SCRIPTS
 
 win_setup.bat
   Interactive setup wizard for Windows. Creates venv inside bot folder,
-  installs dependencies, configures bot token and music folder (default:
-  music/ subfolder), and optionally converts audio files. Bot folder is fully
+  installs dependencies, asks you to choose command mode (Classic !play or
+  Modern /play), configures bot token and music folder (default: music/
+  subfolder), and optionally converts audio files. Bot folder is fully
   portable.
 
 linux_setup.sh
   Interactive setup wizard for Linux. Creates venv inside bot folder, installs
-  dependencies, configures bot token and music folder (default: music/
-  subfolder), and optionally converts audio files. Bot folder is fully
-  portable.
+  dependencies, asks you to choose command mode (Classic !play or Modern
+  /play), configures bot token and music folder (default: music/ subfolder),
+  and optionally converts audio files. Bot folder is fully portable.
 
 win_convert_opus.bat
   Standalone opus converter for Windows. Intelligently detects your music
@@ -148,8 +169,9 @@ CONFIGURATION FILES
 
 .env.example
   Sample environment configuration file. Copy or rename to .env and fill in
-  your bot token (music folder optional - uses default music/ folder inside
-  bot directory if not specified).
+  your bot token, choose command mode (JILL_COMMAND_MODE=prefix or slash),
+  and optionally set music folder (uses default music/ folder inside bot
+  directory if not specified).
 
 requirements.txt
   Python package dependencies for easy installation.
@@ -160,27 +182,52 @@ requirements.txt
 CONFIG FOLDER
 ================================================================================
 
-Configuration files for easy customization:
+Command Mode Selection:
+-----------------------
+- config/mode.py - Detects JILL_COMMAND_MODE from .env (prefix or slash)
 
-- config/aliases.py - Command aliases customization.
-- config/features.py - Feature toggles (turn features on/off)
-- config/messages.py - Customize responses, messages, and drink emojis.
-- config/timing.py - Timing and cooldown settings. (Advanced)
-- config/paths.py - File paths and storage location. (Advanced)
+Common Configuration (Both Modes):
+-----------------------------------
+- config/common/core.py - Bot token, music folder, logging level, voice health
+- config/common/permissions.py - VA-11 HALL-A themed permission system
+- config/common/filename_patterns.py - File naming pattern support
+- config/common/paths.py - Path configuration (Advanced)
+- config/common/bot_identity.py - Bot name and avatar
+
+Classic Mode Configuration (prefix):
+-------------------------------------
+- config/prefix/features.py - Command prefix, feature toggles
+- config/prefix/messages.py - Bot response text
+- config/prefix/aliases.py - Command aliases
+- config/prefix/timing.py - Cooldowns, debounce, cleanup timing
+
+Modern Mode Configuration (slash):
+-----------------------------------
+- config/slash/features.py - Feature toggles
+- config/slash/messages.py - Bot response text, button labels
+- config/slash/timing.py - Update throttling, interaction delays
+- config/slash/embeds.py - Rich embed formatting functions
+- config/slash/buttons.py - Button component builders
 
 ================================================================================
 AUTO-CREATED FILES
 ================================================================================
 
 last_channels.json
-  Channel persistence storage file (auto-created). Stores the last used text
-  channel per Discord server. Allows cleanup features to resume after bot
-  restart. Automatically managed - do not edit manually.
+  Channel persistence storage file (auto-created, prefix mode only). Stores
+  the last used text channel per Discord server. Allows cleanup features to
+  resume after bot restart. Automatically managed - do not edit manually.
 
 last_playlists.json
   Playlist persistence storage file (auto-created). Stores the last used
   playlist per Discord server. Allows the bot to remember which playlist each
   server was using after restart. Automatically managed - do not edit manually.
+
+message_ids.json
+  Control panel message IDs (auto-created, slash mode only). Stores the
+  control panel message ID per Discord server. Allows control panels to
+  persist and update after bot restart. Automatically managed - do not edit
+  manually.
 
 ================================================================================
 OTHER FILES

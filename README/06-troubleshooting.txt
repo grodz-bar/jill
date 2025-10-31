@@ -11,10 +11,22 @@ BOT ISSUES
 Bot doesn't respond to commands
 --------------------------------
 
+CLASSIC MODE (!play):
 - Ensure MESSAGE CONTENT INTENT is enabled in Discord Developer Portal
 - Verify bot has "Send Messages" and "View Channel" permissions in channel
-- Check bot is online (default behaviour: red dot in member list)
+- Check you're using the correct command prefix (default: !)
 - Verify bot is invited to the server correctly
+
+MODERN MODE (/play):
+- Slash commands may take up to 1 hour to appear after first startup
+- Try restarting Discord client to refresh slash command cache
+- Ensure bot has "Use Application Commands" permission
+- Verify bot is invited with applications.commands scope
+- Type / in chat to see if slash commands appear
+
+BOTH MODES:
+- Check bot is online (default behaviour: red dot in member list)
+- Verify you have permission to use commands (VA-11 HALL-A roles if enabled)
 
 Bot can't join voice
 ---------------------
@@ -47,11 +59,36 @@ Bot won't start
 ---------------
 
 - Check token and music folder are correct in .env file
+- Verify JILL_COMMAND_MODE is set correctly in .env (prefix or slash)
 - Verify Python 3.11+ is installed
 - Ensure venv has all dependencies installed
 - Make sure Windows Defender isn't blocking the bot (Windows)
 - Read the bot.log and service logs (Linux) for error messages
 - Check you used your actual username instead of "YOUR-USERNAME" during setup
+
+Command Mode Issues
+-------------------
+
+WRONG MODE SELECTED:
+- Edit .env file and change JILL_COMMAND_MODE to 'prefix' or 'slash'
+- Restart bot after changing modes
+
+SLASH COMMANDS NOT APPEARING:
+- Discord caches slash commands - can take up to 1 hour to appear
+- Try restarting Discord client to force refresh
+- Check bot has "applications.commands" scope in invite URL
+- Verify bot has "Use Application Commands" permission in server
+
+CLASSIC MODE CLEANUP NOT WORKING:
+- Ensure bot has "Manage Messages" permission in channels
+- Check CLEANUP_ENABLED in config/prefix/features.py
+- Verify MESSAGE CONTENT INTENT is enabled in Developer Portal
+
+CONTROL PANEL NOT UPDATING (Slash Mode):
+- Control panel updates are throttled (default: max once per 2 seconds)
+- Check bot has "Send Messages" and "Edit Messages" permissions
+- Verify control panel message wasn't deleted manually
+- Check logs for update errors
 
 Bot can't find music
 --------------------

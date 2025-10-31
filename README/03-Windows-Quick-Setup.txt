@@ -66,9 +66,26 @@ you've placed her in C:\jill\
 STEP 4: RUN SETUP WIZARD
 ================================================================================
 
+The wizard will automatically:
+- Create a virtual environment (venv\)
+- Install required Python packages
+- Ask you to choose command mode (Classic !play or Modern /play)
+- Generate your .env configuration file
+- Create the music folder if it doesn't exist
+- Optionally convert your audio files to .opus
+
+Running the Wizard
+------------------
+
 1. Navigate to C:\jill\ in File Explorer
 2. Double-click "win_setup.bat"
-3. Follow the interactive prompts
+3. Follow the interactive prompts:
+   - Enter your Discord bot token
+   - Choose command mode:
+     * Classic (1): Text commands like !play with auto-cleanup
+     * Modern (2): Slash commands like /play with interactive buttons
+   - Set your music folder location
+   - Optionally convert audio files to .opus
 
 When done → Continue to STEP 5
 
@@ -210,15 +227,40 @@ Config files are just text files - edit them with Notepad:
 2. Select "Open with" → "Notepad"
 3. Make changes and save (Ctrl+S)
 
+Command Mode
+------------
+
+To switch between Classic (!play) and Modern (/play) modes:
+
+1. Open .env file with Notepad:
+   Right-click C:\jill\.env → Open with → Notepad
+
+2. Change JILL_COMMAND_MODE to 'prefix' or 'slash':
+   JILL_COMMAND_MODE=prefix    # Classic mode
+   JILL_COMMAND_MODE=slash     # Modern mode
+
+3. Save and restart the bot
+
 Config Files
 ------------
 
-Edit files in the config/ folder to customize:
-- config/aliases.py - Command aliases
-- config/messages.py - Bot text responses
-- config/features.py - Turn features on/off
-- config/timing.py - Timing and cooldown settings (advanced)
-- config/paths.py - File paths (advanced)
+COMMON (Both Modes):
+- config\common\core.py - Bot settings, logging, voice health
+- config\common\permissions.py - VA-11 HALL-A themed permissions
+- config\common\filename_patterns.py - File naming patterns
+
+CLASSIC MODE (prefix):
+- config\prefix\features.py - Command prefix, feature toggles
+- config\prefix\messages.py - Bot response text
+- config\prefix\aliases.py - Command aliases
+- config\prefix\timing.py - Cooldowns, cleanup timing
+
+MODERN MODE (slash):
+- config\slash\features.py - Feature toggles
+- config\slash\messages.py - Bot response text, button labels
+- config\slash\timing.py - Update throttling
+- config\slash\embeds.py - Rich embed formatting
+- config\slash\buttons.py - Button components
 
 Make sure to restart bot after changes.
 

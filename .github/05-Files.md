@@ -38,7 +38,7 @@ A comprehensive reference of the bot's directory structure and file descriptions
 │   └── track.py                      # Track class and library loading
 ├── /systems/                         # Specialized systems (jill's code)
 │   ├── __init__.py                   # Python package marker
-│   ├── spam_protection.py            # 5-layer spam protection
+│   ├── spam_protection.py            # 4-layer spam protection with guild isolation
 │   ├── cleanup.py                    # Message cleanup (TTL + history)
 │   ├── voice_manager.py              # Voice operations & auto-pause
 │   └── watchdog.py                   # Playback monitoring

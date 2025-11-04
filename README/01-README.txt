@@ -21,8 +21,8 @@ FEATURES
 ================================================================================
 - Dual Command Modes: Choose Classic (!play) or Modern (/play) during setup
 - Multiple playlists: You're using subfolders. Now it's a playlist.
-- Spam protection: Hammer it all you want, debounce, cooldowns, and limits
-  keep it sane
+- Spam protection: Hammer it all you want, spam sessions, cooldowns, and guild
+  isolation keep it sane
 - Smart: Jill reads the room, pauses when alone, manages herself
 - Auto-fix stuttering: Adaptive voice health monitoring detects degraded
   connections and auto-reconnects to fix audio stuttering (no user action needed)
@@ -130,7 +130,7 @@ CLASSIC MODE (prefix):
 - config/prefix/features.py - Command prefix, feature toggles
 - config/prefix/messages.py - Bot response text
 - config/prefix/aliases.py - Command aliases
-- config/prefix/timing.py - Cooldowns, debounce, cleanup timing
+- config/prefix/timing.py - Cooldowns, spam protection, cleanup timing
 
 MODERN MODE (slash):
 - config/slash/features.py - Feature toggles

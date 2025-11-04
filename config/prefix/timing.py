@@ -14,29 +14,78 @@ to spam and Discord's API rate-limiting, be careful and test thoroughly.
 from typing import Final
 
 # =========================================================================================================
-# SPAM PROTECTION TIMING
+# SPAM PROTECTION (4-LAYER SYSTEM)
 # =========================================================================================================
 
-USER_COMMAND_SPAM_THRESHOLD = 0.5  # Min seconds between commands from same user
-                                   # LOWER = more lenient (allows faster commands)
-                                   # HIGHER = stricter (forces longer wait)
+# LAYER 1: PER-USER SPAM SESSIONS
+# Detects and stops individual spammers (first filter), handles Discord drip-feed
 
-GLOBAL_RATE_LIMIT = 0.15           # Min seconds between ANY commands (allows max 6.7 commands per second)
-                                   # LOWER = more lenient (allows faster commands)
-                                   # HIGHER = stricter (forces longer wait)
+# Number of commands to trigger spam session
+USER_SPAM_SESSION_TRIGGER_COUNT = 3
 
-USER_SPAM_WARNING_THRESHOLD = 3    # Show spam warning message after N rapid attempts
-                                   # LOWER = warns sooner, HIGHER = more tolerant
+# Time window to detect spam (seconds)
+USER_SPAM_SESSION_TRIGGER_WINDOW = 1.5
 
-USER_SPAM_RESET_COOLDOWN = 2.0     # Seconds of no spam before resetting spam count
-                                   # LOWER = resets faster, HIGHER = remembers longer
+# How long spam session lasts (drops commands for this duration)
+USER_SPAM_SESSION_DURATION = 5.0
 
-SPAM_WARNING_COOLDOWN = 19        # Seconds between spam warning messages
-                                   # LOWER = more warning messages, HIGHER = less spam warnings
+# Send warning messages to spammers
+USER_SPAM_WARNINGS_ENABLED = True
 
-USER_COMMAND_MAX_LENGTH = 2000     # Max length of user commands to clean up
-                                   # LOWER = cleans shorter commands, HIGHER = cleans longer commands
-                                   # Discord message limit is 2000 characters
+# Warning messages (one randomly selected)
+USER_SPAM_WARNINGS = [
+    "Easy there. I'll skip when you stop button mashing.",
+    "Whoa! One command at a time, please.",
+    "Take it easy... spamming won't make it faster.",
+    "Calm down! I heard you the first time.",
+]
+
+
+# ABUSER TIMEOUT SYSTEM (Optional)
+# Timeout for heavy abusers
+
+ABUSER_TIMEOUT_ENABLED = False  # Enable timeouts for heavy abusers
+
+ABUSER_TIMEOUT_THRESHOLD = 10   # Commands during spam session to trigger timeout
+
+ABUSER_TIMEOUT_DURATION = 60    # Timeout duration (seconds)
+
+ABUSER_TIMEOUT_MESSAGE = "{user}, you've been timed out for {duration}s. Please don't spam."
+
+ABUSER_TIMEOUT_ESCALATION = True  # Escalate timeout for repeat offenders
+
+ABUSER_TIMEOUT_ESCALATION_MULTIPLIER = 2.0  # Each timeout doubles duration
+
+
+# LAYER 2: PER-GUILD CIRCUIT BREAKER
+# Guild isolation - bad guilds can't affect good guilds
+# Commands counted AFTER Layer 1 filtering (single-user spam won't trip circuit)
+
+CIRCUIT_BREAKER_ENABLED = True
+
+# Maximum commands per second before tripping circuit
+GUILD_MAX_COMMANDS_PER_SECOND = 3.0
+
+# Maximum queue size per guild
+GUILD_MAX_QUEUE_SIZE = 50
+
+# How long circuit stays open after tripping (seconds)
+CIRCUIT_BREAK_DURATION = 30.0
+
+# Enable progressive penalties for repeat offenders
+CIRCUIT_PROGRESSIVE_PENALTIES = True
+
+# Penalties for repeat trips (multiplies CIRCUIT_BREAK_DURATION)
+CIRCUIT_TRIP_PENALTIES = {
+    1: 1.0,   # First trip: 30s
+    2: 2.0,   # Second trip: 60s
+    3: 4.0,   # Third trip: 120s
+    4: 8.0,   # Fourth+: 240s (4 minutes)
+}
+
+# Reset penalty counter after this many seconds of good behavior
+CIRCUIT_PENALTY_RESET_TIME = 300.0  # 5 minutes
+
 
 # =========================================================================================================
 # MESSAGE CLEANUP TIMING
@@ -60,6 +109,10 @@ HISTORY_CLEANUP_INTERVAL = 120     # Seconds between full channel history scans 
 
 CLEANUP_HISTORY_LIMIT = 50         # How many recent messages to check during history scan
                                    # HIGHER = cleans more thoroughly, LOWER = faster
+
+USER_COMMAND_MAX_LENGTH = 2000     # Max length of user commands to clean up
+                                   # Discord message limit is 2000 characters
+                                   # Used to identify user command messages during cleanup
 
 CLEANUP_SAFE_AGE_THRESHOLD = 120   # Seconds - safe age for message deletion during history scan (2 min)
                                    # LOWER = deletes newer messages, HIGHER = keeps longer
@@ -117,64 +170,28 @@ MESSAGE_TTL = {
 }
 
 # =========================================================================================================
-# COMMAND DEBOUNCING SETTINGS (per command)
+# LAYER 4: POST-EXECUTION COOLDOWNS (per command)
 # =========================================================================================================
+# Cooldowns prevent immediate re-execution after a command completes.
+# These work WITH spam sessions (Layer 1) to provide comprehensive protection.
+# Spam sessions handle rate limiting, cooldowns handle post-execution delays.
 
-# Queue command debouncing
-QUEUE_DEBOUNCE_WINDOW = 2.0        # Wait time for spam to stop (seconds)
-QUEUE_COOLDOWN = 1.0               # Cooldown after execution (seconds)
-QUEUE_SPAM_THRESHOLD = 5           # Times user can spam before warning
+# Playback control commands
+SKIP_COOLDOWN = 1.0                # Can't skip again for 1s after skip
+PAUSE_COOLDOWN = 1.5               # Can't pause/resume again for 1.5s
+STOP_COOLDOWN = 2.0                # Can't stop again for 2s
+PREVIOUS_COOLDOWN = 1.5            # Can't go back again for 1.5s
+PLAY_JUMP_COOLDOWN = 1.0           # Can't jump to track again for 1s
 
-# Tracks command debouncing (!tracks or !tracks <name> to switch)
-# This handles both showing tracks AND switching playlists
-TRACKS_DEBOUNCE_WINDOW = 2.0       # Wait time for spam to stop (seconds)
-TRACKS_COOLDOWN = 1.0              # Cooldown after execution (seconds)
-TRACKS_SPAM_THRESHOLD = 5          # Times user can spam before warning
+# Library/queue commands
+QUEUE_COOLDOWN = 1.0               # Can't show queue again for 1s
+TRACKS_COOLDOWN = 1.0              # Can't switch playlist again for 1s
+PLAYLISTS_COOLDOWN = 1.0           # Can't list playlists again for 1s
 
-# Play jump command debouncing (!play [number])
-# Note: Normal !play (join/resume) doesn't use debouncing - only track jumping does
-PLAY_JUMP_DEBOUNCE_WINDOW = 1.0    # Wait time for spam to stop (seconds)
-PLAY_JUMP_COOLDOWN = 1.0           # Cooldown after execution (seconds)
-PLAY_JUMP_SPAM_THRESHOLD = 5       # Times user can spam before warning
+# Other commands
+SHUFFLE_COOLDOWN = 2.0             # Can't toggle shuffle again for 2s
+HELP_COOLDOWN = 1.0                # Can't show help again for 1s
 
-# Pause command debouncing
-PAUSE_DEBOUNCE_WINDOW = 2.0        # Wait time for spam to stop (seconds)
-PAUSE_COOLDOWN = 2.0               # Cooldown after execution (seconds)
-PAUSE_SPAM_THRESHOLD = 5           # Times user can spam before warning
-
-# Skip command debouncing
-SKIP_DEBOUNCE_WINDOW = 1.0         # Wait time for spam to stop (seconds)
-SKIP_COOLDOWN = 1.0                # Cooldown after execution (seconds)
-SKIP_SPAM_THRESHOLD = 10           # Times user can spam before warning
-
-# Stop command debouncing
-STOP_DEBOUNCE_WINDOW = 2.0         # Wait time for spam to stop (seconds)
-STOP_COOLDOWN = 2.0                # Cooldown after execution (seconds)
-STOP_SPAM_THRESHOLD = 5            # Times user can spam before warning
-
-# Previous command debouncing
-PREVIOUS_DEBOUNCE_WINDOW = 2.5     # Wait time for spam to stop (seconds)
-PREVIOUS_COOLDOWN = 2.0            # Cooldown after execution (seconds)
-PREVIOUS_SPAM_THRESHOLD = 5        # Times user can spam before warning
-
-# Shuffle command debouncing
-SHUFFLE_DEBOUNCE_WINDOW = 2.5      # Wait time for spam to stop (seconds)
-SHUFFLE_COOLDOWN = 2.0             # Cooldown after execution (seconds)
-SHUFFLE_SPAM_THRESHOLD = 5         # Times user can spam before warning
-
-# Shuffle command now toggles (unshuffle removed)
-
-# Help command debouncing
-HELP_DEBOUNCE_WINDOW = 1.0         # Wait time for spam to stop (seconds)
-HELP_COOLDOWN = 1.0                # Cooldown after execution (seconds)
-HELP_SPAM_THRESHOLD = 4            # Times user can spam before warning
-
-# Playlists list command debouncing
-PLAYLISTS_DEBOUNCE_WINDOW = 1.0    # Wait time for spam to stop (seconds)
-PLAYLISTS_COOLDOWN = 1.0           # Cooldown after execution (seconds)
-PLAYLISTS_SPAM_THRESHOLD = 4       # Times user can spam before warning
-
-# Switch playlist command merged into 'tracks' command
 
 # =========================================================================================================
 # ADVANCED TIMING SETTINGS (Don't change unless you know what you're doing)
@@ -209,7 +226,6 @@ FFMPEG_BEFORE_OPTIONS: Final[str] = '-hide_banner -loglevel error -nostdin -re -
 # Note: -vn flag (ignore video streams) not needed since we only play audio files
 
 MAX_HISTORY = 100                        # Max tracks to remember (prevents memory bloat)
-COMMAND_QUEUE_MAXSIZE = 100              # Max commands in queue (prevents memory exhaustion)
 COMMAND_QUEUE_TIMEOUT = 0.5              # Max wait for queue operations (don't wait forever)
 
 WATCHDOG_INTERVAL = 600                  # Check for stuck playback every 10 minutes

@@ -56,7 +56,7 @@ DIRECTORY STRUCTURE
 │   └── track.py                      # Track class and library loading
 ├── /systems/                         # Specialized systems (jill's code)
 │   ├── __init__.py                   # Python package marker
-│   ├── spam_protection.py            # 5-layer spam protection (prefix mode)
+│   ├── spam_protection.py            # 4-layer spam protection with guild isolation
 │   ├── cleanup.py                    # Message cleanup (prefix mode only)
 │   ├── voice_manager.py              # Voice operations & auto-pause
 │   ├── watchdog.py                   # Playback & voice health monitoring
@@ -199,7 +199,7 @@ Classic Mode Configuration (prefix):
 - config/prefix/features.py - Command prefix, feature toggles
 - config/prefix/messages.py - Bot response text
 - config/prefix/aliases.py - Command aliases
-- config/prefix/timing.py - Cooldowns, debounce, cleanup timing
+- config/prefix/timing.py - Cooldowns, spam protection, cleanup timing
 
 Modern Mode Configuration (slash):
 -----------------------------------

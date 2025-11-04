@@ -18,7 +18,7 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 ## Features
 - **Dual Command Modes**: Choose Classic (`!play`) or Modern (`/play`) during setup
 - **Multiple playlists**: You're using subfolders? Now it's a playlist!
-- **Spam protection**: Hammer it all you want, debounce, cooldowns, and limits keep it sane.
+- **Spam protection**: Hammer it all you want, spam sessions, cooldowns, and guild isolation keep it sane.
 - **Smart**: Jill reads the room, pauses when alone, manages herself.
 - **Shuffle mode**: Toggle it on or off, she'll auto-reshuffle as well!
 - **Quick search**: Just say the name or track number, works on playlists too!

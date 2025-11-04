@@ -27,7 +27,7 @@ Command Helper Functions (Boilerplate Reducers):
 - get_guild_player(): Get MusicPlayer from any context type (prefix/slash)
 - ensure_voice_connected(): Validate voice connection with automatic error messaging
 - send_player_message(): Send messages with automatic sanitization and TTL cleanup
-- spam_protected_execute(): Apply 3-layer spam protection to command execution
+- spam_protected_execute(): Apply 4-layer spam protection to command execution
 
 Voice Health Monitoring:
 - VoiceHealthMonitor: Adaptive state machine for connection quality monitoring
@@ -253,18 +253,20 @@ async def spam_protected_execute(
     bot,
     command_name: str,
     execute_func,
-    debounce_window: float,
     cooldown: float,
-    spam_threshold: int,
-    spam_message_key: Optional[str] = None
+    is_critical: bool = False
 ) -> bool:
     """
-    Execute a command with full 3-layer spam protection.
+    Execute a command with full 4-layer spam protection.
 
-    Consolidates the common spam protection pattern:
-    - Layer 1: User spam check (per-user rate limit)
-    - Layer 2: Global rate limit (entire bot)
-    - Layer 3: Command debouncing (prevents rapid duplicate commands)
+    Architecture (guild isolation and Discord drip-feed handling):
+    - Layer 1: Per-User Spam Sessions (handles Discord drip-feed, filters spam first)
+    - Layer 2: Circuit Breaker (guild-level isolation, counts after Layer 1 filtering)
+    - Layer 3: Serial Queue (race condition prevention)
+    - Layer 4: Post-Execution Cooldowns (prevents rapid re-execution)
+
+    Note: Checks are performed in optimized order (quick checks first) for performance,
+    but Layer 2 only counts commands that pass Layer 1 filtering.
 
     Args:
         player: MusicPlayer instance
@@ -272,55 +274,64 @@ async def spam_protected_execute(
         bot: Bot instance
         command_name: Command identifier for spam tracking (e.g., "pause", "skip")
         execute_func: The _execute_* function to call (e.g., _execute_pause)
-        debounce_window: Debounce window in seconds
-        cooldown: Cooldown period in seconds
-        spam_threshold: Max commands in debounce window before warning
-        spam_message_key: Optional key in MESSAGES for spam warning (e.g., 'spam_pause')
+        cooldown: Cooldown period in seconds (Layer 4)
+        is_critical: True for internal/priority commands that should always pass
 
     Returns:
         True if command was queued for execution, False if blocked by spam protection
 
     Example:
-        # Before (10 lines):
-        if await player.spam_protector.check_user_spam(ctx.author.id, "pause"):
-            return
-        if player.spam_protector.check_global_rate_limit():
-            return
-        await player.spam_protector.debounce_command(
-            "pause",
-            lambda: _execute_pause(ctx, bot),
-            PAUSE_DEBOUNCE_WINDOW,
-            PAUSE_COOLDOWN,
-            PAUSE_SPAM_THRESHOLD,
-            MESSAGES.get('spam_pause')
-        )
-
-        # After (1 line):
         await spam_protected_execute(
-            player, ctx, bot, "pause", _execute_pause,
-            PAUSE_DEBOUNCE_WINDOW, PAUSE_COOLDOWN, PAUSE_SPAM_THRESHOLD, 'spam_pause'
+            player, ctx, bot, "pause", _execute_pause, PAUSE_COOLDOWN
         )
+
+    Features:
+        - Spam session detection: Handles Discord client drip-feed behavior (Layer 1)
+        - Guild isolation: Circuit breakers prevent one guild from affecting others (Layer 2)
+        - Serial execution: Commands processed one at a time (race condition prevention)
+        - Per-user tracking: Multiple users don't interfere with each other
+        - Single-user spam won't trip circuit breaker (Layer 2 counts after Layer 1 filters)
     """
-    # Layer 1: User spam check (per-user rate limit)
-    if await player.spam_protector.check_user_spam(ctx.author.id, command_name):
+    # Optimized check order (quick checks first, then filtering)
+
+    # Check Layer 2 first (quick state check)
+    allow, reason = player.spam_protector.check_circuit_breaker(command_name, is_critical)
+    if not allow:
+        logger.debug(f"Guild {player.guild_id}: {command_name} blocked by circuit breaker ({reason})")
         return False
 
-    # Layer 2: Global rate limit (entire bot)
-    if player.spam_protector.check_global_rate_limit():
+    # Check Layer 4 next (quick cooldown check)
+    allow, reason = player.spam_protector.check_cooldown(command_name, cooldown)
+    if not allow:
+        logger.debug(f"Guild {player.guild_id}: {command_name} blocked by cooldown ({reason})")
         return False
 
-    # Layer 3: Command debouncing (prevents rapid duplicates, queues execution)
-    from config import MESSAGES
-    spam_msg = MESSAGES.get(spam_message_key) if spam_message_key else None
+    # Layer 1: Per-User Spam Session Detection (filters spam, may execute once)
+    async def wrapped_execute():
+        await execute_func(ctx, bot)
+        # Record execution for cooldown tracking
+        player.spam_protector.record_execution(command_name)
 
-    await player.spam_protector.debounce_command(
+    should_execute, reason = await player.spam_protector.check_user_spam(
+        ctx.author.id,
         command_name,
-        lambda: execute_func(ctx, bot),
-        debounce_window,
-        cooldown,
-        spam_threshold,
-        spam_msg
+        wrapped_execute
     )
+
+    if not should_execute:
+        logger.debug(f"Guild {player.guild_id}: {command_name} handled by spam session ({reason})")
+        return False
+
+    # Command passed Layer 1 filtering - record it for Layer 2 (circuit breaker) rate tracking
+    # This ensures single-user spam doesn't trip guild-wide circuit breaker
+    player.spam_protector.record_circuit_breaker_command(command_name)
+
+    # Layer 3: Queue command for serial execution
+    await player.spam_protector.queue_command(
+        wrapped_execute,
+        priority=is_critical
+    )
+
     return True
 
 

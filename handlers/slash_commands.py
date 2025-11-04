@@ -25,6 +25,15 @@ All 11 bot commands for Modern (/play) mode with:
 - Auto-updating embeds with live playback status
 - Permission checks (VA-11 HALL-A themed)
 
+SPAM PROTECTION:
+Slash commands bypass most spam protection layers (Layers 1, 2, 4) because
+Discord provides built-in protection (rate limiting, cooldowns, ephemeral responses).
+They only use Layer 3 (Serial Queue) by calling playback functions directly
+(e.g., _play_next(), _play_current()) which queue operations internally.
+
+This is different from prefix commands (!skip) which go through all 4 layers
+via spam_protected_execute() helper. See systems/spam_protection.py for details.
+
 Only loaded when COMMAND_MODE='slash'. Discord handles rate limiting
 and command caching automatically for slash commands.
 """

@@ -35,9 +35,9 @@ VOICE_CONNECTION_CHECK_INTERVAL = 0.05  # Check voice connection every 50ms
 CALLBACK_MIN_INTERVAL = 1.0  # Min time between callback-triggered track advances
 FRAME_DURATION = 0.02  # Opus frame duration (20ms) for graceful stops
 
-# Spam protection (lighter for slash due to Discord rate limiting)
-DEBOUNCE_WINDOW = 0.5  # Debounce window for rapid commands
-COMMAND_COOLDOWN = 1.0  # General command cooldown
+# Button interaction throttling (control panel updates)
+DEBOUNCE_WINDOW = 0.5  # Debounce window for rapid button clicks
+COMMAND_COOLDOWN = 1.0  # Cooldown for button interactions
 
 __all__ = [
     'UPDATE_THROTTLE_TIME',

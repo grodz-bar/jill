@@ -19,10 +19,19 @@
 Classic Mode Commands (Prefix Commands)
 
 All 12 bot commands for Classic (!play) mode with:
-- Spam protection (5-layer system)
+- Spam protection (4-layer system with guild isolation)
 - Permission checks (VA-11 HALL-A themed decorator)
 - Automatic message cleanup (TTL-based)
 - Context-aware behavior (e.g., !play resumes or jumps)
+
+Spam protection architecture:
+- Layer 1: Per-User Spam Sessions (Discord drip-feed handling, filters first)
+- Layer 2: Circuit Breaker (guild isolation, counts after Layer 1 filtering)
+- Layer 3: Serial Queue (race condition prevention)
+- Layer 4: Post-Execution Cooldowns
+
+Layer 2 counts commands AFTER Layer 1 filtering to prevent single-user
+spam from triggering guild-wide lockouts.
 
 WARNING: USE "config/prefix/aliases.py" TO CHANGE/ADD/REMOVE COMMAND ALIASES,
 NOT THIS FILE! Prefix is configurable in "config/prefix/features.py".
@@ -44,17 +53,19 @@ from core.playback import _play_current, _play_next, _play_first
 from core.track import has_playlist_structure
 from config import (
     COMMAND_ALIASES,
-    PAUSE_DEBOUNCE_WINDOW, PAUSE_COOLDOWN, PAUSE_SPAM_THRESHOLD,
-    SKIP_DEBOUNCE_WINDOW, SKIP_COOLDOWN, SKIP_SPAM_THRESHOLD,
-    STOP_DEBOUNCE_WINDOW, STOP_COOLDOWN, STOP_SPAM_THRESHOLD,
-    PREVIOUS_DEBOUNCE_WINDOW, PREVIOUS_COOLDOWN, PREVIOUS_SPAM_THRESHOLD,
-    SHUFFLE_DEBOUNCE_WINDOW, SHUFFLE_COOLDOWN, SHUFFLE_SPAM_THRESHOLD,
-    QUEUE_DEBOUNCE_WINDOW, QUEUE_COOLDOWN, QUEUE_SPAM_THRESHOLD,
-    TRACKS_DEBOUNCE_WINDOW, TRACKS_COOLDOWN, TRACKS_SPAM_THRESHOLD,
-    PLAYLISTS_DEBOUNCE_WINDOW, PLAYLISTS_COOLDOWN, PLAYLISTS_SPAM_THRESHOLD,
-    HELP_DEBOUNCE_WINDOW, HELP_COOLDOWN, HELP_SPAM_THRESHOLD,
-    PLAY_JUMP_DEBOUNCE_WINDOW, PLAY_JUMP_COOLDOWN, PLAY_JUMP_SPAM_THRESHOLD,
-    VOICE_CONNECT_DELAY, USER_COMMAND_TTL,
+    # Cooldowns (4-layer spam protection system)
+    PAUSE_COOLDOWN,
+    SKIP_COOLDOWN,
+    STOP_COOLDOWN,
+    PREVIOUS_COOLDOWN,
+    SHUFFLE_COOLDOWN,
+    QUEUE_COOLDOWN,
+    TRACKS_COOLDOWN,
+    PLAYLISTS_COOLDOWN,
+    HELP_COOLDOWN,
+    PLAY_JUMP_COOLDOWN,
+    VOICE_CONNECT_DELAY,
+    USER_COMMAND_TTL,
     SHUFFLE_MODE_ENABLED,
     QUEUE_DISPLAY_ENABLED,
     LIBRARY_DISPLAY_ENABLED,
@@ -63,7 +74,8 @@ from config import (
     LIBRARY_PAGE_SIZE,
     PLAYLIST_PAGE_SIZE,
     COMMAND_PREFIX,
-    MESSAGES, HELP_TEXT,
+    MESSAGES,
+    HELP_TEXT,
 )
 from utils.discord_helpers import can_connect_to_channel, safe_disconnect, update_presence, sanitize_for_format, get_guild_player, ensure_voice_connected, send_player_message, spam_protected_execute
 from utils.permission_checks import permission_check
@@ -75,7 +87,7 @@ def setup(bot):
     Register all commands with the bot.
 
     Command Structure:
-    - Each command uses spam_protected_execute() for 3-layer spam protection
+    - Each command uses spam_protected_execute() for 4-layer spam protection
       (except play which has special voice/resume/jump logic)
     - Messages use send_player_message() for automatic sanitization & TTL cleanup
     - Player retrieval uses get_guild_player() helper
@@ -167,22 +179,14 @@ def setup(bot):
 
         Note: This command does NOT use spam_protected_execute() because it has
         special logic (voice connection, resume detection, track jumping) that
-        happens before spam protection layer 3 (debouncing). It manually applies
-        layers 1 & 2, then conditionally applies layer 3 based on the action.
+        needs to happen before determining which action to take. Track jumping
+        uses spam protection via spam_protected_execute().
         """
         player = await get_guild_player(ctx, bot)
-
-        # Layer 0: User spam check
-        if await player.spam_protector.check_user_spam(ctx.author.id, "play"):
-            return
 
         # Validation: User must be in voice
         if not ctx.author.voice:
             await send_player_message(player, ctx, 'error_not_in_voice', 'error')
-            return
-
-        # Layer 2: Global rate limit
-        if player.spam_protector.check_global_rate_limit():
             return
 
         # Connect to voice if needed
@@ -206,19 +210,16 @@ def setup(bot):
                 await send_player_message(player, ctx, 'error_cant_connect', 'error', error="unexpected error")
                 return
 
-        # Handle track jumping (by number or name)
+        # Handle track jumping (by number or name) - uses spam protection
         if track_arg is not None:
-            await player.spam_protector.debounce_command(
-                "play_jump",
-                lambda: _execute_play_jump(ctx, track_arg, bot),
-                PLAY_JUMP_DEBOUNCE_WINDOW,
-                PLAY_JUMP_COOLDOWN,
-                PLAY_JUMP_SPAM_THRESHOLD,
-                MESSAGES.get('spam_play_jump')
+            await spam_protected_execute(
+                player, ctx, bot, "play_jump",
+                lambda ctx, bot: _execute_play_jump(ctx, track_arg, bot),
+                PLAY_JUMP_COOLDOWN
             )
             return
 
-        # Handle resume
+        # Handle resume - instant action, no spam protection needed
         current_state = player.voice_manager.get_playback_state()
         if current_state == PlaybackState.PAUSED:
             player.voice_client.resume()
@@ -227,7 +228,7 @@ def setup(bot):
                 await send_player_message(player, ctx, 'resume', 'resume', track=player.now_playing.display_name)
             return
 
-        # Handle start playback
+        # Handle start playback - queue directly (internal operation)
         if current_state == PlaybackState.IDLE:
             await player.spam_protector.queue_command(
                 lambda: _play_first(player.guild_id, bot)
@@ -269,8 +270,7 @@ def setup(bot):
         """Pause playback."""
         player = await get_guild_player(ctx, bot)
         await spam_protected_execute(
-            player, ctx, bot, "pause", _execute_pause,
-            PAUSE_DEBOUNCE_WINDOW, PAUSE_COOLDOWN, PAUSE_SPAM_THRESHOLD, 'spam_pause'
+            player, ctx, bot, "pause", _execute_pause, PAUSE_COOLDOWN
         )
 
     async def _execute_pause(ctx, bot):
@@ -293,8 +293,7 @@ def setup(bot):
         """Skip to next track."""
         player = await get_guild_player(ctx, bot)
         await spam_protected_execute(
-            player, ctx, bot, "skip", _execute_skip,
-            SKIP_DEBOUNCE_WINDOW, SKIP_COOLDOWN, SKIP_SPAM_THRESHOLD, 'spam_skip'
+            player, ctx, bot, "skip", _execute_skip, SKIP_COOLDOWN
         )
 
     async def _execute_skip(ctx, bot):
@@ -319,8 +318,7 @@ def setup(bot):
         """Stop and disconnect."""
         player = await get_guild_player(ctx, bot)
         await spam_protected_execute(
-            player, ctx, bot, "stop", _execute_stop,
-            STOP_DEBOUNCE_WINDOW, STOP_COOLDOWN, STOP_SPAM_THRESHOLD, 'spam_stop'
+            player, ctx, bot, "stop", _execute_stop, STOP_COOLDOWN
         )
 
     async def _execute_stop(ctx, bot):
@@ -340,8 +338,7 @@ def setup(bot):
         """Go to previous track."""
         player = await get_guild_player(ctx, bot)
         await spam_protected_execute(
-            player, ctx, bot, "previous", _execute_previous,
-            PREVIOUS_DEBOUNCE_WINDOW, PREVIOUS_COOLDOWN, PREVIOUS_SPAM_THRESHOLD, 'spam_previous'
+            player, ctx, bot, "previous", _execute_previous, PREVIOUS_COOLDOWN
         )
 
     async def _execute_previous(ctx, bot):
@@ -374,8 +371,7 @@ def setup(bot):
             return
 
         await spam_protected_execute(
-            player, ctx, bot, "shuffle", _execute_shuffle,
-            SHUFFLE_DEBOUNCE_WINDOW, SHUFFLE_COOLDOWN, SHUFFLE_SPAM_THRESHOLD, 'spam_shuffle'
+            player, ctx, bot, "shuffle", _execute_shuffle, SHUFFLE_COOLDOWN
         )
 
     async def _execute_shuffle(ctx, bot):
@@ -418,8 +414,7 @@ def setup(bot):
             return
 
         await spam_protected_execute(
-            player, ctx, bot, "queue", _execute_queue,
-            QUEUE_DEBOUNCE_WINDOW, QUEUE_COOLDOWN, QUEUE_SPAM_THRESHOLD
+            player, ctx, bot, "queue", _execute_queue, QUEUE_COOLDOWN
         )
 
     async def _execute_queue(ctx, bot):
@@ -477,7 +472,7 @@ def setup(bot):
         await spam_protected_execute(
             player, ctx, bot, "tracks",
             lambda ctx, bot: _execute_tracks_show(ctx, page, bot),
-            TRACKS_DEBOUNCE_WINDOW, TRACKS_COOLDOWN, TRACKS_SPAM_THRESHOLD
+            TRACKS_COOLDOWN
         )
 
     async def _execute_tracks_show(ctx, page: int, bot):
@@ -537,7 +532,7 @@ def setup(bot):
         await spam_protected_execute(
             player, ctx, bot, "playlist",
             lambda ctx, bot: _execute_playlist_switch(ctx, name, bot),
-            TRACKS_DEBOUNCE_WINDOW, TRACKS_COOLDOWN, TRACKS_SPAM_THRESHOLD, 'spam_tracks'
+            TRACKS_COOLDOWN
         )
 
     async def _execute_playlist_switch(ctx, name: str, bot):
@@ -585,7 +580,7 @@ def setup(bot):
 
         # Only enable if playlist structure exists
         if not has_playlist_structure():
-            # Use .get() with fallback since this message may not exist in old configs
+            # Use .get() with fallback for configs that don't define this key
             msg = MESSAGES.get('error_no_playlists', '❌ No playlists found. Music must be in subfolders.')
             await player.cleanup_manager.send_with_ttl(
                 player.text_channel or ctx.channel,
@@ -603,7 +598,7 @@ def setup(bot):
         await spam_protected_execute(
             player, ctx, bot, "playlists",
             lambda ctx, bot: _execute_playlists(ctx, page, bot),
-            PLAYLISTS_DEBOUNCE_WINDOW, PLAYLISTS_COOLDOWN, PLAYLISTS_SPAM_THRESHOLD, 'spam_playlists'
+            PLAYLISTS_COOLDOWN
         )
 
     async def _execute_playlists(ctx, page: int, bot):
@@ -652,9 +647,7 @@ def setup(bot):
         """Show help message."""
         player = await get_guild_player(ctx, bot)
         await spam_protected_execute(
-            player, ctx, bot, "help",
-            _execute_help,
-            HELP_DEBOUNCE_WINDOW, HELP_COOLDOWN, HELP_SPAM_THRESHOLD
+            player, ctx, bot, "help", _execute_help, HELP_COOLDOWN
         )
 
     async def _execute_help(ctx, bot):
@@ -709,7 +702,7 @@ def setup(bot):
         await spam_protected_execute(
             player, ctx, bot, "aliases",
             lambda ctx, bot: _execute_aliases(ctx, command_name, bot),
-            HELP_DEBOUNCE_WINDOW, HELP_COOLDOWN, HELP_SPAM_THRESHOLD
+            HELP_COOLDOWN
         )
 
     async def _execute_aliases(ctx, command_name: str | None, bot):

@@ -349,7 +349,7 @@ def load_library(guild_id: int = 0, playlist_path: Optional[Path] = None) -> Tup
         user_logger.warning(f"Music path not found: {target_path}")
         return [], {}
 
-    # Collect audio files using the new multi-format helper
+    # Collect audio files using the multi-format helper
     files = _collect_audio_files(target_path, guild_id)
     if not files:
         format_msg = "audio files" if ALLOW_TRANSCODING else ".opus files"

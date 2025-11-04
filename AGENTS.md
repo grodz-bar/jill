@@ -28,7 +28,7 @@ Audio: MP3/FLAC/WAV/M4A/OGG/OPUS supported. Opus preferred (zero CPU). See `READ
   - `buttons.py` — button interactions
 - **Core:** `player.py`, `playback.py` (FFmpeg, session-guarded), `track.py`
 - **Systems:**
-  - `spam_protection.py` — 5-layer (prefix only)
+  - `spam_protection.py` — 4-layer (spam sessions, circuit breaker, serial queue, cooldowns)
   - `cleanup.py` — TTL cleanup (prefix only)
   - `control_panel.py` — ControlPanelManager (slash only)
   - `voice_manager.py` — auto-pause | `watchdog.py` — hang detection
@@ -54,7 +54,7 @@ Reduce boilerplate (~150 lines saved):
 
 3. **`send_player_message(player, context, message_key, ttl_type, **format_kwargs)`** — Auto-sanitize + TTL cleanup. 20+ uses.
 
-4. **`spam_protected_execute(...)`** — 5-layer spam protection (0=user, 2=global rate, 3=debounce, 4=queue, 5=cooldown). Layer 1 in handlers. Used by 11 commands (all except `play` which handles voice/resume/jump logic manually). Slash skips Layer 2.
+4. **`spam_protected_execute(player, ctx, bot, command_name, execute_func, cooldown)`** — 4-layer spam protection for prefix commands. Checks spam sessions (Discord drip-feed handling, Layer 1 filters first), circuit breaker (guild isolation, Layer 2 counts filtered commands), queues for serial execution, and enforces cooldowns. Circuit breaker counts commands AFTER spam session filtering, so single-user spam won't trip guild-wide lockouts. Used by 11 prefix commands (all except `play` which handles voice/resume/jump logic manually). Slash commands bypass this—they call playback functions directly since Discord provides built-in protection.
 
 ## Critical Rules
 

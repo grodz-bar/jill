@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 from config import WATCHDOG_INTERVAL, WATCHDOG_TIMEOUT, ALONE_WATCHDOG_INTERVAL
 from systems.voice_manager import PlaybackState
 from utils.context_managers import suppress_callbacks
+from utils.discord_helpers import format_guild_log
 
 
 async def playback_watchdog(bot, players: Dict[int, 'MusicPlayer']):
@@ -114,7 +115,7 @@ async def playback_watchdog(bot, players: Dict[int, 'MusicPlayer']):
                         time_on_track = current_time - player._last_track_start
 
                         if time_on_track > WATCHDOG_TIMEOUT:
-                            logger.error(f"Guild {guild_id}: Playback hung, forcing restart")
+                            logger.error(f"{format_guild_log(guild_id, bot)}: Playback hung, forcing restart")
                             try:
                                 # Stop hung track and advance
                                 with suppress_callbacks(player):

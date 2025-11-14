@@ -30,7 +30,6 @@ Key Features:
 - Spam session detection: Handles Discord's drip-feed behavior (Layer 1 filters first)
 - Guild isolation: Bad guilds can't affect good guilds (Layer 2 counts filtered commands)
 - Warning messages: Preserves bot personality
-- Optional abuser timeouts: Configurable punishment system
 - Progressive penalties: Repeat offenders get longer lockouts
 - Single-user spam protection: Layer 2 counts commands AFTER Layer 1 filtering,
   so individual spammers don't trip guild-wide circuit breaker
@@ -61,12 +60,16 @@ import asyncio
 import random
 from time import monotonic as _now
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Callable, Awaitable, Dict, Tuple
 import logging
 
 logger = logging.getLogger(__name__)
+user_logger = logging.getLogger('jill')  # For user-facing messages
+
+# Import helper functions
+from utils.discord_helpers import format_guild_log, format_user_log
 
 # Import from config
 from config import (
@@ -75,24 +78,224 @@ from config import (
     GUILD_MAX_QUEUE_SIZE,
     CIRCUIT_BREAK_DURATION,
     CIRCUIT_PROGRESSIVE_PENALTIES,
-    CIRCUIT_TRIP_PENALTIES,
     CIRCUIT_PENALTY_RESET_TIME,
-    USER_SPAM_SESSION_TRIGGER_COUNT,
+    CIRCUIT_BREAKER_HISTORY_SIZE,
+    CIRCUIT_RATE_CALCULATION_WINDOW,
     USER_SPAM_SESSION_TRIGGER_WINDOW,
     USER_SPAM_SESSION_DURATION,
     USER_SPAM_WARNINGS_ENABLED,
-    USER_SPAM_WARNINGS,
-    ABUSER_TIMEOUT_ENABLED,
-    ABUSER_TIMEOUT_THRESHOLD,
-    ABUSER_TIMEOUT_DURATION,
-    ABUSER_TIMEOUT_MESSAGE,
-    ABUSER_TIMEOUT_ESCALATION,
-    ABUSER_TIMEOUT_ESCALATION_MULTIPLIER,
+    USER_SPAM_SESSION_CLEANUP_TIMEOUT,
     COMMAND_QUEUE_TIMEOUT,
+    QUEUE_SIZE_WARNING_THRESHOLD,
+    PRIORITY_COMMAND_TIMEOUT_MULTIPLIER,
     SPAM_PROTECTION_ENABLED,
     AUTO_CLEANUP_ENABLED,
     SPAM_CLEANUP_DELAY,
+    MESSAGES,
 )
+
+
+# =============================================================================
+# LAYER 1: PER-USER SPAM SESSIONS
+# =============================================================================
+
+@dataclass
+class UserSpamSession:
+    """
+    Tracks spam session for a single user (across all commands).
+
+    Spam session is triggered when user sends ANY commands too rapidly.
+    During session, ALL commands are dropped to prevent Discord's drip-feed
+    from continually resetting our protection.
+
+    Key insight: Discord client drip-feeds spam at ~1 command/sec after
+    the first 5 rapid commands. Without session tracking, each drip-fed
+    command would reset our debounce timer, causing lag.
+
+    Per-user (not per-command) tracking provides better spam protection:
+    - Detects cross-command spam (!help → !skip → !help)
+    - Minimal memory footprint (2 timestamps per user)
+    """
+    user_id: int
+
+    # Command timing tracking (2 most recent timestamps)
+    # Used to detect 3 commands within trigger window
+    # Use -1.0 as sentinel for "never set" (monotonic() is always positive)
+    last_command_time: float = -1.0
+    second_last_command_time: float = -1.0
+
+    # Last activity timestamp (for cleanup)
+    last_seen: float = -1.0
+
+    # Spam session state
+    in_spam_session: bool = False
+    session_start: Optional[float] = None
+    commands_during_session: int = 0
+    warning_sent: bool = False
+
+
+class UserSpamTracker:
+    """
+    Tracks spam sessions for all users in a guild.
+
+    Each user is tracked independently so multiple users don't interfere.
+    Handles Discord's client-side rate limiting and drip-feed behavior.
+
+    Implementation:
+    - Tracks 2 most recent command timestamps per user
+    - Detects 3 commands within trigger window (hardcoded)
+    - Per-user (not per-command) for cross-command spam detection
+    """
+
+    def __init__(self, guild_id: int, text_channel=None, bot=None):
+        self.guild_id = guild_id
+        self.text_channel = text_channel
+        self.bot = bot
+
+        # Track spam sessions: user_id → UserSpamSession (per-user, not per-command)
+        self._sessions: Dict[int, UserSpamSession] = {}
+
+    async def check_user_spam(
+        self,
+        user_id: int,
+        command_name: str
+    ) -> Tuple[bool, Optional[str]]:
+        """
+        Check if user is spamming and handle spam session.
+
+        Args:
+            user_id: Discord user ID
+            command_name: Command being executed
+
+        Returns:
+            (should_execute: bool, reason: str) - Whether to execute command and why
+
+        Behavior:
+            - Normal command: Execute immediately
+            - Spam detection (3 commands in window): Drop command, send warning, enter session
+            - During spam session: Drop all commands until session ends (even if user keeps spamming)
+            - Session ends: After USER_SPAM_SESSION_DURATION seconds of SILENCE (no commands)
+        """
+        if not SPAM_PROTECTION_ENABLED:
+            return (True, "spam_protection_disabled")
+
+        current_time = _now()
+
+        # Get or create session for this user (NOT per-command)
+        if user_id not in self._sessions:
+            self._sessions[user_id] = UserSpamSession(user_id)
+
+        session = self._sessions[user_id]
+        session.last_seen = current_time
+
+        # Check if in active spam session
+        if session.in_spam_session:
+            # Check if session should end (based on time since last command)
+            time_since_last = current_time - session.last_command_time
+
+            # Session ends after USER_SPAM_SESSION_DURATION of silence
+            # (This is the KEY to handling Discord's drip-feed)
+            # If user keeps spamming, session stays active!
+            if time_since_last > USER_SPAM_SESSION_DURATION:
+                # Exit spam session
+                session.in_spam_session = False
+                session.session_start = None
+                session.commands_during_session = 0
+                session.warning_sent = False
+                # Fall through to normal processing
+            else:
+                # Still in spam session - drop command
+                # Update time for session silence tracking
+                session.second_last_command_time = session.last_command_time
+                session.last_command_time = current_time
+                session.commands_during_session += 1
+                return (False, f"spam_session (dropped {session.commands_during_session})")
+
+        # Check if should start spam session (3 commands within window)
+        # Need: current command + last + second_last all within window
+        if session.second_last_command_time >= 0:
+            # We have at least 2 previous commands recorded
+            time_since_oldest = current_time - session.second_last_command_time
+
+            if time_since_oldest <= USER_SPAM_SESSION_TRIGGER_WINDOW:
+                # SPAM DETECTED: 3 commands within window
+                session.in_spam_session = True
+                session.session_start = current_time
+                session.commands_during_session = 0
+
+                user_logger.info(f"{format_guild_log(self.guild_id, self.bot)}: Detected spam from {format_user_log(user_id, self.bot)}")
+
+                # Send warning message
+                if USER_SPAM_WARNINGS_ENABLED and not session.warning_sent:
+                    await self._send_warning(user_id, command_name)
+                    session.warning_sent = True
+
+                # Drop the command that triggered the session (don't execute)
+                # Update times for session silence tracking
+                session.second_last_command_time = session.last_command_time
+                session.last_command_time = current_time
+
+                return (False, "spam_session_started")
+
+        # Normal command - rotate timestamps and allow execution
+        session.second_last_command_time = session.last_command_time
+        session.last_command_time = current_time
+
+        return (True, "normal")
+
+    async def _send_warning(self, user_id: int, command_name: str):
+        """Send spam warning message to user."""
+        if not self.text_channel:
+            return
+
+        # Get all spam warning messages from config
+        spam_warnings = [
+            MESSAGES['spam_warning_1'],
+            MESSAGES['spam_warning_2'],
+            MESSAGES['spam_warning_3'],
+            MESSAGES['spam_warning_4'],
+        ]
+
+        # Pick random warning message
+        warning = random.choice(spam_warnings)
+
+        try:
+            from utils.discord_helpers import safe_send
+            await safe_send(self.text_channel, warning)
+
+            # Schedule cleanup if enabled
+            if AUTO_CLEANUP_ENABLED:
+                # Import here to avoid circular dependency
+                from core.player import get_player
+                try:
+                    player = await get_player(self.guild_id, None, None)
+                    if player and player.cleanup_manager:
+                        asyncio.create_task(self._delayed_cleanup(player))
+                except Exception as e:
+                    logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Could not schedule warning cleanup: {e}")
+        except Exception as e:
+            logger.error(f"{format_guild_log(self.guild_id, self.bot)}: Failed to send spam warning: {e}")
+
+    async def _delayed_cleanup(self, player):
+        """Trigger cleanup after spam warning."""
+        await asyncio.sleep(SPAM_CLEANUP_DELAY)
+        if player.cleanup_manager:
+            await player.cleanup_manager.cleanup_channel_history()
+
+    def cleanup_old_sessions(self, current_time: float):
+        """Remove old session data to prevent memory leaks."""
+        # Remove sessions for users not seen in USER_SPAM_SESSION_CLEANUP_TIMEOUT
+        cutoff = current_time - USER_SPAM_SESSION_CLEANUP_TIMEOUT
+        old_users = [
+            user_id for user_id, session in self._sessions.items()
+            if session.last_seen >= 0 and session.last_seen < cutoff
+        ]
+
+        for user_id in old_users:
+            del self._sessions[user_id]
+
+        if old_users:
+            logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Cleaned up {len(old_users)} old user sessions")
 
 
 # =============================================================================
@@ -103,7 +306,6 @@ class CircuitState(Enum):
     """Circuit breaker states."""
     CLOSED = "closed"          # Normal operation
     OPEN = "open"              # Circuit tripped, dropping commands
-    HALF_OPEN = "half_open"    # Testing if guild recovered
 
 
 class GuildCircuitBreaker:
@@ -122,24 +324,28 @@ class GuildCircuitBreaker:
     States:
         CLOSED: Normal operation (commands execute normally)
         OPEN: Circuit tripped (drop all non-critical commands)
-        HALF_OPEN: Testing recovery (allow one command to test)
 
     Triggers:
         - Commands/second exceeds GUILD_MAX_COMMANDS_PER_SECOND
         - Queue size exceeds GUILD_MAX_QUEUE_SIZE
 
     Recovery:
-        - After CIRCUIT_BREAK_DURATION seconds, enter HALF_OPEN
-        - If next command succeeds, return to CLOSED
-        - If command fails, return to OPEN
+        - After CIRCUIT_BREAK_DURATION seconds, automatically return to CLOSED
+        - First command after recovery resets penalty timer if enough time passed
     """
 
-    def __init__(self, guild_id: int):
+    def __init__(self, guild_id: int, bot=None):
         self.guild_id = guild_id
+        self.bot = bot
         self.state = CircuitState.CLOSED
 
         # Command rate tracking
-        self.recent_commands: deque = deque(maxlen=100)  # (timestamp, command_name)
+        self.recent_commands: deque = deque(maxlen=CIRCUIT_BREAKER_HISTORY_SIZE)
+
+        # Rate calculation cache (avoids filtering deque on every check)
+        self._cached_rate: float = 0.0
+        self._cached_rate_time: float = -1.0
+        self._CACHE_TTL: float = 0.1  # Cache for 100ms
 
         # Circuit trip tracking
         self.trip_count = 0
@@ -152,17 +358,34 @@ class GuildCircuitBreaker:
     def record_command(self, command_name: str, current_time: float):
         """Record a command attempt for rate tracking."""
         self.recent_commands.append((current_time, command_name))
+        # Invalidate cache when new command recorded
+        self._cached_rate_time = -1.0
 
     def get_commands_per_second(self, current_time: float) -> float:
-        """Calculate current commands/second rate."""
+        """
+        Calculate current commands/second rate (with caching).
+
+        Cache is valid for 100ms to avoid repeatedly filtering the entire
+        deque on rapid successive checks. Cache is invalidated when new
+        commands are recorded.
+        """
         if not self.recent_commands:
             return 0.0
 
-        # Count commands in last 1 second
-        one_sec_ago = current_time - 1.0
-        recent_count = sum(1 for t, _ in self.recent_commands if t > one_sec_ago)
+        # Check if cache is still valid
+        if self._cached_rate_time >= 0 and (current_time - self._cached_rate_time) < self._CACHE_TTL:
+            return self._cached_rate
 
-        return float(recent_count)
+        # Recalculate rate
+        cutoff = current_time - CIRCUIT_RATE_CALCULATION_WINDOW
+        recent_count = sum(1 for t, _ in self.recent_commands if t > cutoff)
+        rate = float(recent_count) / CIRCUIT_RATE_CALCULATION_WINDOW
+
+        # Update cache
+        self._cached_rate = rate
+        self._cached_rate_time = current_time
+
+        return rate
 
     def should_allow_command(self, command_name: str, is_critical: bool) -> Tuple[bool, str]:
         """
@@ -186,14 +409,15 @@ class GuildCircuitBreaker:
 
         # Check circuit state
         if self.state == CircuitState.OPEN:
-            # Circuit is open - check if we should try half-open
+            # Circuit is open - check if lockout duration has passed
             time_open = current_time - self.opened_at
             lockout_duration = CIRCUIT_BREAK_DURATION * self.penalty_multiplier
 
             if time_open > lockout_duration:
-                self.state = CircuitState.HALF_OPEN
-                logger.info(
-                    f"Guild {self.guild_id}: Circuit breaker entering HALF_OPEN "
+                # Lockout expired - close circuit and allow commands again
+                self._close_circuit(current_time)
+                user_logger.info(
+                    f"{format_guild_log(self.guild_id, self.bot)}: Circuit breaker CLOSED "
                     f"(locked for {time_open:.1f}s)"
                 )
             else:
@@ -210,7 +434,6 @@ class GuildCircuitBreaker:
             # Rate limit exceeded - don't allow
             return (False, f"rate_limit ({commands_per_sec:.1f}/s > {GUILD_MAX_COMMANDS_PER_SECOND}/s)")
 
-        # In HALF_OPEN, we'll transition to CLOSED when command is recorded
         return (True, "allowed")
 
     def record_allowed_command(self, command_name: str):
@@ -226,10 +449,6 @@ class GuildCircuitBreaker:
         current_time = _now()
         self.record_command(command_name, current_time)
 
-        # If we're in HALF_OPEN, transition back to CLOSED
-        if self.state == CircuitState.HALF_OPEN:
-            self._close_circuit(current_time)
-
         # Check if this command puts us over the rate limit
         commands_per_sec = self.get_commands_per_second(current_time)
         if commands_per_sec > GUILD_MAX_COMMANDS_PER_SECOND:
@@ -242,17 +461,19 @@ class GuildCircuitBreaker:
         self.last_trip_time = current_time
         self.trip_count += 1
 
-        # Calculate penalty for repeat offenders
+        # Calculate penalty for repeat offenders (linear progression)
         if CIRCUIT_PROGRESSIVE_PENALTIES:
-            self.penalty_multiplier = CIRCUIT_TRIP_PENALTIES.get(
-                self.trip_count,
-                CIRCUIT_TRIP_PENALTIES[max(CIRCUIT_TRIP_PENALTIES.keys())]
-            )
+            # Linear: 1x, 2x, 3x, 4x (capped at 4)
+            # Trip 1: 1.0 * 30s = 30s
+            # Trip 2: 2.0 * 30s = 60s
+            # Trip 3: 3.0 * 30s = 90s
+            # Trip 4+: 4.0 * 30s = 120s
+            self.penalty_multiplier = float(min(self.trip_count, 4))
 
         lockout_duration = CIRCUIT_BREAK_DURATION * self.penalty_multiplier
 
-        logger.warning(
-            f"Guild {self.guild_id}: Circuit breaker TRIPPED "
+        user_logger.warning(
+            f"{format_guild_log(self.guild_id, self.bot)}: Circuit breaker TRIPPED "
             f"(rate: {rate:.1f}/s, trip #{self.trip_count}, "
             f"lockout: {lockout_duration:.0f}s, penalty: {self.penalty_multiplier}x)"
         )
@@ -267,250 +488,9 @@ class GuildCircuitBreaker:
             if time_since_trip > CIRCUIT_PENALTY_RESET_TIME:
                 self.trip_count = 0
                 self.penalty_multiplier = 1.0
-                logger.info(f"Guild {self.guild_id}: Circuit breaker penalties RESET (good behavior)")
+                user_logger.info(f"{format_guild_log(self.guild_id, self.bot)}: Circuit breaker penalties RESET (good behavior)")
 
-        logger.info(f"Guild {self.guild_id}: Circuit breaker CLOSED (recovered)")
-
-
-# =============================================================================
-# LAYER 1: PER-USER SPAM SESSIONS
-# =============================================================================
-
-@dataclass
-class UserSpamSession:
-    """
-    Tracks spam session for a single user.
-
-    Spam session is triggered when user sends commands too rapidly.
-    During session, commands are dropped to prevent Discord's drip-feed
-    from continually resetting our protection.
-
-    Key insight: Discord client drip-feeds spam at ~1 command/sec after
-    the first 5 rapid commands. Without session tracking, each drip-fed
-    command would reset our debounce timer, causing lag.
-    """
-    user_id: int
-    command_name: str
-
-    # Command timing tracking
-    command_times: deque = field(default_factory=lambda: deque(maxlen=20))
-
-    # Spam session state
-    in_spam_session: bool = False
-    session_start: Optional[float] = None
-    commands_during_session: int = 0
-    warning_sent: bool = False
-
-    # Abuser timeout state
-    timeout_until: Optional[float] = None
-    timeout_count: int = 0
-
-
-class UserSpamTracker:
-    """
-    Tracks spam sessions for all users in a guild.
-
-    Each user is tracked independently so multiple users don't interfere.
-    Handles Discord's client-side rate limiting and drip-feed behavior.
-    """
-
-    def __init__(self, guild_id: int, text_channel=None):
-        self.guild_id = guild_id
-        self.text_channel = text_channel
-
-        # Track spam sessions: (user_id, command_name) → UserSpamSession
-        self._sessions: Dict[Tuple[int, str], UserSpamSession] = {}
-
-        # Track last command time per user (for cleanup)
-        self._user_last_seen: Dict[int, float] = {}
-
-    async def check_user_spam(
-        self,
-        user_id: int,
-        command_name: str,
-        execute_func: Callable[[], Awaitable[None]]
-    ) -> Tuple[bool, Optional[str]]:
-        """
-        Check if user is spamming and handle spam session.
-
-        Args:
-            user_id: Discord user ID
-            command_name: Command being executed
-            execute_func: Function to execute (called once if spam detected)
-
-        Returns:
-            (should_execute: bool, reason: str) - Whether to execute command and why
-
-        Behavior:
-            - Normal command: Execute immediately
-            - First spam detection (3 in 1.5s): Execute once, send warning, enter session
-            - During spam session: Drop all commands until session ends
-            - Session ends: After USER_SPAM_SESSION_DURATION of no commands
-        """
-        if not SPAM_PROTECTION_ENABLED:
-            return (True, "spam_protection_disabled")
-
-        current_time = _now()
-        self._user_last_seen[user_id] = current_time
-
-        # Get or create session for this user+command combo
-        session_key = (user_id, command_name)
-        if session_key not in self._sessions:
-            self._sessions[session_key] = UserSpamSession(user_id, command_name)
-
-        session = self._sessions[session_key]
-
-        # Check if user is timed out
-        if session.timeout_until and current_time < session.timeout_until:
-            remaining = session.timeout_until - current_time
-            return (False, f"timed_out (for {remaining:.0f}s more)")
-        elif session.timeout_until and current_time >= session.timeout_until:
-            # Timeout expired
-            session.timeout_until = None
-            logger.info(f"Guild {self.guild_id} User {user_id}: Timeout expired")
-
-        # Record this command
-        session.command_times.append(current_time)
-
-        # Check if in active spam session
-        if session.in_spam_session:
-            # Calculate time since session started
-            time_in_session = current_time - session.session_start
-
-            # Check if session should end
-            if len(session.command_times) > 0:
-                last_command_time = session.command_times[-1]
-                time_since_last = current_time - last_command_time
-
-                # Session ends after USER_SPAM_SESSION_DURATION of silence
-                # (This is the KEY to handling Discord's drip-feed)
-                if time_in_session > USER_SPAM_SESSION_DURATION:
-                    # Exit spam session
-                    logger.info(
-                        f"Guild {self.guild_id} User {user_id}: Spam session ended "
-                        f"({session.commands_during_session} commands dropped)"
-                    )
-                    session.in_spam_session = False
-                    session.session_start = None
-                    session.commands_during_session = 0
-                    session.warning_sent = False
-                    # Fall through to normal processing
-                else:
-                    # Still in spam session - drop command
-                    session.commands_during_session += 1
-
-                    # Check if user should be timed out (heavy abuse)
-                    if (ABUSER_TIMEOUT_ENABLED and
-                        session.commands_during_session >= ABUSER_TIMEOUT_THRESHOLD and
-                        not session.timeout_until):
-                        await self._timeout_user(session, current_time)
-
-                    return (False, f"spam_session (dropped {session.commands_during_session})")
-
-        # Not in spam session - check if we should enter one
-        # Count recent commands within trigger window
-        trigger_time = current_time - USER_SPAM_SESSION_TRIGGER_WINDOW
-        recent_commands = [t for t in session.command_times if t > trigger_time]
-
-        if len(recent_commands) >= USER_SPAM_SESSION_TRIGGER_COUNT:
-            # ENTER SPAM SESSION
-            session.in_spam_session = True
-            session.session_start = current_time
-            session.commands_during_session = 0
-
-            logger.info(
-                f"Guild {self.guild_id} User {user_id}: Spam session started "
-                f"({len(recent_commands)} commands in {USER_SPAM_SESSION_TRIGGER_WINDOW}s)"
-            )
-
-            # Send warning message
-            if USER_SPAM_WARNINGS_ENABLED and not session.warning_sent:
-                await self._send_warning(user_id, command_name)
-                session.warning_sent = True
-
-            # Execute the command ONCE (first command that triggered session)
-            await execute_func()
-
-            return (False, "spam_session_started (executed once)")
-
-        # Normal command - allow execution
-        return (True, "normal")
-
-    async def _send_warning(self, user_id: int, command_name: str):
-        """Send spam warning message to user."""
-        if not self.text_channel or not USER_SPAM_WARNINGS:
-            return
-
-        # Pick random warning message
-        warning = random.choice(USER_SPAM_WARNINGS)
-
-        try:
-            from utils.discord_helpers import safe_send
-            await safe_send(self.text_channel, warning)
-
-            # Schedule cleanup if enabled
-            if AUTO_CLEANUP_ENABLED:
-                # Import here to avoid circular dependency
-                from core.player import get_player
-                try:
-                    player = await get_player(self.guild_id, None, None)
-                    if player and player.cleanup_manager:
-                        asyncio.create_task(self._delayed_cleanup(player))
-                except Exception as e:
-                    logger.debug(f"Guild {self.guild_id}: Could not schedule warning cleanup: {e}")
-        except Exception as e:
-            logger.error(f"Guild {self.guild_id}: Failed to send spam warning: {e}")
-
-    async def _delayed_cleanup(self, player):
-        """Trigger cleanup after spam warning."""
-        await asyncio.sleep(SPAM_CLEANUP_DELAY)
-        if player.cleanup_manager:
-            await player.cleanup_manager.cleanup_old_messages()
-
-    async def _timeout_user(self, session: UserSpamSession, current_time: float):
-        """Timeout a user for excessive spam."""
-        session.timeout_count += 1
-
-        # Calculate timeout duration with escalation
-        duration = ABUSER_TIMEOUT_DURATION
-        if ABUSER_TIMEOUT_ESCALATION and session.timeout_count > 1:
-            duration *= (ABUSER_TIMEOUT_ESCALATION_MULTIPLIER ** (session.timeout_count - 1))
-
-        session.timeout_until = current_time + duration
-
-        logger.warning(
-            f"Guild {self.guild_id} User {session.user_id}: TIMED OUT for {duration:.0f}s "
-            f"(timeout #{session.timeout_count}, {session.commands_during_session} commands in session)"
-        )
-
-        # Send timeout message
-        if self.text_channel:
-            try:
-                from utils.discord_helpers import safe_send
-                message = ABUSER_TIMEOUT_MESSAGE.format(
-                    user=f"<@{session.user_id}>",
-                    duration=int(duration)
-                )
-                await safe_send(self.text_channel, message)
-            except Exception as e:
-                logger.error(f"Guild {self.guild_id}: Failed to send timeout message: {e}")
-
-    def cleanup_old_sessions(self, current_time: float):
-        """Remove old session data to prevent memory leaks."""
-        # Remove sessions for users not seen in 1 hour
-        cutoff = current_time - 3600
-        old_users = [uid for uid, last_seen in self._user_last_seen.items() if last_seen < cutoff]
-
-        for user_id in old_users:
-            # Remove all sessions for this user
-            self._sessions = {
-                key: session for key, session in self._sessions.items()
-                if session.user_id != user_id
-            }
-            del self._user_last_seen[user_id]
-
-        if old_users:
-            logger.debug(f"Guild {self.guild_id}: Cleaned up {len(old_users)} old user sessions")
+        user_logger.info(f"{format_guild_log(self.guild_id, self.bot)}: Circuit breaker CLOSED (recovered)")
 
 
 # =============================================================================
@@ -542,7 +522,7 @@ class SpamProtector:
         - Single-user spam protection: Won't trigger guild-wide lockouts
     """
 
-    def __init__(self, guild_id: int, bot_loop, text_channel=None):
+    def __init__(self, guild_id: int, bot_loop, text_channel=None, bot=None):
         """
         Initialize spam protection for a guild.
 
@@ -550,16 +530,18 @@ class SpamProtector:
             guild_id: Discord guild ID
             bot_loop: Discord bot's event loop
             text_channel: Optional text channel for warnings
+            bot: Bot instance for logging (optional)
         """
         self.guild_id = guild_id
         self.bot_loop = bot_loop
         self.text_channel = text_channel
+        self.bot = bot
 
         # LAYER 1: User Spam Tracking
-        self.user_tracker = UserSpamTracker(guild_id, text_channel)
+        self.user_tracker = UserSpamTracker(guild_id, text_channel, bot)
 
         # LAYER 2: Circuit Breaker
-        self.circuit_breaker = GuildCircuitBreaker(guild_id) if CIRCUIT_BREAKER_ENABLED else None
+        self.circuit_breaker = GuildCircuitBreaker(guild_id, bot) if CIRCUIT_BREAKER_ENABLED else None
 
         # LAYER 3: Serial command queue
         self._command_queue: asyncio.Queue = asyncio.Queue(maxsize=GUILD_MAX_QUEUE_SIZE)
@@ -569,7 +551,30 @@ class SpamProtector:
         self._last_execute: Dict[str, float] = {}  # command_name → timestamp
 
         # Cleanup callback
-        self._cleanup_callback: Optional[Callable[[], Awaiting[None]]] = None
+        self._cleanup_callback: Optional[Callable[[], Awaitable[None]]] = None
+
+    # =========================================================================
+    # LAYER 1: Per-User Spam Sessions
+    # =========================================================================
+
+    async def check_user_spam(
+        self,
+        user_id: int,
+        command_name: str
+    ) -> Tuple[bool, str]:
+        """
+        Check if user is spamming and handle spam session.
+
+        This is the main entry point for command spam checking.
+
+        Args:
+            user_id: Discord user ID
+            command_name: Command being executed
+
+        Returns:
+            (should_execute: bool, reason: str)
+        """
+        return await self.user_tracker.check_user_spam(user_id, command_name)
 
     # =========================================================================
     # LAYER 2: Circuit Breaker
@@ -605,31 +610,6 @@ class SpamProtector:
             self.circuit_breaker.record_allowed_command(command_name)
 
     # =========================================================================
-    # LAYER 1: Per-User Spam Sessions
-    # =========================================================================
-
-    async def check_user_spam(
-        self,
-        user_id: int,
-        command_name: str,
-        execute_func: Callable[[], Awaitable[None]]
-    ) -> Tuple[bool, str]:
-        """
-        Check if user is spamming and handle spam session.
-
-        This is the main entry point for command spam checking.
-
-        Args:
-            user_id: Discord user ID
-            command_name: Command being executed
-            execute_func: Function to execute if spam session starts
-
-        Returns:
-            (should_execute: bool, reason: str)
-        """
-        return await self.user_tracker.check_user_spam(user_id, command_name, execute_func)
-
-    # =========================================================================
     # LAYER 3: Serial Queue
     # =========================================================================
 
@@ -637,7 +617,7 @@ class SpamProtector:
         """Start the command queue processor."""
         if not self._processor_task:
             self._processor_task = asyncio.create_task(self._process_commands())
-            logger.debug(f"Guild {self.guild_id}: Command processor started")
+            logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Command processor started")
 
     async def _process_commands(self):
         """
@@ -654,10 +634,10 @@ class SpamProtector:
                 finally:
                     self._command_queue.task_done()
             except asyncio.CancelledError:
-                logger.debug(f"Guild {self.guild_id}: Command processor cancelled")
+                logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Command processor cancelled")
                 break
             except Exception as e:
-                logger.error(f"Guild {self.guild_id}: Command processor error: {e}", exc_info=True)
+                logger.error(f"{format_guild_log(self.guild_id, self.bot)}: Command processor error: {e}", exc_info=True)
 
     async def queue_command(
         self,
@@ -672,21 +652,21 @@ class SpamProtector:
             priority: If True, use shorter timeout (for critical internal ops)
         """
         # Check queue health
-        if not priority and self._command_queue.qsize() >= GUILD_MAX_QUEUE_SIZE * 0.9:
-            logger.warning(
-                f"Guild {self.guild_id}: Command queue nearly full "
+        if not priority and self._command_queue.qsize() >= GUILD_MAX_QUEUE_SIZE * QUEUE_SIZE_WARNING_THRESHOLD:
+            logger.debug(
+                f"{format_guild_log(self.guild_id, self.bot)}: Command queue nearly full "
                 f"({self._command_queue.qsize()}/{GUILD_MAX_QUEUE_SIZE}), dropping command"
             )
             return
 
         try:
-            timeout = COMMAND_QUEUE_TIMEOUT * (0.5 if priority else 1.0)
+            timeout = COMMAND_QUEUE_TIMEOUT * (PRIORITY_COMMAND_TIMEOUT_MULTIPLIER if priority else 1.0)
             await asyncio.wait_for(
                 self._command_queue.put(cmd),
                 timeout=timeout
             )
         except asyncio.TimeoutError:
-            logger.warning(f"Guild {self.guild_id}: Command queue timeout, dropping command")
+            logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Command queue timeout, dropping command")
 
     # =========================================================================
     # LAYER 4: Post-Execution Cooldowns
@@ -743,4 +723,4 @@ class SpamProtector:
             except asyncio.CancelledError:
                 pass
 
-        logger.debug(f"Guild {self.guild_id}: Spam protector shutdown complete")
+        logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Spam protector shutdown complete")

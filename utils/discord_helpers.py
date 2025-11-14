@@ -48,6 +48,7 @@ from time import monotonic as _now
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+user_logger = logging.getLogger('jill')  # For user-facing messages
 
 # Import config
 from config import BOT_STATUS, FFMPEG_BEFORE_OPTIONS
@@ -56,6 +57,97 @@ from config import BOT_STATUS, FFMPEG_BEFORE_OPTIONS
 _last_presence_update: float = 0
 _current_presence_text: Optional[str] = None
 _presence_lock = asyncio.Lock()  # Prevents race conditions from concurrent update_presence calls
+
+
+# =============================================================================
+# LOGGING FORMATTERS
+# =============================================================================
+
+def format_guild_log(guild_or_id, bot=None) -> str:
+    """
+    Format guild for logging with human-readable name.
+
+    Shows guild name in normal mode, adds ID in DEBUG mode for technical details.
+    Handles edge cases gracefully (unknown guilds, DMs, bot not available).
+
+    Args:
+        guild_or_id: Guild object, guild ID (int), or None (for DMs)
+        bot: Bot instance (optional if guild object provided)
+
+    Returns:
+        - Normal mode: "ServerName" or "DM" or "Guild #123"
+        - DEBUG mode: "ServerName (#123)" or "DM" or "Guild #123"
+
+    Examples:
+        >>> format_guild_log(ctx.guild)
+        'My Discord Server'
+        >>> format_guild_log(123456, bot)
+        'My Discord Server'  # or 'Guild #123456' if unknown
+        >>> format_guild_log(None)
+        'DM'
+    """
+    # Handle None (DMs)
+    if guild_or_id is None:
+        return "DM"
+
+    # Get guild object and ID
+    if isinstance(guild_or_id, int):
+        guild = bot.get_guild(guild_or_id) if bot else None
+        guild_id = guild_or_id
+    else:
+        guild = guild_or_id
+        guild_id = guild.id if guild else None
+
+    # Format based on log level
+    if guild and hasattr(guild, 'name'):
+        if logger.isEnabledFor(logging.DEBUG):
+            return f"{guild.name} (#{guild_id})"
+        return guild.name
+
+    # Fallback for unknown guilds (bot kicked, etc.)
+    return f"Guild #{guild_id}" if guild_id else "Unknown"
+
+
+def format_user_log(user_or_id, bot=None) -> str:
+    """
+    Format user for logging with human-readable name.
+
+    Shows username in normal mode, adds ID in DEBUG mode for technical details.
+    Handles edge cases gracefully (unknown users, bot not available).
+
+    Args:
+        user_or_id: User object, user ID (int), or None
+        bot: Bot instance (optional if user object provided)
+
+    Returns:
+        - Normal mode: "username" or "User #123"
+        - DEBUG mode: "username (#123)" or "User #123"
+
+    Examples:
+        >>> format_user_log(ctx.author)
+        'JohnDoe'
+        >>> format_user_log(98765, bot)
+        'JohnDoe'  # or 'User #98765' if unknown
+    """
+    if user_or_id is None:
+        return "Unknown"
+
+    # Get user object and ID
+    if isinstance(user_or_id, int):
+        user = bot.get_user(user_or_id) if bot else None
+        user_id = user_or_id
+    else:
+        user = user_or_id
+        user_id = user.id if user else None
+
+    # Format based on log level
+    if user and hasattr(user, 'name'):
+        if logger.isEnabledFor(logging.DEBUG):
+            return f"{user.name} (#{user_id})"
+        return user.name
+
+    # Fallback for unknown users
+    return f"User #{user_id}" if user_id else "Unknown"
 
 
 def sanitize_for_format(text: str) -> str:
@@ -103,12 +195,10 @@ async def get_guild_player(context, bot):
         MusicPlayer: The guild's music player instance
 
     Example:
-        # Before (33 occurrences):
-        player = await get_player(ctx.guild.id, bot, bot.user.id)
-        player = await get_player(inter.guild.id, bot, bot.user.id)
-
-        # After:
+        # Prefix command:
         player = await get_guild_player(ctx, bot)
+
+        # Slash command:
         player = await get_guild_player(inter, bot)
     """
     from core.player import get_player
@@ -140,17 +230,6 @@ async def ensure_voice_connected(player, context, error_message: Optional[str] =
         bool: True if connected, False if not (error already sent)
 
     Example:
-        # Before (10 occurrences):
-        if not player.voice_client or not player.voice_client.is_connected():
-            await player.cleanup_manager.send_with_ttl(
-                player.text_channel,
-                MESSAGES['error_not_connected'],
-                'error',
-                ctx.message
-            )
-            return
-
-        # After:
         if not await ensure_voice_connected(player, ctx):
             return
 
@@ -265,8 +344,13 @@ async def spam_protected_execute(
     - Layer 3: Serial Queue (race condition prevention)
     - Layer 4: Post-Execution Cooldowns (prevents rapid re-execution)
 
-    Note: Checks are performed in optimized order (quick checks first) for performance,
-    but Layer 2 only counts commands that pass Layer 1 filtering.
+    Check order (optimized for performance - fastest first):
+    1. Layer 4: Cooldown check (dict lookup - instant)
+    2. Layer 2: Circuit breaker (state + cached rate - fast)
+    3. Layer 1: Spam session detection (may execute once)
+    4. Layer 3: Queue for serial execution
+
+    Note: Layer 2 only counts commands that pass Layer 1 filtering.
 
     Args:
         player: MusicPlayer instance
@@ -292,21 +376,21 @@ async def spam_protected_execute(
         - Per-user tracking: Multiple users don't interfere with each other
         - Single-user spam won't trip circuit breaker (Layer 2 counts after Layer 1 filters)
     """
-    # Optimized check order (quick checks first, then filtering)
+    # Optimized check order (fastest checks first)
 
-    # Check Layer 2 first (quick state check)
-    allow, reason = player.spam_protector.check_circuit_breaker(command_name, is_critical)
-    if not allow:
-        logger.debug(f"Guild {player.guild_id}: {command_name} blocked by circuit breaker ({reason})")
-        return False
-
-    # Check Layer 4 next (quick cooldown check)
+    # Check Layer 4 first (fastest - just dict lookup)
     allow, reason = player.spam_protector.check_cooldown(command_name, cooldown)
     if not allow:
-        logger.debug(f"Guild {player.guild_id}: {command_name} blocked by cooldown ({reason})")
+        logger.debug(f"{format_guild_log(player.guild_id, bot)}: {command_name} blocked by cooldown ({reason})")
         return False
 
-    # Layer 1: Per-User Spam Session Detection (filters spam, may execute once)
+    # Check Layer 2 next (circuit state + cached rate calculation)
+    allow, reason = player.spam_protector.check_circuit_breaker(command_name, is_critical)
+    if not allow:
+        logger.debug(f"{format_guild_log(player.guild_id, bot)}: {command_name} blocked by circuit breaker ({reason})")
+        return False
+
+    # Layer 1: Per-User Spam Session Detection (filters spam, drops spam commands)
     async def wrapped_execute():
         await execute_func(ctx, bot)
         # Record execution for cooldown tracking
@@ -314,12 +398,11 @@ async def spam_protected_execute(
 
     should_execute, reason = await player.spam_protector.check_user_spam(
         ctx.author.id,
-        command_name,
-        wrapped_execute
+        command_name
     )
 
     if not should_execute:
-        logger.debug(f"Guild {player.guild_id}: {command_name} handled by spam session ({reason})")
+        logger.debug(f"{format_guild_log(player.guild_id, bot)}: {command_name} handled by spam session ({reason})")
         return False
 
     # Command passed Layer 1 filtering - record it for Layer 2 (circuit breaker) rate tracking
@@ -637,8 +720,9 @@ class VoiceHealthMonitor:
     BAD_LATENCY = 0.250          # 250ms - reconnect needed
     GOOD_CHECKS_FOR_NORMAL = 3   # Good checks before returning to normal
 
-    def __init__(self, guild_id: int):
+    def __init__(self, guild_id: int, bot=None):
         self.guild_id = guild_id
+        self.bot = bot
         self.state = ConnectionHealth.NORMAL
         self.good_checks_count = 0
         self.last_check = 0.0
@@ -700,8 +784,8 @@ class VoiceHealthMonitor:
                 # Detected problems, enter suspicious mode
                 self.state = ConnectionHealth.SUSPICIOUS
                 self.good_checks_count = 0
-                logger.info(
-                    f"Guild {self.guild_id}: Voice latency marginal "
+                user_logger.info(
+                    f"{format_guild_log(self.guild_id, self.bot)}: Voice latency marginal "
                     f"({latency*1000:.0f}ms), monitoring closely"
                 )
             # Stay in current state if already suspicious/recovering
@@ -711,20 +795,20 @@ class VoiceHealthMonitor:
                 # First good check after reconnect, move to recovery
                 self.state = ConnectionHealth.RECOVERY
                 self.good_checks_count = 1
-                logger.info(f"Guild {self.guild_id}: Reconnect successful, monitoring stability")
+                user_logger.info(f"{format_guild_log(self.guild_id, self.bot)}: Reconnect successful, monitoring stability")
 
             elif self.state == ConnectionHealth.RECOVERY:
                 self.good_checks_count += 1
                 if self.good_checks_count >= self.GOOD_CHECKS_FOR_NORMAL:
                     # Sustained good performance, back to normal
                     self.state = ConnectionHealth.NORMAL
-                    logger.debug(f"Guild {self.guild_id}: Connection stable, resuming normal monitoring")
+                    logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Connection stable, resuming normal monitoring")
 
             elif self.state == ConnectionHealth.SUSPICIOUS:
                 # Connection improved, move to recovery
                 self.state = ConnectionHealth.RECOVERY
                 self.good_checks_count = 1
-                logger.info(f"Guild {self.guild_id}: Connection improved, watching for stability")
+                user_logger.info(f"{format_guild_log(self.guild_id, self.bot)}: Connection improved, watching for stability")
 
         state_changed = (old_state != self.state)
         return needs_reconnect, state_changed
@@ -741,10 +825,10 @@ class VoiceHealthMonitor:
 _health_monitors = {}
 
 
-def get_health_monitor(guild_id: int) -> VoiceHealthMonitor:
+def get_health_monitor(guild_id: int, bot=None) -> VoiceHealthMonitor:
     """Get or create health monitor for a guild."""
     if guild_id not in _health_monitors:
-        _health_monitors[guild_id] = VoiceHealthMonitor(guild_id)
+        _health_monitors[guild_id] = VoiceHealthMonitor(guild_id, bot)
     return _health_monitors[guild_id]
 
 
@@ -780,7 +864,7 @@ async def check_voice_health_and_reconnect(player, guild, bot) -> bool:
     if not player.voice_client:
         return False
 
-    monitor = get_health_monitor(guild.id)
+    monitor = get_health_monitor(guild.id, bot)
 
     try:
         vc = player.voice_client
@@ -801,7 +885,7 @@ async def check_voice_health_and_reconnect(player, guild, bot) -> bool:
         if state_changed:
             interval = monitor.get_next_check_interval()
             logger.debug(
-                f"Guild {guild.id}: Health monitor state changed to "
+                f"{format_guild_log(guild.id, bot)}: Health monitor state changed to "
                 f"{ConnectionHealth(monitor.state).name}, next check in {interval}s"
             )
 
@@ -809,34 +893,34 @@ async def check_voice_health_and_reconnect(player, guild, bot) -> bool:
         if latency is None:
             # Check WebSocket health
             if hasattr(vc, 'ws') and (vc.ws is None or vc.ws.closed):
-                logger.warning(f"Guild {guild.id}: Voice WebSocket dead, forcing reconnect")
+                logger.warning(f"{format_guild_log(guild.id, bot)}: Voice WebSocket dead, forcing reconnect")
                 needs_reconnect = True
 
             # Check if we can access channel
             try:
                 _ = vc.channel
             except (AttributeError, RuntimeError):
-                logger.warning(f"Guild {guild.id}: Voice client in bad state, forcing reconnect")
+                logger.warning(f"{format_guild_log(guild.id, bot)}: Voice client in bad state, forcing reconnect")
                 needs_reconnect = True
 
         # Perform reconnect if needed
         if needs_reconnect:
             # Only log latency if it's a valid number (not None or inf)
             if latency and latency != float('inf'):
-                logger.warning(
-                    f"Guild {guild.id}: Voice connection degraded "
+                user_logger.warning(
+                    f"{format_guild_log(guild.id, bot)}: Voice connection degraded "
                     f"(latency: {latency*1000:.0f}ms), reconnecting to fix stuttering"
                 )
             else:
-                logger.warning(
-                    f"Guild {guild.id}: Voice connection unhealthy, reconnecting to fix issues"
+                user_logger.warning(
+                    f"{format_guild_log(guild.id, bot)}: Voice connection unhealthy, reconnecting to fix issues"
                 )
             return await _force_voice_reconnect(player, guild, bot, monitor)
 
         return True
 
     except Exception as e:
-        logger.error(f"Guild {guild.id}: Voice health check error: {e}", exc_info=True)
+        logger.error(f"{format_guild_log(guild.id, bot)}: Voice health check error: {e}", exc_info=True)
         # Try reconnect on error
         return await _force_voice_reconnect(player, guild, bot, monitor)
 
@@ -863,7 +947,7 @@ async def _force_voice_reconnect(player, guild, bot, monitor: VoiceHealthMonitor
     time_since_last = _now() - monitor.last_reconnect
     if time_since_last < 30:  # 30 second minimum between reconnects
         logger.debug(
-            f"Guild {guild.id}: Skipping reconnect, too recent "
+            f"{format_guild_log(guild.id, bot)}: Skipping reconnect, too recent "
             f"({time_since_last:.1f}s ago)"
         )
         return True
@@ -876,8 +960,8 @@ async def _force_voice_reconnect(player, guild, bot, monitor: VoiceHealthMonitor
     channel = old_vc.channel
 
     # Log reconnect attempt
-    logger.info(
-        f"Guild {guild.id}: Reconnecting voice to fix stuttering "
+    user_logger.info(
+        f"{format_guild_log(guild.id, bot)}: Reconnecting voice to fix stuttering "
         f"(attempt #{monitor.reconnect_count + 1})"
     )
 
@@ -895,7 +979,7 @@ async def _force_voice_reconnect(player, guild, bot, monitor: VoiceHealthMonitor
         try:
             await old_vc.disconnect(force=True)
         except Exception as e:
-            logger.debug(f"Guild {guild.id}: Disconnect error (continuing): {e}")
+            logger.debug(f"{format_guild_log(guild.id, bot)}: Disconnect error (continuing): {e}")
 
         player.voice_client = None
 
@@ -914,18 +998,18 @@ async def _force_voice_reconnect(player, guild, bot, monitor: VoiceHealthMonitor
             # Record successful reconnect
             monitor.record_reconnect()
 
-            logger.info(
-                f"Guild {guild.id}: Voice reconnected successfully "
+            user_logger.info(
+                f"{format_guild_log(guild.id, bot)}: Voice reconnected successfully "
                 f"(new connection established)"
             )
 
             return True
 
         except asyncio.TimeoutError:
-            logger.error(f"Guild {guild.id}: Voice reconnect timed out after 5s")
+            logger.error(f"{format_guild_log(guild.id, bot)}: Voice reconnect timed out after 5s")
             player.voice_client = None
             return False
         except Exception as e:
-            logger.error(f"Guild {guild.id}: Voice reconnect failed: {e}")
+            logger.error(f"{format_guild_log(guild.id, bot)}: Voice reconnect failed: {e}")
             player.voice_client = None
             return False

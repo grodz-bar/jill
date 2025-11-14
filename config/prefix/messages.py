@@ -119,15 +119,13 @@ MESSAGES = {
     # ===================================================================================================================
     # SPAM WARNINGS - Warning messages for spam protection
     # ===================================================================================================================
-    'spam_skip': '😒 Easy there. I\'ll skip when you stop button mashing.',
-    'spam_pause': '😑 Alright, alright, I\'ll pause. Chill.',
-    'spam_stop': '😑 Yeah yeah, I\'m leaving. Give me a second.',
-    'spam_previous': '😑 Going back, going back...',
-    'spam_shuffle': '😵‍💫 Shuffle on, shuffle off, make up your mind!',
-    'spam_play_jump': '😵‍💫 Hold on, let me find that track...',
-    'spam_tracks': '😑 Alright, alright, here it is...',
-    'spam_playlists': '😒 Yeah, yeah, can you even read this fast?',
-    
+    # Spam session warnings (Layer 1: Per-User Spam Sessions)
+    # One is randomly selected when a spam session is triggered
+    'spam_warning_1': "Easy there. I'll do it when you stop button mashing.",
+    'spam_warning_2': "Whoa! One thing at a time, please.",
+    'spam_warning_3': "Take it easy... spamming won't make me work faster.",
+    'spam_warning_4': "Calm down, I heard you the first time.",
+
     # ===================================================================================================================
     # TRACKS - Track list and playlist management messages
     # ===================================================================================================================

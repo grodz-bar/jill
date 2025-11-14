@@ -19,16 +19,16 @@ DEFER_TIMEOUT = 3.0  # How long before deferring response
 MESSAGE_UPDATE_COOLDOWN = 1.0  # Cooldown between message edits
 MESSAGE_SETTLE_DELAY = 0.5  # Seconds to wait for new messages to settle
 
-# Connection delays (shared with prefix but may differ)
-VOICE_CONNECT_DELAY = 0.5  # Delay after connecting to voice
+# Connection delays
+VOICE_CONNECT_DELAY = 0.25  # Delay after connecting to voice
 
 # Track Change Settling - Wait time after stopping before starting new track
 # This delay allows Discord's audio buffers to fully drain after stop(), preventing
 # pop and scratchiness artifacts when the next track starts playing.
 TRACK_CHANGE_SETTLE_DELAY = 1.0  # Wait after stop before playing next track (1000ms)
 
-# Core playback timing (shared with playback.py)
-VOICE_SETTLE_DELAY = 0.05  # Let voice settle between tracks (prevents audio glitches)
+# Core playback timing
+VOICE_SETTLE_DELAY = 0.2  # Let voice settle between tracks (prevents audio glitches)
 VOICE_RECONNECT_DELAY = 0.30  # Wait during voice reconnection (prevents race conditions)
 VOICE_CONNECTION_MAX_WAIT = 0.5  # Max wait for voice connection (500ms)
 VOICE_CONNECTION_CHECK_INTERVAL = 0.05  # Check voice connection every 50ms

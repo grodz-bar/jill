@@ -7,254 +7,183 @@ Timing Settings - All timing and cooldown configurations
 This file contains all timing-related settings organized by category.
 These control how fast/slow the bot responds and manages various operations.
 
-Changing some of these values can break things and make the bot more prone
-to spam and Discord's API rate-limiting, be careful and test thoroughly.
+Settings are organized from most common (top) to most advanced (bottom).
+Only change advanced settings if you know what you're doing.
 """
 
 from typing import Final
 
 # =========================================================================================================
-# SPAM PROTECTION (4-LAYER SYSTEM)
+# SPAM PROTECTION - Prevents command spam
 # =========================================================================================================
 
-# LAYER 1: PER-USER SPAM SESSIONS
-# Detects and stops individual spammers (first filter), handles Discord drip-feed
+# How fast can someone send commands before being warned?
+# The bot allows 2 quick commands (like checking !help then using a command)
+# If 3 commands arrive within the detection window, spam protection activates
+#
+# Detection window: How close together commands need to be to count as spam
+USER_SPAM_SESSION_TRIGGER_WINDOW = 2.5  # seconds (3 commands in 2.5s = spam)
 
-# Number of commands to trigger spam session
-USER_SPAM_SESSION_TRIGGER_COUNT = 3
+# Cooldown period: How long spammer must be silent before session ends
+USER_SPAM_SESSION_DURATION = 8.0  # seconds (timer resets if they keep spamming)
 
-# Time window to detect spam (seconds)
-USER_SPAM_SESSION_TRIGGER_WINDOW = 1.5
-
-# How long spam session lasts (drops commands for this duration)
-USER_SPAM_SESSION_DURATION = 5.0
-
-# Send warning messages to spammers
-USER_SPAM_WARNINGS_ENABLED = True
-
-# Warning messages (one randomly selected)
-USER_SPAM_WARNINGS = [
-    "Easy there. I'll do it when you stop button mashing.",
-    "Whoa! One thing at a time, please.",
-    "Take it easy... spamming won't make me work faster.",
-    "Calm down, I heard you the first time.",
-]
+# Show warning messages when spam is detected?
+USER_SPAM_WARNINGS_ENABLED = True  # Set to False to silently block spam
 
 
-# ABUSER TIMEOUT SYSTEM (Optional)
-# Timeout for heavy abusers
-
-ABUSER_TIMEOUT_ENABLED = False  # Enable timeouts for heavy abusers
-
-ABUSER_TIMEOUT_THRESHOLD = 10   # Commands during spam session to trigger timeout
-
-ABUSER_TIMEOUT_DURATION = 60    # Timeout duration (seconds)
-
-ABUSER_TIMEOUT_MESSAGE = "{user}, you've been timed out for {duration}s. Please don't spam."
-
-ABUSER_TIMEOUT_ESCALATION = True  # Escalate timeout for repeat offenders
-
-ABUSER_TIMEOUT_ESCALATION_MULTIPLIER = 2.0  # Each timeout doubles duration
-
-
-# LAYER 2: PER-GUILD CIRCUIT BREAKER
-# Guild isolation - bad guilds can't affect good guilds
-# Commands counted AFTER Layer 1 filtering (single-user spam won't trip circuit)
+# Advanced: Server-wide protection (rarely needs adjustment)
 
 CIRCUIT_BREAKER_ENABLED = True
-
-# Maximum commands per second before tripping circuit
-GUILD_MAX_COMMANDS_PER_SECOND = 3.0
-
-# Maximum queue size per guild
-GUILD_MAX_QUEUE_SIZE = 50
-
-# How long circuit stays open after tripping (seconds)
-CIRCUIT_BREAK_DURATION = 30.0
-
-# Enable progressive penalties for repeat offenders
-CIRCUIT_PROGRESSIVE_PENALTIES = True
-
-# Penalties for repeat trips (multiplies CIRCUIT_BREAK_DURATION)
-CIRCUIT_TRIP_PENALTIES = {
-    1: 1.0,   # First trip: 30s
-    2: 2.0,   # Second trip: 60s
-    3: 4.0,   # Third trip: 120s
-    4: 8.0,   # Fourth+: 240s (4 minutes)
-}
-
-# Reset penalty counter after this many seconds of good behavior
-CIRCUIT_PENALTY_RESET_TIME = 300.0  # 5 minutes
+# Circuit breaker temporarily locks out entire server if command rate is too high
+# Protects against multiple users spamming simultaneously
+GUILD_MAX_COMMANDS_PER_SECOND = 2.5  # Max commands/second for entire server
+GUILD_MAX_QUEUE_SIZE = 30  # Max queued commands
+CIRCUIT_BREAK_DURATION = 20.0  # Lockout duration if limits exceeded
 
 
 # =========================================================================================================
-# MESSAGE CLEANUP TIMING
+# MESSAGE CLEANUP - Auto-delete old bot messages to keep chat clean
 # =========================================================================================================
 
-TTL_CHECK_INTERVAL = 1.0           # Seconds between TTL expiry checks
-                                   # IMPORTANT: Must be shorter than USER_COMMAND_TTL (8 seconds)
-                                   # LOWER = more precise TTL timing, HIGHER = less CPU usage
-                                   # Good rule: Set to 1/4 of your shortest TTL for responsive cleanup
+# How long to keep user command messages before deleting them (!play, !skip, etc.)
+USER_COMMAND_TTL = 8.0  # seconds (lower = cleaner chat, higher = visible longer)
 
-USER_COMMAND_TTL = 8.0             # Seconds before user command messages are deleted
-                                   # LOWER = cleaner chat, HIGHER = users can see their commands longer
-                                   # Used for all user commands (!play, !skip, !tracks, etc.)
+# How long to keep spam warning messages visible
+SPAM_CLEANUP_DELAY = 15  # seconds (lets users read the warning)
 
-MESSAGE_SETTLE_DELAY = 0.5         # Seconds to wait for new messages to settle
-                                   # LOWER = faster responses, HIGHER = more stable
+# How often to check for expired messages
+TTL_CHECK_INTERVAL = 1.0  # seconds (should be less than USER_COMMAND_TTL)
 
-HISTORY_CLEANUP_INTERVAL = 120     # Seconds between full channel history scans (2 min)
-                                   # LOWER = more frequent cleanup, HIGHER = less CPU usage
-                                   # This is independent of TTL-based cleanup
+# Small delay to let Discord finish sending all related messages
+MESSAGE_SETTLE_DELAY = 0.5  # seconds
 
-CLEANUP_HISTORY_LIMIT = 50         # How many recent messages to check during history scan
-                                   # HIGHER = cleans more thoroughly, LOWER = faster
+# Deep cleanup: Scan entire chat history periodically
+HISTORY_CLEANUP_INTERVAL = 180  # seconds (3 minutes between full scans)
+CLEANUP_HISTORY_LIMIT = 50  # how many recent messages to check
+CLEANUP_SAFE_AGE_THRESHOLD = 120  # only delete messages older than 2 minutes
 
-USER_COMMAND_MAX_LENGTH = 2000     # Max length of user commands to clean up
-                                   # Discord message limit is 2000 characters
-                                   # Used to identify user command messages during cleanup
+# Bulk delete settings (Discord allows up to 100 messages at once)
+CLEANUP_BATCH_SIZE = 95  # messages per batch (near Discord's limit for max efficiency)
+CLEANUP_BATCH_DELAY = 1.2  # seconds between batches (respects Discord's 1/sec bulk delete limit)
 
-CLEANUP_SAFE_AGE_THRESHOLD = 120   # Seconds - safe age for message deletion during history scan (2 min)
-                                   # LOWER = deletes newer messages, HIGHER = keeps longer
-                                   # Prevents deleting messages users might still be reading
+# "Now playing" message handling
+MESSAGE_BURIAL_CHECK_LIMIT = 40  # how many messages to check
+MESSAGE_BURIAL_THRESHOLD = 4  # if 4+ messages after "now playing", send new one
 
-CLEANUP_BATCH_SIZE = 75            # Messages grouped together for bulk deletion
-                                   # Discord allows up to 100 messages per bulk delete operation
-                                   # HIGHER = fewer API calls, faster cleanup, but larger failure batches
-                                   # LOWER = more API calls, slower cleanup, but smaller failure batches
-
-CLEANUP_BATCH_DELAY = 0.5          # Seconds delay between cleanup batches
-                                   # LOWER = faster cleanup, HIGHER = safer for Discord API
-
-MESSAGE_BURIAL_CHECK_LIMIT = 40    # How many messages to check after "now serving" message
-                                   # HIGHER = checks more messages (more accurate but slower)
-                                   # Used to decide if "now serving" message is buried by other messages
-
-MESSAGE_BURIAL_THRESHOLD = 4       # How many messages = "buried" (bot resends "now serving")
-                                   # LOWER = resends more often, HIGHER = keeps editing longer
-                                   # If 4+ messages appear after "now serving", bot sends a new message
-
-SPAM_CLEANUP_DELAY = 20            # Seconds to wait before cleaning up spam messages
-                                   # LOWER = cleans faster, HIGHER = lets users see warning messages
+# Advanced (don't change)
+USER_COMMAND_MAX_LENGTH = 2000  # Discord's max message length
 
 # =========================================================================================================
-# AUTO-PAUSE TIMING
+# AUTO-PAUSE - What happens when bot is alone in voice channel
 # =========================================================================================================
 
-ALONE_PAUSE_DELAY = 10             # Seconds alone before auto-pause
-                                   # LOWER = pauses faster, HIGHER = waits longer
-
-ALONE_DISCONNECT_DELAY = 600       # Seconds alone before auto-disconnect (10 min)
-                                   # LOWER = disconnects faster, HIGHER = stays longer
+ALONE_PAUSE_DELAY = 10  # Seconds to wait before pausing music
+ALONE_DISCONNECT_DELAY = 600  # Seconds to wait before leaving channel (10 minutes)
 
 # =========================================================================================================
-# MESSAGE LIFETIMES (seconds) - How long each message type stays visible
+# MESSAGE LIFETIMES - How long different bot messages stay before being deleted
 # =========================================================================================================
-
-# Used by systems.cleanup.CleanupManager to schedule deletions. Status embeds
-# are edited in place, and these TTLs govern follow-up messages such as queue
-# lists, shuffle toggles, and errors.
 
 MESSAGE_TTL = {
-    'now_serving': 600,            # Current track info - protected while playing
-    'pause': 10,                   # "Paused" message
-    'resume': 10,                  # "Resumed" message
-    'stop': 20,                    # "Stopped" message
-    'queue': 30,                   # !queue command output
-    'tracks': 90,                  # !tracks command output (longer to read)
-    'playlists': 90,               # !playlists command output (longer to read)
-    'help': 120,                   # !help command output (wall of text)
-    'shuffle': 30,                 # Shuffle mode confirmation
-    'error_quick': 10,             # Quick error messages
-    'error': 15,                   # Standard error messages
+    'now_serving': 600,    # 10 minutes - current track info
+    'pause': 10,           # Quick confirmation messages
+    'resume': 10,
+    'stop': 20,
+    'queue': 30,           # 30 seconds - queue list
+    'tracks': 90,          # 90 seconds - track list (longer to read)
+    'playlists': 90,       # 90 seconds - playlist list
+    'help': 120,           # 2 minutes - help text
+    'shuffle': 30,         # 30 seconds - shuffle toggle
+    'error_quick': 10,     # Quick errors
+    'error': 15,           # Standard errors
 }
 
 # =========================================================================================================
-# LAYER 4: POST-EXECUTION COOLDOWNS (per command)
+# COMMAND COOLDOWNS - Prevent accidental double-clicks
 # =========================================================================================================
-# Cooldowns prevent immediate re-execution after a command completes.
-# These work WITH spam sessions (Layer 1) to provide comprehensive protection.
-# Spam sessions handle rate limiting, cooldowns handle post-execution delays.
+# Prevents the same command from being used again immediately after it finishes
 
-# Playback control commands
-SKIP_COOLDOWN = 1.0                # Can't skip again for 1s after skip
-PAUSE_COOLDOWN = 1.5               # Can't pause/resume again for 1.5s
-STOP_COOLDOWN = 2.0                # Can't stop again for 2s
-PREVIOUS_COOLDOWN = 1.5            # Can't go back again for 1.5s
-PLAY_JUMP_COOLDOWN = 1.0           # Can't jump to track again for 1s
-
-# Library/queue commands
-QUEUE_COOLDOWN = 1.0               # Can't show queue again for 1s
-TRACKS_COOLDOWN = 1.0              # Can't switch playlist again for 1s
-PLAYLISTS_COOLDOWN = 1.0           # Can't list playlists again for 1s
-
-# Other commands
-SHUFFLE_COOLDOWN = 2.0             # Can't toggle shuffle again for 2s
-HELP_COOLDOWN = 1.0                # Can't show help again for 1s
+SKIP_COOLDOWN = 1.0         # seconds
+PAUSE_COOLDOWN = 1.5
+STOP_COOLDOWN = 2.0
+PREVIOUS_COOLDOWN = 1.5
+PLAY_JUMP_COOLDOWN = 1.0
+QUEUE_COOLDOWN = 1.0
+TRACKS_COOLDOWN = 1.0
+PLAYLISTS_COOLDOWN = 1.0
+SHUFFLE_COOLDOWN = 2.0
+HELP_COOLDOWN = 1.0
 
 
 # =========================================================================================================
-# ADVANCED TIMING SETTINGS (Don't change unless you know what you're doing)
+# ADVANCED SPAM PROTECTION - Internal behavior (default values work well)
 # =========================================================================================================
 
-VOICE_CONNECT_DELAY = 0.15               # Wait for Discord voice handshake (prevents crashes)
-VOICE_SETTLE_DELAY = 0.15                # Let voice settle between tracks (prevents audio glitches)
-VOICE_RECONNECT_DELAY = 0.30             # Wait during voice reconnection (prevents race conditions)
-VOICE_CONNECTION_MAX_WAIT = 0.5          # Max wait for voice connection (500ms)
-VOICE_CONNECTION_CHECK_INTERVAL = 0.05   # Check voice connection every 50ms
-FRAME_DURATION = 0.02                    # Opus frame duration (20ms) for graceful stops
+# Progressive penalties: Guilds that spam repeatedly get longer lockouts
+# First offense: 30s lockout, Second: 60s, Third: 90s, Fourth+: 120s (max)
+CIRCUIT_PROGRESSIVE_PENALTIES = True
+CIRCUIT_PENALTY_RESET_TIME = 180.0  # 3 minutes of good behavior resets the penalty counter
 
-# Track Change Settling - Wait time after stopping before starting new track
-# This delay allows Discord's audio buffers to fully drain after stop(), preventing
-# pop and scratchiness artifacts when the next track starts playing.
-# Based on testing: direct stop() + 1s delay = clean audio (matches manual pause workflow)
-TRACK_CHANGE_SETTLE_DELAY = 1.0          # Wait after stop before playing next track (1000ms)
-                                         # LOWER = faster track changes, HIGHER = cleaner audio transition
-                                         # 1s prevents pop/scratchiness when next track starts
+# Memory management: Clean up old tracking data to prevent memory leaks
+USER_SPAM_SESSION_CLEANUP_TIMEOUT = 1800  # Remove inactive user sessions after 30 minutes
 
-# FFmpeg Audio Options - Controls playback latency and buffering behavior
-# Format: Space-separated command-line options passed to FFmpeg before reading input
-# Default optimizes for low latency and real-time playback of opus files
+# Rate calculation: How many commands to remember for rate limiting
+CIRCUIT_BREAKER_HISTORY_SIZE = 100  # commands (higher = more accurate, uses more memory)
+CIRCUIT_RATE_CALCULATION_WINDOW = 1.0  # seconds to calculate rate over
+
+# Command queue: How commands wait to be executed
+COMMAND_QUEUE_TIMEOUT = 1.0  # seconds to wait for queue slot
+QUEUE_SIZE_WARNING_THRESHOLD = 0.9  # warn when queue is 90% full
+PRIORITY_COMMAND_TIMEOUT_MULTIPLIER = 0.5  # critical commands wait half as long
+
+
+# =========================================================================================================
+# ADVANCED PLAYBACK SETTINGS - Fine-tuning for audio quality
+# =========================================================================================================
+
+# Voice connection timing (prevents crashes and race conditions)
+VOICE_CONNECT_DELAY = 0.25  # wait for Discord handshake
+VOICE_SETTLE_DELAY = 0.2  # let voice settle between tracks
+VOICE_RECONNECT_DELAY = 0.30  # wait during reconnection
+VOICE_CONNECTION_MAX_WAIT = 0.75  # max wait time (750ms)
+VOICE_CONNECTION_CHECK_INTERVAL = 0.05  # check every 50ms
+FRAME_DURATION = 0.02  # Opus frame duration (20ms)
+
+# Track change delay: Prevents popping/crackling when switching songs
+# Discord's audio buffers need time to drain after stopping
+TRACK_CHANGE_SETTLE_DELAY = 1.0  # 1 second (lower = faster changes, higher = cleaner audio)
+
+# FFmpeg settings: Controls how audio files are processed
+# Optimized for low latency and real-time playback of opus files
 FFMPEG_BEFORE_OPTIONS: Final[str] = '-hide_banner -loglevel error -nostdin -re -fflags +nobuffer'
-# Breakdown of default options:
-#   -hide_banner      : Suppress FFmpeg version banner (cleaner logs)
-#   -loglevel error   : Only log errors (reduces noise)
-#   -nostdin          : Don't read from stdin (prevents FFmpeg hanging)
-#   -re               : Read input at native frame rate (real-time playback, prevents rushing)
-#   -fflags +nobuffer : Reduce buffering delay (lower latency, faster start)
-# Advanced tuning: Adjust -analyzeduration/-probesize for faster startup if needed
-# Note: -vn flag (ignore video streams) not needed since we only play audio files
 
-MAX_HISTORY = 100                        # Max tracks to remember (prevents memory bloat)
-COMMAND_QUEUE_TIMEOUT = 0.5              # Max wait for queue operations (don't wait forever)
-
-WATCHDOG_INTERVAL = 600                  # Check for stuck playback every 10 minutes
-WATCHDOG_TIMEOUT = 660                   # Consider playback stuck after 11 minutes
-
-CALLBACK_MIN_INTERVAL = 1.0              # Min time between callback-triggered track advances
-ALONE_WATCHDOG_INTERVAL = 10             # Check alone status every 10 seconds
+# Playback history and monitoring
+MAX_HISTORY = 100  # max tracks to remember in history
+WATCHDOG_INTERVAL = 600  # check for stuck playback every 10 minutes
+WATCHDOG_TIMEOUT = 660  # consider stuck after 11 minutes
+CALLBACK_MIN_INTERVAL = 1.0  # min time between track changes
+ALONE_WATCHDOG_INTERVAL = 10  # check if alone every 10 seconds
 
 # =========================================================================================================
-# VOICE HEALTH ADAPTIVE MONITORING
+# VOICE HEALTH MONITORING - Auto-reconnect when connection quality drops
 # =========================================================================================================
+# The bot monitors voice latency and reconnects automatically if quality degrades.
+# Check frequency adapts based on connection state:
+#   - Normal (35s): Everything working fine, relaxed monitoring
+#   - Suspicious (10s): Latency getting high, watching closely
+#   - Post-Reconnect (8s): Just reconnected, verify it worked
+#   - Recovery (20s): Connection improving, stay vigilant
 
-# Voice Health Adaptive Monitoring
-# The bot adjusts check frequency based on connection quality:
-# - Normal (35s): Everything is fine, relaxed monitoring
-# - Suspicious (10s): Marginal latency detected, watching closely
-# - Post-Reconnect (8s): Just reconnected, verify fix worked quickly
-# - Recovery (20s): Fix is working but staying vigilant
-#
-# These are the default intervals used by the adaptive system:
-VOICE_HEALTH_NORMAL_INTERVAL: Final[float] = 35.0      # Check interval when healthy
-VOICE_HEALTH_SUSPICIOUS_INTERVAL: Final[float] = 10.0  # Check interval when issues detected
-VOICE_HEALTH_POST_RECONNECT_INTERVAL: Final[float] = 8.0  # Check after reconnect
-VOICE_HEALTH_RECOVERY_INTERVAL: Final[float] = 20.0    # Check during recovery phase
+# Adaptive check intervals
+VOICE_HEALTH_NORMAL_INTERVAL: Final[float] = 35.0  # healthy connection
+VOICE_HEALTH_SUSPICIOUS_INTERVAL: Final[float] = 10.0  # marginal latency detected
+VOICE_HEALTH_POST_RECONNECT_INTERVAL: Final[float] = 8.0  # right after reconnecting
+VOICE_HEALTH_RECOVERY_INTERVAL: Final[float] = 20.0  # connection recovering
 
-# Latency thresholds (in seconds)
-VOICE_HEALTH_MARGINAL_LATENCY: Final[float] = 0.150   # 150ms - start watching closely
-VOICE_HEALTH_BAD_LATENCY: Final[float] = 0.250       # 250ms - reconnect needed
+# Latency thresholds: When to take action
+VOICE_HEALTH_MARGINAL_LATENCY: Final[float] = 0.150  # 150ms = start watching closely
+VOICE_HEALTH_BAD_LATENCY: Final[float] = 0.250  # 250ms = reconnect immediately
 
-# Recovery settings
-VOICE_HEALTH_GOOD_CHECKS_FOR_NORMAL: Final[int] = 3  # Good checks before returning to normal
-VOICE_HEALTH_RECONNECT_COOLDOWN: Final[float] = 30.0 # Minimum seconds between reconnects
+# Recovery behavior
+VOICE_HEALTH_GOOD_CHECKS_FOR_NORMAL: Final[int] = 3  # 3 good checks before returning to normal
+VOICE_HEALTH_RECONNECT_COOLDOWN: Final[float] = 30.0  # minimum 30s between reconnect attempts

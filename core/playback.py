@@ -39,6 +39,8 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+# Import helper functions
+from utils.discord_helpers import format_guild_log
 
 _SESSION_IDS = count(1)
 
@@ -118,24 +120,24 @@ async def _play_current(guild_id: int, bot) -> None:
 
     # Validate voice client
     if not player.voice_client or not player.voice_client.is_connected():
-        logger.debug(f"Guild {guild_id}: Playback requested but not connected to voice")
+        logger.debug(f"{format_guild_log(guild_id, bot)}: Playback requested but not connected to voice")
         return
 
     # Get fresh guild reference
     guild = bot.get_guild(guild_id)
     if not guild:
-        logger.error(f"Guild {guild_id} not found")
+        logger.error(f"{format_guild_log(guild_id, bot)} not found")
         return
 
     # Check voice connection health and reconnect if degraded
     # This prevents stuttering from degraded UDP sockets caused by network issues
     # The adaptive monitor will check more frequently if issues are detected
-    logger.debug(f"Guild {guild_id}: Checking voice health before playback")
+    logger.debug(f"{format_guild_log(guild_id, bot)}: Checking voice health before playback")
     healthy = await check_voice_health_and_reconnect(player, guild, bot)
 
     if not healthy:
         logger.error(
-            f"Guild {guild_id}: Voice connection unhealthy and could not reconnect, "
+            f"{format_guild_log(guild_id, bot)}: Voice connection unhealthy and could not reconnect, "
             f"skipping playback to avoid stuttering"
         )
         # Try to skip to next track since this one can't play properly
@@ -147,7 +149,7 @@ async def _play_current(guild_id: int, bot) -> None:
 
     # Validate voice client again after potential reconnect
     if not player.voice_client or not player.voice_client.is_connected():
-        logger.warning(f"Guild {guild_id}: Lost connection during health check")
+        logger.warning(f"{format_guild_log(guild_id, bot)}: Lost connection during health check")
         return
 
     # Self-deafen (bot doesn't need to hear users)
@@ -157,12 +159,12 @@ async def _play_current(guild_id: int, bot) -> None:
     # Get track to play
     track = player.now_playing
     if not track:
-        logger.debug(f"Guild {guild_id}: No track to play")
+        logger.debug(f"{format_guild_log(guild_id, bot)}: No track to play")
         return
 
     # Validate file exists
     if not track.file_path.exists():
-        logger.error(f"Guild {guild_id}: Track file missing: {track.file_path}")
+        logger.error(f"{format_guild_log(guild_id, bot)}: Track file missing: {track.file_path}")
         # Skip to next track (priority=True to ensure internal commands aren't dropped)
         await player.spam_protector.queue_command(lambda: _play_next(guild_id, bot), priority=True)
         return
@@ -177,7 +179,7 @@ async def _play_current(guild_id: int, bot) -> None:
         is_playing = vc.is_playing() if vc else False
         is_paused = vc.is_paused() if vc else False
     except (AttributeError, RuntimeError) as e:
-        logger.debug("Guild %s: Voice client state probe failed: %s", guild_id, e)
+        logger.debug(f"{format_guild_log(guild_id, bot)}: Voice client state probe failed: {e}")
         is_playing = False
         is_paused = False
 
@@ -201,7 +203,7 @@ async def _play_current(guild_id: int, bot) -> None:
                     if vc and not vc.is_playing() and not vc.is_paused():
                         break
                 except (AttributeError, RuntimeError) as e:
-                    logger.debug("Guild %s: settle check failed (ignored): %s", guild_id, e)
+                    logger.debug(f"{format_guild_log(guild_id, bot)}: settle check failed (ignored): {e}")
                     break
 
     # Allow Discord's audio buffers to fully drain after stop before starting new track
@@ -252,37 +254,37 @@ async def _play_current(guild_id: int, bot) -> None:
                 # - "_MissingSentinel" (Discord.py internal cleanup)
                 benign_errors = ["Bad file descriptor", "WinError 10038", "_MissingSentinel"]
                 if not any(benign in error_str for benign in benign_errors):
-                    logger.error(f'Guild {guild_id} playback error: {error}')
+                    logger.error(f'{format_guild_log(guild_id, bot)} playback error: {error}')
 
             # Clean up audio source
             if audio_source:
                 try:
                     audio_source.cleanup()
                 except (OSError, RuntimeError, AttributeError) as e:
-                    logger.debug("Guild %s: audio_source.cleanup() failed: %s", guild_id, e, exc_info=True)
+                    logger.debug(f"{format_guild_log(guild_id, bot)}: audio_source.cleanup() failed: {e}", exc_info=True)
                 finally:
                     audio_source = None
 
             # Don't advance if reconnecting
             if player._is_reconnecting:
-                logger.debug(f"Guild {guild_id}: Skipping callback during reconnect")
+                logger.debug(f"{format_guild_log(guild_id, bot)}: Skipping callback during reconnect")
                 return
 
             # Don't advance if callback suppressed
-            if player._suppress_callback:
-                logger.debug(f"Guild {guild_id}: Skipping callback (suppressed)")
+            if player._suppress_callbacks:
+                logger.debug(f"{format_guild_log(guild_id, bot)}: Skipping callback (suppressed)")
                 return
 
             # Ignore callbacks from superseded sessions
             if session.cancelled or player._playback_session is not session:
                 logger.debug(
-                    f"Guild {guild_id}: Ignoring callback from superseded playback session"
+                    f"{format_guild_log(guild_id, bot)}: Ignoring callback from superseded playback session"
                 )
                 return
 
             # Only advance if this callback's track is still current
             if not player.now_playing or player.now_playing.track_id != callback_track_id:
-                logger.debug(f"Guild {guild_id}: Ignoring callback from old track")
+                logger.debug(f"{format_guild_log(guild_id, bot)}: Ignoring callback from old track")
                 return
 
             # Anti-spam: Prevent rapid-fire callbacks
@@ -290,7 +292,7 @@ async def _play_current(guild_id: int, bot) -> None:
             current_time = _now()
             last_callback_time = getattr(player, '_last_callback_time', 0)
             if current_time - last_callback_time < CALLBACK_MIN_INTERVAL:
-                logger.debug(f"Guild {guild_id}: Rapid track advance detected, rate limiting")
+                logger.debug(f"{format_guild_log(guild_id, bot)}: Rapid track advance detected, rate limiting")
                 return
 
             # CRITICAL: Update player attribute so future callbacks see the latest timestamp.
@@ -316,7 +318,7 @@ async def _play_current(guild_id: int, bot) -> None:
         player._last_track_start = _now()
         player._last_track_id = track.track_id
 
-        logger.debug(f"Guild {guild_id}: Now playing: {track.display_name}")
+        logger.debug(f"{format_guild_log(guild_id, bot)}: Now playing: {track.display_name}")
 
         # Send "Now serving" message
         await asyncio.sleep(MESSAGE_SETTLE_DELAY)
@@ -330,18 +332,18 @@ async def _play_current(guild_id: int, bot) -> None:
         await update_presence(bot, track.display_name)
 
     except Exception as e:
-        logger.exception("Guild %s error in _play_current", guild_id)
+        logger.exception(f"{format_guild_log(guild_id, bot)} error in _play_current")
         if audio_source:
             try:
                 audio_source.cleanup()
             except (OSError, RuntimeError, AttributeError) as cleanup_err:
-                logger.debug("Guild %s: cleanup after exception failed: %s", guild_id, cleanup_err)
+                logger.debug(f"{format_guild_log(guild_id, bot)}: cleanup after exception failed: {cleanup_err}")
         vc = player.voice_client
         unsafe_or_down = True
         try:
             unsafe_or_down = not (vc and vc.is_connected())
         except (AttributeError, RuntimeError) as probe_err:
-            logger.debug("Guild %s: vc.is_connected() probe failed after error: %s", guild_id, probe_err)
+            logger.debug(f"{format_guild_log(guild_id, bot)}: vc.is_connected() probe failed after error: {probe_err}")
         if "Bad file descriptor" in str(e) or unsafe_or_down:
             # Close connection to avoid dangling references
             if vc:

@@ -50,6 +50,7 @@ $RECYCLE.BIN/
 *.msix
 *.msm
 *.msp
+nul
 
 # Music files
 music/

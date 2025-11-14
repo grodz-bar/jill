@@ -77,7 +77,7 @@ from config import (
     MESSAGES,
     HELP_TEXT,
 )
-from utils.discord_helpers import can_connect_to_channel, safe_disconnect, update_presence, sanitize_for_format, get_guild_player, ensure_voice_connected, send_player_message, spam_protected_execute
+from utils.discord_helpers import can_connect_to_channel, safe_disconnect, update_presence, sanitize_for_format, get_guild_player, ensure_voice_connected, send_player_message, spam_protected_execute, format_guild_log
 from utils.permission_checks import permission_check
 from systems.voice_manager import PlaybackState
 
@@ -161,7 +161,7 @@ def setup(bot):
         # Return the best match
         best_match = matches[0]
         logger.debug(
-            f"Guild {player.guild_id}: Fuzzy match '{identifier}' → '{best_match[2].display_name}' "
+            f"{format_guild_log(player.guild_id, player.bot)}: Fuzzy match '{identifier}' → '{best_match[2].display_name}' "
             f"(similarity: {best_match[0]:.2f})"
         )
         return best_match[1]
@@ -549,7 +549,7 @@ def setup(bot):
             try:
                 was_playing = player.voice_client.is_playing() or player.voice_client.is_paused()
             except (disnake.ClientException, RuntimeError) as e:
-                logger.debug("Guild %s: voice state probe failed: %s", ctx.guild.id, e)
+                logger.debug(f"{format_guild_log(ctx.guild.id, bot)}: voice state probe failed: {e}")
 
         # Switch playlist (synchronous operation - no await needed)
         success, message = player.switch_playlist(name, player.voice_client)
@@ -679,6 +679,10 @@ def setup(bot):
         help_msg += f"\n{HELP_TEXT['info_title']}\n"
         for cmd in HELP_TEXT['info_commands']:
             help_msg += f"{cmd}\n"
+
+        # Show aliases command if any aliases are configured
+        if any(aliases for aliases in COMMAND_ALIASES.values()):
+            help_msg += '`!aliases` - Show command shortcuts\n'
 
         help_msg += f"\n{HELP_TEXT['footer']}"
 

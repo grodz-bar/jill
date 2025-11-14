@@ -54,7 +54,7 @@ from config import (
     create_help_embed, LIBRARY_PAGE_SIZE, PLAYLIST_PAGE_SIZE
 )
 from utils.response_helper import send_response
-from utils.discord_helpers import can_connect_to_channel, get_guild_player, ensure_voice_connected
+from utils.discord_helpers import can_connect_to_channel, get_guild_player, ensure_voice_connected, format_guild_log
 from systems.control_panel import get_control_panel_manager
 
 
@@ -103,7 +103,7 @@ def setup(bot):
                 player.set_text_channel(inter.channel)
             except Exception as e:
                 await send_response(inter, MESSAGES['CANNOT_CONNECT'])
-                logger.error(f"Guild {inter.guild.id}: Connection failed: {e}")
+                logger.error(f"{format_guild_log(inter.guild.id, bot)}: Connection failed: {e}")
                 return
 
         # If no track specified, just resume/start

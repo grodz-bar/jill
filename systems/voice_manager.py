@@ -37,7 +37,7 @@ from config import (
     AUTO_PAUSE_ENABLED, AUTO_DISCONNECT_ENABLED,
     MESSAGES,
 )
-from utils.discord_helpers import safe_disconnect, update_presence, sanitize_for_format
+from utils.discord_helpers import safe_disconnect, update_presence, sanitize_for_format, format_guild_log
 
 
 class PlaybackState(Enum):
@@ -64,14 +64,16 @@ class VoiceManager:
     - Auto-resume when users rejoin
     """
 
-    def __init__(self, guild_id: int):
+    def __init__(self, guild_id: int, bot=None):
         """
         Initialize voice manager for a guild.
 
         Args:
             guild_id: Discord guild ID for logging
+            bot: Bot instance (for human-readable logging)
         """
         self.guild_id = guild_id
+        self.bot = bot
 
         # Auto-pause state tracking (uses monotonic time for immunity to clock changes)
         self._alone_since: Optional[float] = None
@@ -157,8 +159,8 @@ class VoiceManager:
         # Optional logging (only when requested)
         if log_result:
             member_names = [f"{m.name}(bot={m.bot})" for m in members]
-            logger.info(
-                f"Guild {self.guild_id}: Alone check - Channel: {channel.name}, "
+            logger.debug(
+                f"{format_guild_log(self.guild_id, self.bot)}: Alone check - Channel: {channel.name}, "
                 f"Total: {len(members)}, Humans: {human_count}, Alone: {is_alone}, "
                 f"Members: {member_names}"
             )
@@ -202,12 +204,12 @@ class VoiceManager:
                     channel = self.voice_client.channel
                     members = list(channel.members)
                     human_count = sum(1 for m in members if not m.bot)
-                    logger.info(
-                        f"Guild {self.guild_id}: Bot became alone in voice channel '{channel.name}' "
+                    logger.debug(
+                        f"{format_guild_log(self.guild_id, self.bot)}: Bot became alone in voice channel '{channel.name}' "
                         f"(Total: {len(members)}, Humans: {human_count})"
                     )
                 else:
-                    logger.info(f"Guild {self.guild_id}: Bot became alone in voice channel")
+                    logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Bot became alone in voice channel")
 
             else:
                 # Been alone for a while
@@ -258,14 +260,14 @@ class VoiceManager:
                     channel = self.voice_client.channel
                     members = list(channel.members)
                     human_count = sum(1 for m in members if not m.bot)
-                    logger.info(
-                        f"Guild {self.guild_id}: Not alone anymore in '{channel.name}' "
+                    logger.debug(
+                        f"{format_guild_log(self.guild_id, self.bot)}: Not alone anymore in '{channel.name}' "
                         f"(Total: {len(members)}, Humans: {human_count}), "
                         f"state={current_state}, was_playing_before={self._was_playing_before_alone}"
                     )
                 else:
-                    logger.info(
-                        f"Guild {self.guild_id}: Not alone anymore, state={current_state}, "
+                    logger.debug(
+                        f"{format_guild_log(self.guild_id, self.bot)}: Not alone anymore, state={current_state}, "
                         f"was_playing_before={self._was_playing_before_alone}"
                     )
 

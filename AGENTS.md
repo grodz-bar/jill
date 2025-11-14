@@ -19,6 +19,7 @@ Audio: MP3/FLAC/WAV/M4A/OGG/OPUS supported. Opus preferred (zero CPU). See `READ
 - **Common** (both): `core.py` (token, music folder, logging, voice), `permissions.py`, `filename_patterns.py`, `paths.py`, `bot_identity.py`
 - **Prefix**: `features.py`, `messages.py`, `aliases.py`, `timing.py`
 - **Slash**: `features.py`, `messages.py`, `timing.py`, `embeds.py`, `buttons.py`
+- **IMPORTANT**: Numbers/booleans → `timing.py` | User-facing text → `messages.py` | NEVER hardcode in implementation files
 
 **Implementation:**
 - `bot.py` — entry, events, mode setup
@@ -28,7 +29,7 @@ Audio: MP3/FLAC/WAV/M4A/OGG/OPUS supported. Opus preferred (zero CPU). See `READ
   - `buttons.py` — button interactions
 - **Core:** `player.py`, `playback.py` (FFmpeg, session-guarded), `track.py`
 - **Systems:**
-  - `spam_protection.py` — 4-layer (spam sessions, circuit breaker, serial queue, cooldowns)
+  - `spam_protection.py` — 4-layer (spam sessions, circuit breaker, serial queue, cooldowns). All timing values in `timing.py`: session windows, cleanup timeouts, queue thresholds, rate limits
   - `cleanup.py` — TTL cleanup (prefix only)
   - `control_panel.py` — ControlPanelManager (slash only)
   - `voice_manager.py` — auto-pause | `watchdog.py` — hang detection

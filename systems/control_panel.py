@@ -47,6 +47,7 @@ from utils.persistence import (
     save_message_ids,
     clear_message_ids,
 )
+from utils.discord_helpers import format_guild_log
 
 logger = logging.getLogger(__name__)
 
@@ -91,10 +92,10 @@ class ControlPanelManager:
                 # Create new panel
                 await self.create_panel(guild_id, channel)
 
-                logger.debug(f"Initialized control panel for guild {guild_id}")
+                logger.debug(f"Initialized control panel for {format_guild_log(guild_id, self.bot)}")
 
             except Exception as e:
-                logger.error(f"Failed to initialize panel for guild {guild_id}: {e}")
+                logger.error(f"Failed to initialize panel for {format_guild_log(guild_id, self.bot)}: {e}")
                 clear_message_ids(guild_id)
 
     async def _cleanup_old_messages(self, channel: disnake.TextChannel, message_info: Dict):
@@ -149,10 +150,10 @@ class ControlPanelManager:
                 channel_id=channel.id
             )
 
-            logger.debug(f"Created control panel for guild {guild_id}")
+            logger.debug(f"Created control panel for {format_guild_log(guild_id, self.bot)}")
 
         except Exception as e:
-            logger.error(f"Failed to create control panel for guild {guild_id}: {e}")
+            logger.error(f"Failed to create control panel for {format_guild_log(guild_id, self.bot)}: {e}")
 
     async def delete_panel(self, guild_id: int):
         """Delete control panel messages for a guild."""
@@ -176,7 +177,7 @@ class ControlPanelManager:
         del self.panels[guild_id]
         clear_message_ids(guild_id)
 
-        logger.debug(f"Deleted control panel for guild {guild_id}")
+        logger.debug(f"Deleted control panel for {format_guild_log(guild_id, self.bot)}")
 
     def _format_now_playing(self, player, track) -> str:
         """Format the now playing message text."""
@@ -273,7 +274,7 @@ class ControlPanelManager:
             await panel_info['now_playing'].edit(content=now_playing_content)
 
         except Exception as e:
-            logger.error(f"Failed to update control panel for guild {guild_id}: {e}")
+            logger.error(f"Failed to update control panel for {format_guild_log(guild_id, self.bot)}: {e}")
             if guild_id in self.panels:
                 del self.panels[guild_id]
 

@@ -38,6 +38,9 @@ import disnake
 
 logger = logging.getLogger(__name__)
 
+# Import helper functions
+from utils.discord_helpers import format_guild_log
+
 # Import from config
 from config import (
     COMMAND_MODE, COMMAND_PREFIX,
@@ -75,7 +78,7 @@ class CleanupManager:
     ensures chat stays clean.
     """
 
-    def __init__(self, guild_id: int, text_channel: Optional[disnake.TextChannel] = None, bot_user_id: Optional[int] = None):
+    def __init__(self, guild_id: int, text_channel: Optional[disnake.TextChannel] = None, bot_user_id: Optional[int] = None, bot=None):
         """
         Initialize cleanup manager.
 
@@ -83,6 +86,7 @@ class CleanupManager:
             guild_id: Discord guild ID for logging
             text_channel: Text channel to clean up (can be set later)
             bot_user_id: Bot's Discord user ID for message filtering
+            bot: Bot instance for logging (optional)
         """
         # Disable entirely in slash mode
         self.enabled = (COMMAND_MODE == 'prefix')
@@ -90,6 +94,7 @@ class CleanupManager:
         self.guild_id = guild_id
         self.text_channel = text_channel
         self.bot_user_id = bot_user_id
+        self.bot = bot
 
         # TTL Cleanup state
         self._message_cleanup_queue: List[Tuple[disnake.Message, float]] = []  # (msg, delete_time)
@@ -114,20 +119,20 @@ class CleanupManager:
         Should be called after initialization to begin background cleanup.
         """
         if not self.enabled:
-            logger.debug(f"Guild {self.guild_id}: Cleanup disabled in slash mode")
+            logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Cleanup disabled in slash mode")
             return
 
         if not AUTO_CLEANUP_ENABLED:
-            logger.debug(f"Guild {self.guild_id}: Auto cleanup disabled - skipping workers")
+            logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Auto cleanup disabled - skipping workers")
             return
 
         if not self._ttl_task:
             self._ttl_task = asyncio.create_task(self._ttl_cleanup_worker())
-            logger.debug(f"Guild {self.guild_id}: TTL cleanup worker started")
+            logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: TTL cleanup worker started")
 
         if not self._history_task:
             self._history_task = asyncio.create_task(self._history_cleanup_worker())
-            logger.debug(f"Guild {self.guild_id}: History cleanup worker started")
+            logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: History cleanup worker started")
 
     async def shutdown(self):
         """
@@ -151,7 +156,7 @@ class CleanupManager:
             except asyncio.CancelledError:
                 pass
 
-        logger.debug(f"Guild {self.guild_id}: Cleanup manager shutdown complete")
+        logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Cleanup manager shutdown complete")
 
     # =========================================================================
     # WORKER 1: TTL Cleanup (Scheduled Deletion)
@@ -187,10 +192,10 @@ class CleanupManager:
 
             except asyncio.CancelledError:
                 # Task was cancelled during shutdown - exit cleanly
-                logger.debug(f"Guild {self.guild_id}: TTL cleanup worker cancelled, shutting down")
+                logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: TTL cleanup worker cancelled, shutting down")
                 break
             except Exception as e:
-                logger.error(f"Guild {self.guild_id}: TTL cleanup worker error: {e}", exc_info=True)
+                logger.error(f"{format_guild_log(self.guild_id, self.bot)}: TTL cleanup worker error: {e}", exc_info=True)
 
     async def _process_ttl_deletions(self):
         """Process all expired messages in the TTL queue."""
@@ -225,7 +230,7 @@ class CleanupManager:
         await self._batch_delete_messages(messages_to_delete)
 
         if messages_to_delete:
-            logger.debug(f"Guild {self.guild_id}: TTL cleanup removed {len(messages_to_delete)} messages")
+            logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: TTL cleanup removed {len(messages_to_delete)} messages")
 
     # =========================================================================
     # WORKER 2: Channel Sweep (History Scanning)
@@ -255,10 +260,10 @@ class CleanupManager:
 
             except asyncio.CancelledError:
                 # Task was cancelled during shutdown - exit cleanly
-                logger.debug(f"Guild {self.guild_id}: History cleanup worker cancelled, shutting down")
+                logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: History cleanup worker cancelled, shutting down")
                 break
             except Exception as e:
-                logger.error(f"Guild {self.guild_id}: History cleanup worker error: {e}", exc_info=True)
+                logger.error(f"{format_guild_log(self.guild_id, self.bot)}: History cleanup worker error: {e}", exc_info=True)
 
     async def cleanup_channel_history(self):
         """
@@ -328,10 +333,10 @@ class CleanupManager:
             deleted_count = await self._batch_delete_messages(messages_to_delete)
 
             if deleted_count > 0:
-                logger.debug(f"Guild {self.guild_id}: History cleanup removed {deleted_count} messages")
+                logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: History cleanup removed {deleted_count} messages")
 
         except Exception:
-            logger.exception(f"Guild {self.guild_id}: History cleanup failed (non-critical)")
+            logger.exception(f"{format_guild_log(self.guild_id, self.bot)}: History cleanup failed (non-critical)")
 
     # =========================================================================
     # TTL Scheduling (Public API)
@@ -479,16 +484,16 @@ class CleanupManager:
                             MESSAGE_TTL['now_serving']
                         )
 
-                    logger.debug(f"Guild {self.guild_id}: Edited 'now serving' message")
+                    logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Edited 'now serving' message")
                     return self._last_now_playing_msg
                 else:
                     # Message buried, delete old and send new
-                    logger.debug(f"Guild {self.guild_id}: Message buried, sending new")
+                    logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Message buried, sending new")
                     await self.delete_last_now_playing()
 
             except disnake.HTTPException as e:
                 # Edit failed, delete old and send new
-                logger.debug(f"Guild {self.guild_id}: Edit failed ({e}), sending new message")
+                logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Edit failed ({e}), sending new message")
                 await self.delete_last_now_playing()
 
         # Send new message
@@ -524,10 +529,10 @@ class CleanupManager:
             await self.cleanup_channel_history()
             self._last_history_cleanup = _now()
 
-            logger.debug(f"Guild {self.guild_id}: Spam cleanup completed")
+            logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Spam cleanup completed")
 
         except Exception as e:
-            logger.error(f"Guild {self.guild_id}: Spam cleanup error: {e}", exc_info=True)
+            logger.error(f"{format_guild_log(self.guild_id, self.bot)}: Spam cleanup error: {e}", exc_info=True)
 
     # =========================================================================
     # Utilities
@@ -558,7 +563,7 @@ class CleanupManager:
                     await self.text_channel.delete_messages(batch)
                     deleted_count += len(batch)
                 except (disnake.Forbidden, disnake.HTTPException) as e:
-                    logger.debug(f"Guild {self.guild_id}: Bulk delete failed, fallback: {e}")
+                    logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Bulk delete failed, fallback: {e}")
                     # Fallback to individual
                     for msg in batch:
                         if await safe_delete_message(msg):

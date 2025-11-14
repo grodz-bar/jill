@@ -162,7 +162,7 @@ bot = commands.Bot(
 from core.player import get_player, players
 from core.track import discover_playlists, load_library, has_playlist_structure
 from systems.watchdog import playback_watchdog, alone_watchdog
-from utils.discord_helpers import safe_disconnect, update_presence
+from utils.discord_helpers import safe_disconnect, update_presence, format_guild_log, format_user_log
 from utils.persistence import load_last_channels, flush_all_immediately
 
 # Global watchdog tasks
@@ -195,10 +195,10 @@ async def on_ready():
             █     █      █      █   
             █   ▄▄█▄▄    ▀▄▄    ▀▄▄ 
             █                       
-          ▀▀           A CYBERPUNK            
-                                  BARTENDER
-                                            MUSIC BOT
-                       .|
+          ▀▀           CYBERPUNK            
+                                 BARTENDER
+                                           MUSIC 
+                       .|                        BOT
                        | |
                        |'|            ._____
                ___    |  |            |.   |' .---"|
@@ -244,23 +244,23 @@ async def on_ready():
             # Get the guild
             guild = bot.get_guild(guild_id)
             if not guild:
-                logger.debug(f"Guild {guild_id} not found (bot may have been removed)")
+                logger.debug(f"{format_guild_log(guild_id, bot)} not found (bot may have been removed)")
                 continue
 
             # Get the text channel
             text_channel = guild.get_channel(channel_id)
             if not text_channel:
-                logger.debug(f"Guild {guild_id}: Saved channel {channel_id} no longer exists")
+                logger.debug(f"{format_guild_log(guild, bot)}: Saved channel {channel_id} no longer exists")
                 continue
 
             # Create/restore player (this starts cleanup workers automatically)
             player = await get_player(guild_id, bot, bot.user.id)
             player.set_text_channel(text_channel)
 
-            logger.debug(f"Guild {guild_id}: Restored cleanup on channel #{text_channel.name}")
+            logger.debug(f"{format_guild_log(guild, bot)}: Restored cleanup on channel #{text_channel.name}")
 
         except Exception as e:
-            logger.warning(f"Guild {guild_id}: Failed to restore player: {e}")
+            logger.warning(f"{format_guild_log(guild_id, bot)}: Failed to restore player: {e}")
 
     # Start watchdogs
     _playback_watchdog_task = bot.loop.create_task(playback_watchdog(bot, players))
@@ -352,6 +352,7 @@ async def on_voice_state_update(member, before, after):
 @bot.event
 async def on_guild_remove(guild):
     """Bot removed from guild - cleanup."""
+    logger.info(f"Bot removed from {format_guild_log(guild)}")
     if guild.id in players:
         player = players[guild.id]
         if player.voice_client:
@@ -364,12 +365,12 @@ async def on_command_error(ctx, error):
     """Handle command errors gracefully."""
     # Silently ignore typos (CommandNotFound) - these are harmless user mistakes
     if isinstance(error, commands.CommandNotFound):
-        logger.debug(f"Guild {ctx.guild.id if ctx.guild else 'DM'}: Unknown command from {ctx.author}: {ctx.message.content}")
+        logger.debug(f"{format_guild_log(ctx.guild)}: Unknown command from {format_user_log(ctx.author)}: {ctx.message.content}")
         return
 
-    # Missing required arguments - user error, not code error (clean log at WARNING level)
+    # Missing required arguments - user error, not code error (silently ignore like typos)
     if isinstance(error, commands.MissingRequiredArgument):
-        logger.warning(f"Command error in {ctx.command}: {error}")
+        logger.debug(f"{format_guild_log(ctx.guild)}: Missing argument for {ctx.command} from {format_user_log(ctx.author)}")
         return
 
     # For actual errors (code problems, API failures, etc.), log with full traceback
@@ -423,7 +424,7 @@ async def shutdown_bot():
             # Shutdown player subsystems
             await player.shutdown()
         except Exception as e:
-            logger.error(f"Guild {guild_id}: Error during shutdown: {e}")
+            logger.error(f"{format_guild_log(guild_id, bot)}: Error during shutdown: {e}")
 
     # Clean up control panels in slash mode
     if COMMAND_MODE == 'slash':
@@ -435,7 +436,7 @@ async def shutdown_bot():
                     try:
                         await control_panel.delete_panel(guild_id)
                     except Exception as e:
-                        logger.error(f"Error cleaning panel for guild {guild_id}: {e}")
+                        logger.error(f"Error cleaning panel for {format_guild_log(guild_id, bot)}: {e}")
         except Exception as e:
             logger.error(f"Error during control panel cleanup: {e}")
 

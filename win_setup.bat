@@ -739,7 +739,7 @@ for /f "delims=" %%f in ('dir /s /b "!SOURCE_FOLDER!*.!FILE_FORMAT!" 2^>nul') do
             )
         )
 
-        ffmpeg -i "%%f" !FFMPEG_ARGS! "!DEST_FILE!.opus" -loglevel error -n < nul
+        ffmpeg -nostdin -i "%%f" !FFMPEG_ARGS! "!DEST_FILE!.opus" -loglevel error -n
         if errorlevel 1 (
             echo     ERROR: Failed to convert this file
             set /a FAILED+=1

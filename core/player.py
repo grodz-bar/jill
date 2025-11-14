@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 # Import our systems
 from systems.spam_protection import SpamProtector
+from utils.discord_helpers import format_guild_log
 from systems.cleanup import CleanupManager
 from systems.voice_manager import VoiceManager, PlaybackState
 from core.track import Track, load_library, Playlist, discover_playlists, has_playlist_structure
@@ -63,7 +64,7 @@ class MusicPlayer:
     - Track navigation
     """
 
-    def __init__(self, guild_id: int, bot_loop, bot_user_id: int):
+    def __init__(self, guild_id: int, bot_loop, bot_user_id: int, bot=None):
         """
         Initialize player for a guild.
 
@@ -71,15 +72,17 @@ class MusicPlayer:
             guild_id: Discord guild ID
             bot_loop: Bot's event loop (for debouncing)
             bot_user_id: Bot's user ID (for message filtering)
+            bot: Bot instance (for human-readable logging)
         """
         self.guild_id = guild_id
+        self.bot = bot
 
         # =====================================================================
         # DELEGATE SYSTEMS (Composition Pattern)
         # =====================================================================
-        self.spam_protector = SpamProtector(guild_id, bot_loop)
-        self.cleanup_manager = CleanupManager(guild_id, bot_user_id=bot_user_id)
-        self.voice_manager = VoiceManager(guild_id)
+        self.spam_protector = SpamProtector(guild_id, bot_loop, bot=bot)
+        self.cleanup_manager = CleanupManager(guild_id, bot_user_id=bot_user_id, bot=bot)
+        self.voice_manager = VoiceManager(guild_id, bot=bot)
 
         # =====================================================================
         # PLAYLISTS & MUSIC LIBRARY
@@ -162,7 +165,7 @@ class MusicPlayer:
             if not playlist_to_load:
                 playlist_to_load = self.available_playlists[0]
                 logger.info(
-                    f"Guild {self.guild_id}: Saved playlist not found, using first available: {playlist_to_load.display_name}"
+                    f"{format_guild_log(self.guild_id, self.bot)}: Saved playlist not found, using first available: {playlist_to_load.display_name}"
                 )
                 # Persist fallback so future restarts load the existing playlist immediately
                 save_last_playlist_immediate(self.guild_id, playlist_to_load.playlist_id)
@@ -171,7 +174,7 @@ class MusicPlayer:
             self.library, self.track_by_index = load_library(self.guild_id, playlist_to_load.playlist_path)
         else:
             # Single-playlist mode: load from root music folder
-            logger.info(f"Guild {self.guild_id}: No playlists found, using root music folder")
+            logger.info(f"{format_guild_log(self.guild_id, self.bot)}: No playlists found, using root music folder")
             self.library, self.track_by_index = load_library(self.guild_id)
 
         # Initialize queue
@@ -219,7 +222,7 @@ class MusicPlayer:
             shuffle: If provided, override shuffle_enabled
         """
         if not self.library:
-            logger.debug(f"Guild {self.guild_id}: Cannot reset queue - library empty")
+            logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Cannot reset queue - library empty")
             return
 
         # Determine shuffle state
@@ -254,7 +257,7 @@ class MusicPlayer:
             self.now_playing = self.upcoming.popleft()
         else:
             # Queue exhausted - loop
-            logger.debug(f"Guild {self.guild_id}: Queue exhausted, looping")
+            logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Queue exhausted, looping")
             self.reset_queue()
             if self.upcoming:
                 self.now_playing = self.upcoming.popleft()
@@ -366,9 +369,9 @@ class MusicPlayer:
                 channel = await bot.fetch_channel(channel_id)
                 if isinstance(channel, disnake.TextChannel):
                     self.set_text_channel(channel)
-                    logger.debug(f"Guild {self.guild_id}: Restored channel {channel.name}")
+                    logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Restored channel {channel.name}")
             except (disnake.NotFound, disnake.Forbidden, disnake.HTTPException) as e:
-                logger.debug(f"Guild {self.guild_id}: Could not restore channel: {e}")
+                logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Could not restore channel: {e}")
 
     def set_voice_client(self, voice_client: Optional[disnake.VoiceClient]):
         """Set voice client and update voice manager."""
@@ -449,7 +452,7 @@ class MusicPlayer:
         # Return the best match
         best_match = matches[0]
         logger.debug(
-            f"Guild {self.guild_id}: Fuzzy playlist match '{identifier}' → '{best_match[2].display_name}' "
+            f"{format_guild_log(self.guild_id, self.bot)}: Fuzzy playlist match '{identifier}' → '{best_match[2].display_name}' "
             f"(similarity: {best_match[0]:.2f})"
         )
         return best_match[2]
@@ -492,7 +495,7 @@ class MusicPlayer:
                     self.cancel_active_session()
                     voice_client.stop()
             except disnake.ClientException as e:
-                logger.debug("Guild %s: stop during playlist switch failed: %s", self.guild_id, e)
+                logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: stop during playlist switch failed: {e}")
 
         # Clear playback state
         self.played.clear()
@@ -511,7 +514,7 @@ class MusicPlayer:
         save_last_playlist(self.guild_id, target_playlist.playlist_id)
 
         logger.info(
-            f"Guild {self.guild_id}: Switched to playlist '{target_playlist.display_name}' "
+            f"{format_guild_log(self.guild_id, self.bot)}: Switched to playlist '{target_playlist.display_name}' "
             f"({len(self.library)} tracks)"
         )
 
@@ -550,7 +553,7 @@ async def get_player(guild_id: int, bot, bot_user_id: int) -> MusicPlayer:
             return players[guild_id]
 
         # Create new player
-        player = MusicPlayer(guild_id, bot.loop, bot_user_id)
+        player = MusicPlayer(guild_id, bot.loop, bot_user_id, bot)
         player.start_background_tasks()
 
         # Load persistent channel

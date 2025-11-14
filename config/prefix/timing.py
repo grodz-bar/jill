@@ -34,10 +34,10 @@ USER_SPAM_WARNINGS_ENABLED = True
 
 # Warning messages (one randomly selected)
 USER_SPAM_WARNINGS = [
-    "Easy there. I'll skip when you stop button mashing.",
-    "Whoa! One command at a time, please.",
-    "Take it easy... spamming won't make it faster.",
-    "Calm down! I heard you the first time.",
+    "Easy there. I'll do it when you stop button mashing.",
+    "Whoa! One thing at a time, please.",
+    "Take it easy... spamming won't make me work faster.",
+    "Calm down, I heard you the first time.",
 ]
 
 

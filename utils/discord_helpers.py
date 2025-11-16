@@ -29,6 +29,9 @@ Command Helper Functions (Boilerplate Reducers):
 - send_player_message(): Send messages with automatic sanitization and TTL cleanup
 - spam_protected_execute(): Apply 4-layer spam protection to command execution
 
+Fuzzy Matching:
+- fuzzy_match(): Find items by number or name using difflib similarity scoring
+
 Voice Health Monitoring:
 - VoiceHealthMonitor: Adaptive state machine for connection quality monitoring
 - check_voice_health_and_reconnect(): Main health check function
@@ -44,8 +47,9 @@ Utility Functions:
 import asyncio
 import disnake
 import logging
+from difflib import SequenceMatcher
 from time import monotonic as _now
-from typing import Optional
+from typing import Optional, List, TypeVar, Callable
 
 logger = logging.getLogger(__name__)
 user_logger = logging.getLogger('jill')  # For user-facing messages
@@ -172,6 +176,79 @@ def sanitize_for_format(text: str) -> str:
         'Now serving: Song {test}.opus'
     """
     return text.replace('{', '{{').replace('}', '}}')
+
+
+# =============================================================================
+# FUZZY MATCHING
+# =============================================================================
+
+T = TypeVar('T')
+
+def fuzzy_match(
+    identifier: str,
+    items: List[T],
+    get_name: Callable[[T], str],
+    get_index: Optional[Callable[[T], int]] = None
+) -> Optional[T]:
+    """
+    Find item by number or name using fuzzy matching.
+
+    Args:
+        identifier: Either a number (1-based) or name substring
+        items: List of items to search
+        get_name: Function to extract name from item
+        get_index: Optional function to extract sortable index for tie-breaking
+
+    Returns:
+        Matching item or None if not found
+
+    Matching Algorithm:
+        1. Try parsing as number (exact match by position)
+        2. Find all items containing the search term (case-insensitive)
+        3. Score each match by similarity ratio using difflib.SequenceMatcher
+        4. Return best match (highest score, then lowest index for ties)
+
+    Examples:
+        >>> fuzzy_match("1", tracks, lambda t: t.display_name, lambda t: t.library_index)
+        <Track: First Song>
+        >>> fuzzy_match("dawn", tracks, lambda t: t.display_name)
+        <Track: Dawn of Men>  # Best similarity match
+    """
+    if not items:
+        return None
+
+    # Try parsing as number (1-based index)
+    try:
+        index = int(identifier) - 1
+        if 0 <= index < len(items):
+            return items[index]
+    except ValueError:
+        pass
+
+    # Fuzzy name matching with similarity scoring
+    identifier_lower = identifier.lower()
+    matches = []
+
+    # Find all items that contain the search term
+    for idx, item in enumerate(items):
+        item_name = get_name(item)
+        item_name_lower = item_name.lower()
+
+        if identifier_lower in item_name_lower:
+            # Calculate similarity ratio (0.0 to 1.0)
+            similarity = SequenceMatcher(None, identifier_lower, item_name_lower).ratio()
+            # Use provided index or list position for tie-breaking
+            sort_index = get_index(item) if get_index else idx
+            matches.append((similarity, sort_index, item))
+
+    if not matches:
+        return None
+
+    # Sort by: similarity (descending), then index (ascending)
+    # This ensures: best match first, ties broken by index/order
+    matches.sort(key=lambda x: (-x[0], x[1]))
+
+    return matches[0][2]
 
 
 # =============================================================================
@@ -656,7 +733,7 @@ def make_audio_source(path: str):
         Audio source object for Discord voice playback (FFmpegOpusAudio or FFmpegPCMAudio)
 
     Note:
-        FFmpeg options are configurable via FFMPEG_BEFORE_OPTIONS in config/timing.py.
+        FFmpeg options are configurable via FFMPEG_BEFORE_OPTIONS in config/common/audio_settings.py.
         Default options optimize for low latency and real-time playback.
 
         Opus files use passthrough mode (no transcoding) for maximum performance.
@@ -728,6 +805,7 @@ class VoiceHealthMonitor:
         self.last_check = 0.0
         self.last_reconnect = 0.0
         self.reconnect_count = 0
+        self._lock = asyncio.Lock()  # Protect state mutations from concurrent access
 
     def get_next_check_interval(self) -> float:
         """Get the next check interval based on current state."""
@@ -744,7 +822,7 @@ class VoiceHealthMonitor:
         interval = self.get_next_check_interval()
         return _now() - self.last_check >= interval
 
-    def record_check(self, latency: Optional[float]) -> Tuple[bool, bool]:
+    async def record_check(self, latency: Optional[float]) -> Tuple[bool, bool]:
         """
         Record a health check result and update state.
 
@@ -754,71 +832,73 @@ class VoiceHealthMonitor:
         Returns:
             Tuple of (needs_reconnect, state_changed)
         """
-        self.last_check = _now()
-        old_state = self.state
-        needs_reconnect = False
+        async with self._lock:
+            self.last_check = _now()
+            old_state = self.state
+            needs_reconnect = False
 
-        # Evaluate connection health
-        # Note: Fresh voice connections report latency as inf (infinity) because
-        # metrics aren't available yet. This is normal and should be treated as
-        # "unknown" not "bad". Latency becomes available after 1-3 seconds once
-        # the UDP socket is established and RTT measurements are taken.
-        if latency is None or latency == float('inf'):
-            # Can't determine latency yet (None or inf on fresh connections)
-            health_status = "unknown"
-        elif latency > self.BAD_LATENCY:
-            health_status = "bad"
-            needs_reconnect = True
-        elif latency > self.MARGINAL_LATENCY:
-            health_status = "marginal"
-        else:
-            health_status = "good"
+            # Evaluate connection health
+            # Note: Fresh voice connections report latency as inf (infinity) because
+            # metrics aren't available yet. This is normal and should be treated as
+            # "unknown" not "bad". Latency becomes available after 1-3 seconds once
+            # the UDP socket is established and RTT measurements are taken.
+            if latency is None or latency == float('inf'):
+                # Can't determine latency yet (None or inf on fresh connections)
+                health_status = "unknown"
+            elif latency > self.BAD_LATENCY:
+                health_status = "bad"
+                needs_reconnect = True
+            elif latency > self.MARGINAL_LATENCY:
+                health_status = "marginal"
+            else:
+                health_status = "good"
 
-        # State machine logic
-        if health_status == "bad":
-            # Need to reconnect regardless of state
-            needs_reconnect = True
+            # State machine logic
+            if health_status == "bad":
+                # Need to reconnect regardless of state
+                needs_reconnect = True
 
-        elif health_status == "marginal":
-            if self.state == ConnectionHealth.NORMAL:
-                # Detected problems, enter suspicious mode
-                self.state = ConnectionHealth.SUSPICIOUS
-                self.good_checks_count = 0
-                user_logger.info(
-                    f"{format_guild_log(self.guild_id, self.bot)}: Voice latency marginal "
-                    f"({latency*1000:.0f}ms), monitoring closely"
-                )
-            # Stay in current state if already suspicious/recovering
+            elif health_status == "marginal":
+                if self.state == ConnectionHealth.NORMAL:
+                    # Detected problems, enter suspicious mode
+                    self.state = ConnectionHealth.SUSPICIOUS
+                    self.good_checks_count = 0
+                    user_logger.info(
+                        f"{format_guild_log(self.guild_id, self.bot)}: Voice latency marginal "
+                        f"({latency*1000:.0f}ms), monitoring closely"
+                    )
+                # Stay in current state if already suspicious/recovering
 
-        elif health_status == "good":
-            if self.state == ConnectionHealth.POST_RECONNECT:
-                # First good check after reconnect, move to recovery
-                self.state = ConnectionHealth.RECOVERY
-                self.good_checks_count = 1
-                user_logger.info(f"{format_guild_log(self.guild_id, self.bot)}: Reconnect successful, monitoring stability")
+            elif health_status == "good":
+                if self.state == ConnectionHealth.POST_RECONNECT:
+                    # First good check after reconnect, move to recovery
+                    self.state = ConnectionHealth.RECOVERY
+                    self.good_checks_count = 1
+                    user_logger.info(f"{format_guild_log(self.guild_id, self.bot)}: Reconnect successful, monitoring stability")
 
-            elif self.state == ConnectionHealth.RECOVERY:
-                self.good_checks_count += 1
-                if self.good_checks_count >= self.GOOD_CHECKS_FOR_NORMAL:
-                    # Sustained good performance, back to normal
-                    self.state = ConnectionHealth.NORMAL
-                    logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Connection stable, resuming normal monitoring")
+                elif self.state == ConnectionHealth.RECOVERY:
+                    self.good_checks_count += 1
+                    if self.good_checks_count >= self.GOOD_CHECKS_FOR_NORMAL:
+                        # Sustained good performance, back to normal
+                        self.state = ConnectionHealth.NORMAL
+                        logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Connection stable, resuming normal monitoring")
 
-            elif self.state == ConnectionHealth.SUSPICIOUS:
-                # Connection improved, move to recovery
-                self.state = ConnectionHealth.RECOVERY
-                self.good_checks_count = 1
-                user_logger.info(f"{format_guild_log(self.guild_id, self.bot)}: Connection improved, watching for stability")
+                elif self.state == ConnectionHealth.SUSPICIOUS:
+                    # Connection improved, move to recovery
+                    self.state = ConnectionHealth.RECOVERY
+                    self.good_checks_count = 1
+                    user_logger.info(f"{format_guild_log(self.guild_id, self.bot)}: Connection improved, watching for stability")
 
-        state_changed = (old_state != self.state)
-        return needs_reconnect, state_changed
+            state_changed = (old_state != self.state)
+            return needs_reconnect, state_changed
 
-    def record_reconnect(self):
+    async def record_reconnect(self):
         """Record that a reconnect occurred."""
-        self.state = ConnectionHealth.POST_RECONNECT
-        self.good_checks_count = 0
-        self.last_reconnect = _now()
-        self.reconnect_count += 1
+        async with self._lock:
+            self.state = ConnectionHealth.POST_RECONNECT
+            self.good_checks_count = 0
+            self.last_reconnect = _now()
+            self.reconnect_count += 1
 
 
 # Global health monitors per guild
@@ -879,7 +959,7 @@ async def check_voice_health_and_reconnect(player, guild, bot) -> bool:
             latency = vc.latency
 
         # Record check and get decision
-        needs_reconnect, state_changed = monitor.record_check(latency)
+        needs_reconnect, state_changed = await monitor.record_check(latency)
 
         # Log state changes at appropriate levels
         if state_changed:
@@ -996,7 +1076,7 @@ async def _force_voice_reconnect(player, guild, bot, monitor: VoiceHealthMonitor
             await safe_voice_state_change(guild, channel, self_deaf=True)
 
             # Record successful reconnect
-            monitor.record_reconnect()
+            await monitor.record_reconnect()
 
             user_logger.info(
                 f"{format_guild_log(guild.id, bot)}: Voice reconnected successfully "

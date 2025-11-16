@@ -1,82 +1,42 @@
 """
 Slash Mode Messages Configuration
-
-ALL user-facing text for slash command mode.
-NO HARDCODED STRINGS in implementation files!
 """
 
 # Command responses
 MESSAGES = {
-    # Playback
-    'RESUMED': "▶️ Resuming playback",
-    'PAUSED': "⏸️ Playback paused",
-    'SKIPPED': "⏭️ Skipped to next track",
-    'PREVIOUS': "⏮️ Returned to previous track",
-    'STOPPED': "⏹️ Playback stopped and queue cleared",
-    'CONNECTED': "🔊 Connected to voice channel",
-    'STARTING_PLAYBACK': "▶️ Starting playback",
+    # Slash-specific errors
+    # (Most errors are now in common/messages.py and shared with prefix mode)
+    'error_occurred': "❌ An error occurred while processing your request",
+    'button_on_cooldown': "⏱️ Slow down! Please wait a moment before clicking again",
 
-    # Shuffle
-    'SHUFFLED': "🔀 Queue shuffled",
-    'SHUFFLE_ON': "🔀 Shuffle mode enabled",
-    'SHUFFLE_OFF': "➡️ Shuffle mode disabled",
-    'NOTHING_TO_SHUFFLE': "❌ Nothing to shuffle",
+    # Control panel display
+    'now_playing_title': "🎵 **Now Playing**",
+    'nothing_playing': "Nothing to serve",
+    'queue_empty_message': "*Queue is empty*",
+    'up_next': "**Up Next:**",
+    'and_more': "... and {count} more",
+    'track_info': "Track #{index} - **{name}**",
+    'status_playing': "▶️ *Playing*",
+    'status_paused': "⏸️ *Paused*",
 
-    # Errors
-    'USER_NOT_IN_VOICE': "❌ You need to be in a voice channel",
-    'WRONG_VOICE_CHANNEL': "❌ You need to be in the same voice channel as the bot",
-    'BOT_NOT_PLAYING': "❌ Nothing is currently playing",
-    'CANNOT_CONNECT': "❌ Cannot connect to your voice channel",
-    'NO_TRACKS': "❌ No tracks available in the library",
-    'TRACK_NOT_FOUND': "❌ Track not found: **{query}**",
-    'PLAYLIST_NOT_FOUND': "❌ Playlist not found: **{name}**",
-    'INVALID_NUMBER': "❌ Please provide a valid track number",
-    'EMPTY_QUEUE': "📭 The queue is empty",
-    'NO_PLAYLISTS': "❌ No playlists available",
-    'PLAYLIST_EMPTY': "❌ This playlist has no tracks",
-    'NO_PREVIOUS_TRACK': "❌ No previous track available",
-    'PERMISSION_DENIED': "❌ You don't have permission to use this command",
-    'ERROR_OCCURRED': "❌ An error occurred while processing your request",
+    # Command embeds
+    'queue_title': "📋 Current Queue",
+    'tracks_title': "📚 Track Library",
+    'playlists_title': "📂 Available Playlists",
+    'page_info': "Page {current}/{total}",
 
-    # Success
-    'PLAYLIST_SWITCHED': "📂 Switched to playlist: **{playlist}**",
-    'JUMPED_TO_TRACK': "⏩ Jumped to track #{number}: **{name}**",
-
-    # Panel
-    'CONTROL_PANEL_TITLE': "🎵 Music Controls",
-    'CONTROL_PANEL_DESC': "Use the buttons below to control playback",
-    'NOW_PLAYING_TITLE': "🎵 **Now Playing**",
-    'NOTHING_PLAYING': "Nothing to serve",
-    'QUEUE_EMPTY_MESSAGE': "*Queue is empty*",
-    'UP_NEXT': "**Up Next:**",
-    'AND_MORE': "... and {count} more",
-    'TRACK_INFO': "Track #{index} - **{name}**",
-    'PLAYLIST_INFO': "📂 Playlist: {name}",
-    'STATUS_PLAYING': "▶️ *Playing*",
-    'STATUS_PAUSED': "⏸️ *Paused*",
-
-    # Lists
-    'QUEUE_TITLE': "📋 Current Queue",
-    'TRACKS_TITLE': "📚 Track Library",
-    'PLAYLISTS_TITLE': "📂 Available Playlists",
-    'PAGE_INFO': "Page {current}/{total}",
-
-    # Help
-    'HELP_TITLE': "🍸 Jill - Music Bot Commands",
-    'HELP_DESCRIPTION': "Your cyberpunk bartender, now serving beats!",
+    # Help command
+    'help_title': "🍸 Jill - Music Bot Commands",
+    'help_description': "Your cyberpunk bartender, now serving beats!",
 }
 
-# Button labels
+# Button labels (control panel buttons)
 BUTTON_LABELS = {
     'previous': '⏮️',
     'pause': '⏸️',
     'play': '▶️',
     'skip': '⏭️',
     'shuffle': '🔀',
-    'stop': '⏹️',
-    'page_prev': '◀️ Previous',
-    'page_next': 'Next ▶️',
-    'page_info': '{current}/{total}',
 }
 
 # Command descriptions
@@ -94,8 +54,23 @@ COMMAND_DESCRIPTIONS = {
     'help': 'Show help information',
 }
 
+# Control panel settings
+# Fallback playlist name when no playlist structure exists (flat folder)
+FALLBACK_PLAYLIST_NAME = "jukebox"
+
+# Embed color scheme
+BOT_COLORS = {
+    'primary': 0xE91E63,    # Pink
+    'success': 0x00E676,    # Green
+    'warning': 0xFFD600,    # Yellow
+    'error': 0xFF5252,      # Red
+    'info': 0x2196F3,       # Blue
+}
+
 __all__ = [
     'MESSAGES',
     'BUTTON_LABELS',
     'COMMAND_DESCRIPTIONS',
+    'FALLBACK_PLAYLIST_NAME',
+    'BOT_COLORS',
 ]

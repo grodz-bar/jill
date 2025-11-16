@@ -6,7 +6,7 @@ Discord button components using configuration values.
 
 import disnake
 
-def create_control_buttons(is_playing: bool = False, is_paused: bool = False) -> list:
+def create_control_buttons(is_playing: bool = False, is_paused: bool = False, shuffle_enabled: bool = False) -> list:
     """Create button components for the control panel."""
     from config import BUTTON_LABELS
 
@@ -52,22 +52,12 @@ def create_control_buttons(is_playing: bool = False, is_paused: bool = False) ->
         )
     )
 
-    # Shuffle
+    # Shuffle (changes color when active)
     buttons.append(
         disnake.ui.Button(
-            style=disnake.ButtonStyle.secondary,
+            style=disnake.ButtonStyle.primary if shuffle_enabled else disnake.ButtonStyle.secondary,
             label=BUTTON_LABELS['shuffle'],
             custom_id="music_shuffle",
-            disabled=not is_playing
-        )
-    )
-
-    # Stop
-    buttons.append(
-        disnake.ui.Button(
-            style=disnake.ButtonStyle.danger,
-            label=BUTTON_LABELS['stop'],
-            custom_id="music_stop",
             disabled=not is_playing
         )
     )

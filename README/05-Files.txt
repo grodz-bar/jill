@@ -20,23 +20,25 @@ DIRECTORY STRUCTURE
 ├── start-jill.sh                     # Linux launcher (created by setup)
 ├── .env                              # Bot configuration (created during setup)
 ├── /config/                          # Configuration folder (USER CUSTOMIZATION)
-│   ├── __init__.py                   # Mode-aware config loader
-│   ├── mode.py                       # Command mode detection (prefix/slash)
+│   ├── __init__.py                   # Mode-aware config loader (detects JILL_COMMAND_MODE)
 │   ├── /common/                      # Shared configuration (both modes)
-│   │   ├── core.py                   # Bot token, music folder, logging
+│   │   ├── basic_settings.py         # Bot identity, music folder, feature toggles, logging
+│   │   ├── audio_settings.py         # FFmpeg options, voice health monitoring
+│   │   ├── advanced.py               # Bot token, persistence paths, watchdog intervals
+│   │   ├── messages.py               # Shared messages
+│   │   ├── spam_protection.py        # Spam protection (Layer 3 serial queue)
 │   │   ├── permissions.py            # VA-11 HALL-A themed permission system
-│   │   ├── filename_patterns.py      # File naming patterns
-│   │   ├── paths.py                  # Path configuration
-│   │   └── bot_identity.py           # Bot name and avatar
+│   │   └── filename_patterns.py      # File naming patterns
 │   ├── /prefix/                      # Classic mode (!play) configuration
 │   │   ├── features.py               # Command prefix, feature toggles
-│   │   ├── messages.py               # Bot response text
+│   │   ├── messages.py               # Prefix-specific bot response text
 │   │   ├── aliases.py                # Command aliases
-│   │   └── timing.py                 # Cooldowns, cleanup timing
+│   │   ├── spam_protection.py        # Command cooldowns (Layers 1-2)
+│   │   └── cleanup.py                # Message cleanup timing and TTL settings
 │   └── /slash/                       # Modern mode (/play) configuration
 │       ├── features.py               # Feature toggles
-│       ├── messages.py               # Bot response text, button labels
-│       ├── timing.py                 # Update throttling, interaction delays
+│       ├── messages.py               # Slash-specific bot response text, button labels
+│       ├── timing.py                 # Update throttling, interaction delays, button cooldowns
 │       ├── embeds.py                 # Rich embed formatting functions
 │       └── buttons.py                # Button component builders
 ├── /handlers/                        # Command handlers (implementation)
@@ -48,7 +50,7 @@ DIRECTORY STRUCTURE
 ├── .env                              # Bot configuration (created during setup)
 ├── last_channels.json                # Channel persistence (prefix mode, auto-created)
 ├── last_playlists.json               # Playlist persistence (auto-created, managed)
-├── message_ids.json                  # Control panel message IDs (slash mode, auto-created)
+├── last_message_ids.json             # Control panel message IDs (slash mode, auto-created)
 ├── /core/                            # Core music player (jill's code)
 │   ├── __init__.py                   # Python package marker
 │   ├── player.py                     # MusicPlayer class
@@ -67,7 +69,6 @@ DIRECTORY STRUCTURE
 │   ├── persistence.py                # Channel/playlist/message persistence
 │   ├── context_managers.py           # Context helpers
 │   ├── permission_checks.py          # Permission system decorators
-│   ├── context_adapter.py            # Unified context interface (dual mode)
 │   └── response_helper.py            # Unified response sending (dual mode)
 ├── /README/                          # Documentation folder
 │   ├── 01-README.txt                 # Main overview
@@ -182,30 +183,29 @@ requirements.txt
 CONFIG FOLDER
 ================================================================================
 
-Command Mode Selection:
------------------------
-- config/mode.py - Detects JILL_COMMAND_MODE from .env (prefix or slash)
-
 Common Configuration (Both Modes):
 -----------------------------------
-- config/common/core.py - Bot token, music folder, logging level, voice health
+- config/common/basic_settings.py - Bot identity, music folder, feature toggles, logging
+- config/common/audio_settings.py - FFmpeg options, voice health monitoring
+- config/common/advanced.py - Bot token, persistence paths, watchdog intervals
+- config/common/messages.py - Shared messages
+- config/common/spam_protection.py - Spam protection (Layer 3 serial queue)
 - config/common/permissions.py - VA-11 HALL-A themed permission system
 - config/common/filename_patterns.py - File naming pattern support
-- config/common/paths.py - Path configuration (Advanced)
-- config/common/bot_identity.py - Bot name and avatar
 
 Classic Mode Configuration (prefix):
 -------------------------------------
 - config/prefix/features.py - Command prefix, feature toggles
-- config/prefix/messages.py - Bot response text
+- config/prefix/messages.py - Prefix-specific bot response text
 - config/prefix/aliases.py - Command aliases
-- config/prefix/timing.py - Cooldowns, spam protection, cleanup timing
+- config/prefix/spam_protection.py - Command cooldowns (Layers 1-2)
+- config/prefix/cleanup.py - Message cleanup timing and TTL settings
 
 Modern Mode Configuration (slash):
 -----------------------------------
 - config/slash/features.py - Feature toggles
-- config/slash/messages.py - Bot response text, button labels
-- config/slash/timing.py - Update throttling, interaction delays
+- config/slash/messages.py - Slash-specific bot response text, button labels
+- config/slash/timing.py - Update throttling, interaction delays, button cooldowns
 - config/slash/embeds.py - Rich embed formatting functions
 - config/slash/buttons.py - Button component builders
 
@@ -223,7 +223,7 @@ last_playlists.json
   playlist per Discord server. Allows the bot to remember which playlist each
   server was using after restart. Automatically managed - do not edit manually.
 
-message_ids.json
+last_message_ids.json
   Control panel message IDs (auto-created, slash mode only). Stores the
   control panel message ID per Discord server. Allows control panels to
   persist and update after bot restart. Automatically managed - do not edit

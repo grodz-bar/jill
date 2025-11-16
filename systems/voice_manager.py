@@ -33,6 +33,7 @@ user_logger = logging.getLogger('jill')  # For user-facing messages
 
 # Import from config
 from config import (
+    COMMAND_MODE,
     ALONE_PAUSE_DELAY, ALONE_DISCONNECT_DELAY,
     AUTO_PAUSE_ENABLED, AUTO_DISCONNECT_ENABLED,
     MESSAGES,
@@ -222,11 +223,11 @@ class VoiceManager:
                         self.voice_client.pause()
                         self._was_playing_before_alone = True
 
-                        # Send message
-                        if self._send_message_callback and self.text_channel:
+                        # Send message (prefix mode only - slash has visual control panel)
+                        if COMMAND_MODE == 'prefix' and self._send_message_callback and self.text_channel:
                             await self._send_message_callback(
                                 self.text_channel,
-                                MESSAGES['pause_auto'],
+                                MESSAGES['paused_auto'],
                                 'pause'
                             )
 
@@ -236,8 +237,8 @@ class VoiceManager:
                 if AUTO_DISCONNECT_ENABLED and alone_duration >= ALONE_DISCONNECT_DELAY:
                     user_logger.info(f"Auto-disconnecting (alone for {alone_duration:.1f}s)")
 
-                    # Send message before disconnecting
-                    if self._send_message_callback and self.text_channel:
+                    # Send message before disconnecting (prefix mode only - slash has visual control panel)
+                    if COMMAND_MODE == 'prefix' and self._send_message_callback and self.text_channel:
                         await self._send_message_callback(
                             self.text_channel,
                             MESSAGES['stop'],
@@ -276,11 +277,11 @@ class VoiceManager:
                     user_logger.info(f"Auto-resuming (someone joined)")
                     self.voice_client.resume()
 
-                    # Send message
-                    if self._send_message_callback and self.text_channel and now_playing:
+                    # Send message (prefix mode only - slash has visual control panel)
+                    if COMMAND_MODE == 'prefix' and self._send_message_callback and self.text_channel and now_playing:
                         await self._send_message_callback(
                             self.text_channel,
-                            MESSAGES['resume'].format(track=sanitize_for_format(now_playing.display_name)),
+                            MESSAGES['resumed_auto'].format(track=sanitize_for_format(now_playing.display_name)),
                             'resume'
                         )
 
@@ -316,3 +317,15 @@ class VoiceManager:
         """Reset alone tracking state."""
         self._alone_since = None
         self._was_playing_before_alone = False
+
+    async def shutdown(self):
+        """
+        Gracefully shutdown voice manager.
+
+        Resets state for clean shutdown. Currently a no-op as VoiceManager
+        has no background tasks, but included for architectural consistency
+        and future-proofing.
+        """
+        self._alone_since = None
+        self._was_playing_before_alone = False
+        logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Voice manager shutdown complete")

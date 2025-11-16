@@ -458,6 +458,9 @@ class CleanupManager:
         Returns:
             The message object (edited or new)
         """
+        if not self.enabled:
+            return None
+
         if not self.text_channel:
             return None
 

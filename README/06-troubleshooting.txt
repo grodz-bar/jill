@@ -19,14 +19,14 @@ CLASSIC MODE (!play):
 
 MODERN MODE (/play):
 - Slash commands may take up to 1 hour to appear after first startup
-- Try restarting Discord client to refresh slash command cache
+- Try restarting your Discord client to refresh slash command cache
 - Ensure bot has "Use Application Commands" permission
 - Verify bot is invited with applications.commands scope
 - Type / in chat to see if slash commands appear
 
 BOTH MODES:
 - Check bot is online (default behaviour: red dot in member list)
-- Verify you have permission to use commands (VA-11 HALL-A roles if enabled)
+- Verify you have permission to use commands (and correct roles if enabled)
 
 Bot can't join voice
 ---------------------
@@ -160,7 +160,7 @@ If stuttering persists:
 - Verify Discord API status: https://discordstatus.com
 - Check bot logs for repeated reconnection attempts
 - Disable voice health monitoring if causing issues:
-  - Edit config/features.py
+  - Edit config/common/audio_settings.py
   - Set VOICE_HEALTH_CHECK_ENABLED = False
   - Restart bot
 
@@ -275,6 +275,33 @@ sudo journalctl -u jill.service -f
 
 # Check service status
 sudo systemctl status jill.service
+
+Enable debug logging
+--------------------
+
+For troubleshooting issues, enable DEBUG mode to see detailed logs:
+
+1. Add this line to your .env:
+
+LOG_LEVEL=DEBUG
+
+2. Restart the bot
+
+Debug mode shows technical details including:
+- Track playback state transitions
+- Queue operations and callbacks
+- Button interactions and state checks
+- Voice connection health
+- Spam protection filtering
+
+When done debugging, change back to INFO or remove the line.
+
+Available log levels (from least to most verbose):
+- CRITICAL = Only critical failures
+- ERROR    = Errors and critical issues
+- WARNING  = Warnings, errors, and critical issues
+- INFO     = General bot activity (default)
+- DEBUG    = Everything (very detailed, use for troubleshooting)
 
 ================================================================================
 COMMON SOLUTIONS

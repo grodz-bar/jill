@@ -3,7 +3,7 @@
 
 r"""
 =========================================================================================================================
-Bot Messages - All text responses
+Bot Messages
 =========================================================================================================================
 
 This file contains the bot's text output that users see.
@@ -51,46 +51,20 @@ hovering over it in the emoji selection menu.
 =========================================================================================================================
 """
 
-# =======================================================================================================================
-# DRINK EMOJIS - Rotating drinks for "Now serving" messages
-# =======================================================================================================================
-
-DRINK_EMOJIS = ['🍸', '🥃', '🍺', '🍸', '🍷', '🍶']
-
 MESSAGES = {
     # ===================================================================================================================
-    # ERRORS - Error messages and validation responses
-    # ===================================================================================================================
-    'error_not_in_voice': "🤔 Are you hiding?",
-    'error_no_permission': "🚫 **{channel}** is off-limits!",
-    'error_not_playing': "😒 I'm not even playing anything.",
-    'error_already_playing': "🙄 It's already playing?",
-    'error_no_tracks': "🎵 No tracks in the jukebox!",
-    'error_fight_me': "👺 Fight me.",
-    'error_cant_connect': "❌ Can't join that channel: {error}",
-    'error_invalid_track': "❌ Track #{number} doesn't exist. Current playlist has {total} tracks.",
-    'error_track_not_found': "❌ '{query}'? Try `{prefix}tracks` to see what we have.",
-    'error_playlist_not_found': '❌ I ran out of \'{query}\'. Try `{prefix}playlists` to see the menu.',
-    'error_playlist_already_active': '😑 Already using that playlist.',
-    'error_no_playlists': '❌ No playlists found. Music must be in subfolders.',
-    
-    # ===================================================================================================================
-    # FEATURE DISABLED - Messages for disabled features
-    # ===================================================================================================================
-    'feature_shuffle_disabled': "🔒 Shuffle is currently disabled.",
-    'feature_queue_disabled': "🔒 Queue display is currently disabled.",
-    'feature_library_disabled': "🔒 Library display is currently disabled.",
-    'feature_playlists_disabled': "🔒 Playlist switching is currently disabled.",
-
-    # ===================================================================================================================
-    # PLAYBACK - Music playback and control messages
+    # PLAYBACK ANNOUNCEMENTS - Prefix mode only (slash mode is silent, uses visual control panel)
     # ===================================================================================================================
     'now_serving': '{drink} Now serving: **{track}**',
+    'paused_auto': "🌙 Auto-paused (no one listening)",
+    'resumed_auto': "▶️ Auto-resumed: **{track}**",
+    'stop': "😴 I'm heading out.",
+
+    # ===================================================================================================================
+    # PLAYBACK CONTROLS - User-initiated actions
+    # ===================================================================================================================
     'resume': '🍹 Back to work: **{track}**',
     'pause': '🌃 Taking a break.',
-    'pause_on_break': '🌃 On a break.',
-    'pause_auto': '🌙 Stopped serving (bar\'s empty)',
-    'stop': '😴 I\'m heading out.',
     
     # ===================================================================================================================
     # NAVIGATION - Track navigation and queue messages
@@ -101,20 +75,17 @@ MESSAGES = {
     'previous_at_start': '😑 Already at the beginning!',
     'skip_no_disc': '✖️ No disc in jukebox.',
     'nothing_playing': '✖️ Nothing\'s playing right now.',
-    'queue_will_loop': ' _(Queue will loop after this)_',
     'queue_header': '╔════════════════════════════╗',
     'queue_footer': '╚════════════════════════════╝',
     'queue_now_playing': '⠀⠀🍸 Now Serving →',
     'queue_last_played': '⠀⠀🍷 Last Served: ',
     'queue_up_next': '⠀⠀🍹 Coming Up: ',
-    
+
     # ===================================================================================================================
-    # SHUFFLE - Shuffle mode and organization messages
+    # SHUFFLE - Shuffle mode messages
     # ===================================================================================================================
     'shuffle_on': '🔀 **Shuffle ON** - Time to mix things up!',
     'shuffle_off': '🎼 **Shuffle OFF** - Back to the classics.',
-    'shuffle_already_off': '📋 Already done!',
-    'unshuffle_organized': '🎼 **Shuffle OFF** - All neat and organized.',
     
     # ===================================================================================================================
     # SPAM WARNINGS - Warning messages for spam protection
@@ -196,7 +167,7 @@ HELP_TEXT = {
     
     # Tracks section (only shows if LIBRARY_DISPLAY_ENABLED = True)
     'tracks_commands': [
-        # Empty - all track/playlist commands moved to playlists section
+        # Empty - track/playlist commands are in the playlists section
     ],
 
     # Shuffle section (only shows if SHUFFLE_MODE_ENABLED = True)
@@ -208,8 +179,5 @@ HELP_TEXT = {
     'info_commands': [
         '`!help` - Show this message'
     ],
-    
-    # Error message (shown if help generation fails)
-    'generation_error': '❌ Help system error - contact server administrator'
 }
 

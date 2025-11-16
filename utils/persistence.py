@@ -437,8 +437,8 @@ def load_message_ids() -> Dict[int, Dict[str, Any]]:
 
 
 def save_message_ids(guild_id: int, control_panel_id: int = None,
-                     now_playing_id: int = None, channel_id: int = None):
-    """Save message IDs for a guild."""
+                     channel_id: int = None):
+    """Save control panel message ID for a guild."""
     global _message_cache
 
     if not _message_cache_loaded:
@@ -449,8 +449,6 @@ def save_message_ids(guild_id: int, control_panel_id: int = None,
 
     if control_panel_id is not None:
         _message_cache[guild_id]['control_panel_id'] = control_panel_id
-    if now_playing_id is not None:
-        _message_cache[guild_id]['now_playing_id'] = now_playing_id
     if channel_id is not None:
         _message_cache[guild_id]['channel_id'] = channel_id
 
@@ -503,8 +501,16 @@ async def flush_all_immediately():
     # Cancel any scheduled background flushes to avoid races during shutdown.
     if _last_save_task and not _last_save_task.done():
         _last_save_task.cancel()
+        try:
+            await _last_save_task
+        except asyncio.CancelledError:
+            pass
     if _last_playlist_save_task and not _last_playlist_save_task.done():
         _last_playlist_save_task.cancel()
+        try:
+            await _last_playlist_save_task
+        except asyncio.CancelledError:
+            pass
 
     # Drain until empty so nothing is left unsaved.
     while True:

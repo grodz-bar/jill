@@ -111,20 +111,25 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 - [`.env`](../.env) — Set `JILL_COMMAND_MODE` to `prefix` or `slash`
 
 **Common (Both Modes):**
-- [`config/common/core.py`](../config/common/core.py) — Bot settings, logging, voice health
+- [`config/common/basic_settings.py`](../config/common/basic_settings.py) — Bot identity, music folder, feature toggles, logging
+- [`config/common/audio_settings.py`](../config/common/audio_settings.py) — FFmpeg options, voice health monitoring
+- [`config/common/advanced.py`](../config/common/advanced.py) — Bot token, persistence paths, watchdog intervals
+- [`config/common/messages.py`](../config/common/messages.py) — Shared messages
+- [`config/common/spam_protection.py`](../config/common/spam_protection.py) — Spam protection (Layer 3 serial queue)
 - [`config/common/permissions.py`](../config/common/permissions.py) — VA-11 HALL-A themed permissions
 - [`config/common/filename_patterns.py`](../config/common/filename_patterns.py) — File naming patterns
 
 **Classic Mode (prefix):**
 - [`config/prefix/features.py`](../config/prefix/features.py) — Command prefix, feature toggles
-- [`config/prefix/messages.py`](../config/prefix/messages.py) — Bot response text
+- [`config/prefix/messages.py`](../config/prefix/messages.py) — Prefix-specific bot response text
 - [`config/prefix/aliases.py`](../config/prefix/aliases.py) — Command aliases
-- [`config/prefix/timing.py`](../config/prefix/timing.py) — Cooldowns, cleanup timing
+- [`config/prefix/spam_protection.py`](../config/prefix/spam_protection.py) — Command cooldowns (Layers 1-2)
+- [`config/prefix/cleanup.py`](../config/prefix/cleanup.py) — Message cleanup timing and TTL settings
 
 **Modern Mode (slash):**
 - [`config/slash/features.py`](../config/slash/features.py) — Feature toggles
-- [`config/slash/messages.py`](../config/slash/messages.py) — Bot response text, button labels
-- [`config/slash/timing.py`](../config/slash/timing.py) — Update throttling
+- [`config/slash/messages.py`](../config/slash/messages.py) — Slash-specific bot response text, button labels
+- [`config/slash/timing.py`](../config/slash/timing.py) — Update throttling, button cooldowns
 - [`config/slash/embeds.py`](../config/slash/embeds.py) — Rich embed formatting
 - [`config/slash/buttons.py`](../config/slash/buttons.py) — Button components
 

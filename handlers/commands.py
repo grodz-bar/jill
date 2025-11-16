@@ -42,18 +42,17 @@ import logging
 import random
 import disnake
 from collections import deque
-from difflib import SequenceMatcher
 from typing import Optional
 from disnake.ext import commands
 
 logger = logging.getLogger(__name__)
+user_logger = logging.getLogger('jill')
 
 # Import from our modules
 from core.playback import _play_current, _play_next, _play_first
 from core.track import has_playlist_structure
 from config import (
     COMMAND_ALIASES,
-    # Cooldowns (4-layer spam protection system)
     PAUSE_COOLDOWN,
     SKIP_COOLDOWN,
     STOP_COOLDOWN,
@@ -77,7 +76,7 @@ from config import (
     MESSAGES,
     HELP_TEXT,
 )
-from utils.discord_helpers import can_connect_to_channel, safe_disconnect, update_presence, sanitize_for_format, get_guild_player, ensure_voice_connected, send_player_message, spam_protected_execute, format_guild_log
+from utils.discord_helpers import can_connect_to_channel, safe_disconnect, update_presence, sanitize_for_format, get_guild_player, ensure_voice_connected, send_player_message, spam_protected_execute, format_guild_log, format_user_log, fuzzy_match
 from utils.permission_checks import permission_check
 from systems.voice_manager import PlaybackState
 
@@ -95,76 +94,6 @@ def setup(bot):
 
     See utils/discord_helpers.py for helper function documentation.
     """
-
-    # =========================================================================
-    # HELPER FUNCTIONS
-    # =========================================================================
-
-    def resolve_track_identifier(player, identifier: str) -> Optional[int]:
-        """
-        Resolve track identifier (number or name) to track index using fuzzy matching.
-
-        Args:
-            player: MusicPlayer instance
-            identifier: Either a number (1-based) or name substring
-
-        Returns:
-            Track index (0-based) or None if not found
-
-        Matching Algorithm:
-            1. Try parsing as number (exact match)
-            2. Find all tracks containing the search term (case-insensitive)
-            3. Score each match by similarity ratio
-            4. Return best match (highest score, then first in library order)
-
-        Examples:
-            resolve_track_identifier(player, "5") → 4 (track #5)
-            resolve_track_identifier(player, "dawn") → index of "Dawn of" (best match)
-            resolve_track_identifier(player, "dawn of men") → index of "Dawn of Men 1" (first of equal matches)
-        """
-        # Try parsing as number (1-based index)
-        try:
-            track_number = int(identifier)
-            track_index = track_number - 1
-            if 0 <= track_index < len(player.library):
-                return track_index
-            else:
-                return None  # Out of range
-        except ValueError:
-            pass
-
-        # Fuzzy name matching with similarity scoring
-        identifier_lower = identifier.lower()
-
-        # Exact match fast-path (case-insensitive)
-        for t in player.library:
-            if t.display_name.lower() == identifier_lower:
-                return t.library_index
-
-        matches = []
-
-        # Find all tracks that contain the search term
-        for track in player.library:
-            track_name_lower = track.display_name.lower()
-            if identifier_lower in track_name_lower:
-                # Calculate similarity ratio (0.0 to 1.0)
-                similarity = SequenceMatcher(None, identifier_lower, track_name_lower).ratio()
-                matches.append((similarity, track.library_index, track))
-
-        if not matches:
-            return None
-
-        # Sort by: similarity (descending), then library_index (ascending)
-        # This ensures: best match first, ties broken by playlist order
-        matches.sort(key=lambda x: (-x[0], x[1]))
-
-        # Return the best match
-        best_match = matches[0]
-        logger.debug(
-            f"{format_guild_log(player.guild_id, player.bot)}: Fuzzy match '{identifier}' → '{best_match[2].display_name}' "
-            f"(similarity: {best_match[0]:.2f})"
-        )
-        return best_match[1]
 
     # =========================================================================
     # PLAYBACK COMMANDS
@@ -238,10 +167,15 @@ def setup(bot):
         """Execute track jump command (by number or name)."""
         player = await get_guild_player(ctx, bot)
 
-        # Resolve identifier to track index
-        track_index = resolve_track_identifier(player, track_arg)
+        # Resolve identifier to track using fuzzy matching
+        found = fuzzy_match(
+            track_arg,
+            player.library,
+            lambda t: t.display_name,
+            lambda t: t.library_index
+        )
 
-        if track_index is None:
+        if found is None:
             # Check if it was a number (out of range) or name (not found)
             try:
                 track_number = int(track_arg)
@@ -258,7 +192,7 @@ def setup(bot):
                 )
             return
 
-        player.jump_to_track(track_index)
+        player.jump_to_track(found.library_index)
         await player.spam_protector.queue_command(
             lambda: _play_current(player.guild_id, bot)
         )
@@ -331,6 +265,9 @@ def setup(bot):
             player.reset_state()
             await update_presence(bot, None)
 
+            # Log stop command
+            user_logger.info(f"{format_guild_log(ctx.guild.id, bot)}－{format_user_log(ctx.author, bot)} stopped jill")
+
     @bot.command(name='previous', aliases=COMMAND_ALIASES['previous'])
     @permission_check()
     @commands.guild_only()
@@ -349,7 +286,7 @@ def setup(bot):
         if prev_track:
             # Queue via spam_protector with priority for consistency with internal playback operations
             await player.spam_protector.queue_command(
-                lambda: _play_current(player.guild_id, bot),
+                lambda: _play_current(player.guild_id, bot, going_backward=True),
                 priority=True
             )
         else:
@@ -365,10 +302,6 @@ def setup(bot):
     async def shuffle_command(ctx):
         """Toggle shuffle mode."""
         player = await get_guild_player(ctx, bot)
-
-        if not SHUFFLE_MODE_ENABLED:
-            await send_player_message(player, ctx, 'feature_shuffle_disabled', 'error')
-            return
 
         await spam_protected_execute(
             player, ctx, bot, "shuffle", _execute_shuffle, SHUFFLE_COOLDOWN
@@ -409,10 +342,6 @@ def setup(bot):
         """Show current queue."""
         player = await get_guild_player(ctx, bot)
 
-        if not QUEUE_DISPLAY_ENABLED:
-            await send_player_message(player, ctx, 'feature_queue_disabled', 'error')
-            return
-
         await spam_protected_execute(
             player, ctx, bot, "queue", _execute_queue, QUEUE_COOLDOWN
         )
@@ -447,9 +376,6 @@ def setup(bot):
                 msg += f"            • {sanitize_for_format(track.display_name)}\n"
 
         msg += f"{MESSAGES['queue_footer']}"
-        
-        if player.upcoming and len(player.upcoming) <= QUEUE_DISPLAY_COUNT:
-            msg += f"\n\n{MESSAGES['queue_will_loop']}"
 
         await player.cleanup_manager.send_with_ttl(
             player.text_channel or ctx.channel,
@@ -464,10 +390,6 @@ def setup(bot):
     async def tracks_command(ctx, page: int = 1):
         """Show tracks in current playlist (paginated)."""
         player = await get_guild_player(ctx, bot)
-
-        if not LIBRARY_DISPLAY_ENABLED:
-            await send_player_message(player, ctx, 'feature_library_disabled', 'error')
-            return
 
         await spam_protected_execute(
             player, ctx, bot, "tracks",
@@ -523,10 +445,6 @@ def setup(bot):
 
         if not has_playlist_structure():
             await send_player_message(player, ctx, 'error_no_playlists', 'error')
-            return
-
-        if not PLAYLIST_SWITCHING_ENABLED:
-            await send_player_message(player, ctx, 'feature_playlists_disabled', 'error')
             return
 
         await spam_protected_execute(
@@ -588,11 +506,6 @@ def setup(bot):
                 'error',
                 ctx.message
             )
-            return
-
-        # Check if feature is enabled
-        if not PLAYLIST_SWITCHING_ENABLED:
-            await send_player_message(player, ctx, 'feature_playlists_disabled', 'error')
             return
 
         await spam_protected_execute(

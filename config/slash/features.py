@@ -10,7 +10,7 @@ This file contains settings ONLY for slash mode (/play commands).
 Prefix mode (!play commands) does NOT use this file.
 
 SHARED SETTINGS:
-  Most settings (command prefix, auto-pause, cleanup, etc.) are in config/common/core.py
+  Most settings are in config/common/basic_settings.py, audio_settings.py, and advanced.py
   Go there first if you can't find what you're looking for!
 
 SLASH-SPECIFIC SETTINGS:
@@ -62,72 +62,23 @@ def _get_config(python_value, env_name, default, converter=None):
     return default
 
 # =========================================================================================================
-# 🎵 SLASH COMMAND FEATURES
+# 🎵 SLASH MODE NOTES
 # =========================================================================================================
 #
-# Control which slash commands are available to users.
-# Most of these are always enabled in slash mode.
-
-# ----------------------------------------
-# Core Features
-# ----------------------------------------
-# These features are typically always enabled in slash mode
-# Change to False to disable specific commands
+# LOOKING FOR SETTINGS?
 #
-SHUFFLE_MODE_ENABLED = None
-SHUFFLE_MODE_ENABLED = _get_config(SHUFFLE_MODE_ENABLED, 'SHUFFLE_MODE_ENABLED', True, _str_to_bool)
-
-QUEUE_DISPLAY_ENABLED = None
-QUEUE_DISPLAY_ENABLED = _get_config(QUEUE_DISPLAY_ENABLED, 'QUEUE_DISPLAY_ENABLED', True, _str_to_bool)
-
-LIBRARY_DISPLAY_ENABLED = None
-LIBRARY_DISPLAY_ENABLED = _get_config(LIBRARY_DISPLAY_ENABLED, 'LIBRARY_DISPLAY_ENABLED', True, _str_to_bool)
-
-PLAYLIST_SWITCHING_ENABLED = None
-PLAYLIST_SWITCHING_ENABLED = _get_config(PLAYLIST_SWITCHING_ENABLED, 'PLAYLIST_SWITCHING_ENABLED', True, _str_to_bool)
-
-# =========================================================================================================
-# 📊 DISPLAY SETTINGS
-# =========================================================================================================
-
-# ----------------------------------------
-# Queue Display Count
-# ----------------------------------------
-# How many upcoming tracks to show in /queue
+# Most settings have been moved to config/common/ (basic_settings.py, audio_settings.py, advanced.py) because they apply to BOTH modes:
+#   - Feature toggles (SHUFFLE_MODE_ENABLED, QUEUE_DISPLAY_ENABLED, etc.) - in basic_settings.py
+#   - Display settings (QUEUE_DISPLAY_COUNT, LIBRARY_PAGE_SIZE, etc.) - in basic_settings.py
+#   - Audio/voice settings, auto-pause - in audio_settings.py
+#   - Logging, watchdog intervals - in advanced.py
 #
-# Examples:
-#   10 = Show next 10 tracks (default for slash mode)
-#   5 = Show next 5 tracks (shorter list)
-#   20 = Show next 20 tracks (longer list)
+# This file contains SLASH-MODE SPECIFIC settings:
+#   - Ephemeral responses
+#   - Control panel settings (timeout, update throttle)
+#   - Startup delays
 #
-QUEUE_DISPLAY_COUNT = None
-QUEUE_DISPLAY_COUNT = _get_config(QUEUE_DISPLAY_COUNT, 'QUEUE_DISPLAY_COUNT', 10, int)
-
-# ----------------------------------------
-# Library Page Size
-# ----------------------------------------
-# How many tracks to show per page in /tracks
-#
-# Examples:
-#   20 = Show 20 tracks per page (default)
-#   50 = Show 50 tracks per page (good for large libraries)
-#   10 = Show 10 tracks per page
-#
-LIBRARY_PAGE_SIZE = None
-LIBRARY_PAGE_SIZE = _get_config(LIBRARY_PAGE_SIZE, 'LIBRARY_PAGE_SIZE', 20, int)
-
-# ----------------------------------------
-# Playlist Page Size
-# ----------------------------------------
-# How many playlists to show per page in /playlists
-#
-# Examples:
-#   10 = Show 10 playlists per page (default for slash mode)
-#   20 = Show 20 playlists per page
-#   5 = Show 5 playlists per page
-#
-PLAYLIST_PAGE_SIZE = None
-PLAYLIST_PAGE_SIZE = _get_config(PLAYLIST_PAGE_SIZE, 'PLAYLIST_PAGE_SIZE', 10, int)
+# If you're looking for a setting that used to be here, check config/common/basic_settings.py, audio_settings.py, or advanced.py!
 
 # =========================================================================================================
 # 💬 RESPONSE BEHAVIOR
@@ -213,7 +164,9 @@ STARTUP_MESSAGE_DELAY = _get_config(STARTUP_MESSAGE_DELAY, 'STARTUP_MESSAGE_DELA
 #
 # Looking for more settings? Check these files:
 #
-# config/common/core.py - Shared settings (auto-pause, cleanup, spam protection, etc.)
+# config/common/basic_settings.py - Bot identity, feature toggles, spam protection, logging
+# config/common/audio_settings.py - FFmpeg, voice health, auto-pause
+# config/common/advanced.py - Watchdog intervals, persistence paths
 # config/slash/messages.py - Customize slash command response text
 # config/slash/embeds.py - Customize embed colors and appearance
 # config/slash/buttons.py - Customize button labels and emojis
@@ -226,13 +179,6 @@ STARTUP_MESSAGE_DELAY = _get_config(STARTUP_MESSAGE_DELAY, 'STARTUP_MESSAGE_DELA
 # =========================================================================================================
 
 __all__ = [
-    'SHUFFLE_MODE_ENABLED',
-    'QUEUE_DISPLAY_ENABLED',
-    'LIBRARY_DISPLAY_ENABLED',
-    'PLAYLIST_SWITCHING_ENABLED',
-    'QUEUE_DISPLAY_COUNT',
-    'LIBRARY_PAGE_SIZE',
-    'PLAYLIST_PAGE_SIZE',
     'EPHEMERAL_RESPONSES',
     'CONTROL_PANEL_TIMEOUT',
     'UPDATE_THROTTLE_TIME',

@@ -37,7 +37,7 @@ import os
 load_dotenv()
 
 # Import command mode and configuration early (needed for bot initialization)
-from config import COMMAND_MODE, COMMAND_PREFIX, LOG_LEVEL, SUPPRESS_LIBRARY_LOGS
+from config import COMMAND_MODE, COMMAND_PREFIX, LOG_LEVEL, SUPPRESS_LIBRARY_LOGS, VOICE_RECONNECT_DELAY
 
 # Conditional imports for slash mode
 if COMMAND_MODE == 'slash':
@@ -162,7 +162,9 @@ bot = commands.Bot(
 from core.player import get_player, players
 from core.track import discover_playlists, load_library, has_playlist_structure
 from systems.watchdog import playback_watchdog, alone_watchdog
-from utils.discord_helpers import safe_disconnect, update_presence, format_guild_log, format_user_log
+from systems.voice_manager import PlaybackState
+from utils.discord_helpers import safe_disconnect, update_presence, format_guild_log, format_user_log, safe_voice_state_change
+from utils.context_managers import reconnecting_state, suppress_callbacks
 from utils.persistence import load_last_channels, flush_all_immediately
 
 # Global watchdog tasks
@@ -172,14 +174,38 @@ _alone_watchdog_task = None
 # Shutdown flag to prevent on_disconnect from running during intentional shutdown
 _is_shutting_down = False
 
+# Initialization flag to prevent on_ready from running setup code on reconnects
+_is_initialized = False
+
 # =============================================================================
 # BOT EVENTS
 # =============================================================================
 
 @bot.event
 async def on_ready():
-    """Bot connected to Discord."""
-    global _playback_watchdog_task, _alone_watchdog_task
+    """
+    Bot connected to Discord.
+
+    Handles both initial startup and gateway reconnects (full session restart).
+    On reconnects, restores voice connections and skips initialization.
+    """
+    global _playback_watchdog_task, _alone_watchdog_task, _is_initialized
+
+    # Check if this is a reconnect (not initial startup)
+    if _is_initialized:
+        logger.info("Gateway reconnected via on_ready")
+        await _restore_voice_connections()
+        return
+
+    # Mark as initialized to prevent re-running on reconnects
+    _is_initialized = True
+
+    # Register persistent views (slash mode only)
+    # Disnake doesn't have setup_hook, so we register here with flag protection
+    if COMMAND_MODE == 'slash':
+        from systems.persistent_view import MusicControlView
+        bot.add_view(MusicControlView(bot))
+        logger.debug("Registered persistent music control view")
 
     # Set custom exception handler on the actual bot loop
     # (Must be done here since bot.run() creates its own loop)
@@ -276,30 +302,28 @@ async def on_ready():
         setup_buttons(bot)
         logger.debug("Button handler registered")
 
-        # Sync slash commands
-        try:
-            await bot.sync_application_commands()
-            logger.info("Slash commands synced")
-        except Exception as e:
-            logger.error(f"Failed to sync slash commands: {e}")
+        # Commands auto-synced via command_sync_flags (configured at bot initialization)
+        logger.info("Slash command mode active (auto-sync enabled)")
 
 @bot.event
 async def on_disconnect():
     """
-    Bot disconnected from Discord - graceful shutdown.
+    Bot disconnected from Discord.
 
-    Properly cancels and awaits all watchdog tasks to prevent race conditions
-    where watchdogs might try to queue commands during shutdown. This ensures
-    clean task cancellation with no dangling references.
+    Handles both temporary disconnects (network issues) and intentional shutdowns.
+    On temporary disconnects, skips cleanup and lets Disnake auto-reconnect.
+    On shutdown (Ctrl+C, SIGTERM), performs full cleanup.
 
-    Side effects:
+    Cleanup side effects (shutdown only):
         - Cancels playback_watchdog and alone_watchdog tasks
         - Awaits task completion to prevent race conditions
         - Disconnects from all voice channels
         - Clears bot presence status
     """
-    # Skip if we're already shutting down intentionally (prevents double-disconnect)
-    if _is_shutting_down:
+    # Skip cleanup on temporary disconnects - let Disnake auto-reconnect handle it
+    # Only cleanup during intentional shutdown (Ctrl+C, SIGTERM)
+    if not _is_shutting_down:
+        logger.info("Gateway disconnected, waiting for Disnake auto-reconnect...")
         return
 
     # Cancel and await watchdogs to prevent race conditions
@@ -323,6 +347,107 @@ async def on_disconnect():
             await safe_disconnect(player.voice_client, force=True)
 
     await update_presence(bot, None)
+
+# =============================================================================
+# VOICE RESTORATION
+# =============================================================================
+
+async def _restore_voice_connections():
+    """
+    Restore voice connections after gateway reconnects.
+
+    Gateway reconnects (network drops, VPN changes) break the voice WebSocket,
+    leaving clients in a stale "connected but not working" state. This function
+    destroys stale clients and creates fresh connections with new sockets.
+
+    Called by:
+        - on_ready() — Full gateway reconnect (new session)
+        - on_resumed() — Session resume (RESUME event)
+
+    Note: This is distinct from voice health monitoring (discord_helpers.py)
+    which handles stuttering/latency during normal operation.
+    """
+    logger.info("Gateway reconnected, checking voice connections...")
+
+    for guild_id, player in list(players.items()):
+        # Skip if no active playback
+        if not player.now_playing:
+            continue
+
+        # Check if voice connection exists
+        old_vc = player.voice_client
+        if not old_vc:
+            continue
+
+        try:
+            # Get channel before destroying old client
+            channel = old_vc.channel
+            if not channel:
+                continue
+
+            # Check if connection is broken
+            if not old_vc.is_connected():
+                logger.info(f"{format_guild_log(guild_id, bot)}: Voice broken after gateway reconnect, full reconnect needed")
+
+                # FULL DISCONNECT+RECONNECT (same pattern as voice health monitoring)
+                with reconnecting_state(player):
+                    # Stop playback cleanly
+                    try:
+                        if old_vc.is_playing():
+                            with suppress_callbacks(player):
+                                old_vc.stop()
+                    except Exception:
+                        pass
+
+                    # Disconnect - destroys stale client
+                    try:
+                        await old_vc.disconnect(force=True)
+                    except Exception as e:
+                        logger.debug(f"{format_guild_log(guild_id, bot)}: Disconnect error (continuing): {e}")
+
+                    player.voice_client = None
+
+                    # Wait for disconnect to settle
+                    await asyncio.sleep(VOICE_RECONNECT_DELAY)
+
+                    # Reconnect - creates fresh client with new sockets
+                    try:
+                        new_vc = await channel.connect(timeout=5.0, reconnect=True)
+                        player.voice_client = new_vc
+                        player.voice_manager.set_voice_client(new_vc)
+
+                        # Self-deafen
+                        guild = bot.get_guild(guild_id)
+                        if guild:
+                            await safe_voice_state_change(guild, channel, self_deaf=True)
+
+                        logger.info(f"{format_guild_log(guild_id, bot)}: Voice reconnected after gateway recovery")
+
+                        # Resume playback if was playing
+                        if player.state == PlaybackState.PLAYING:
+                            from core.playback import _play_current
+                            await _play_current(guild_id, bot)
+
+                    except asyncio.TimeoutError:
+                        logger.error(f"{format_guild_log(guild_id, bot)}: Voice reconnect timed out after gateway recovery")
+                        player.voice_client = None
+                    except Exception as e:
+                        logger.error(f"{format_guild_log(guild_id, bot)}: Voice reconnect failed after gateway recovery: {e}")
+                        player.voice_client = None
+
+        except Exception as e:
+            logger.error(f"{format_guild_log(guild_id, bot)}: Failed to restore voice after reconnect: {e}")
+
+@bot.event
+async def on_resumed():
+    """
+    Gateway session resumed - restore voice connections if needed.
+
+    Called when Disnake successfully resumes the gateway session after
+    a temporary disconnect (RESUME event). Voice connections may need
+    manual restoration.
+    """
+    await _restore_voice_connections()
 
 @bot.event
 async def on_voice_state_update(member, before, after):
@@ -432,6 +557,10 @@ async def shutdown_bot():
         try:
             control_panel = get_control_panel_manager(bot)
             if control_panel:
+                # Shutdown control panel manager (cancels background tasks)
+                await control_panel.shutdown()
+
+                # Delete all panels
                 for guild_id in list(control_panel.panels.keys()):
                     try:
                         await control_panel.delete_panel(guild_id)

@@ -71,28 +71,50 @@ user_logger = logging.getLogger('jill')  # For user-facing messages
 # Import helper functions
 from utils.discord_helpers import format_guild_log, format_user_log
 
-# Import from config
+# Import common config (used by both modes)
 from config import (
-    CIRCUIT_BREAKER_ENABLED,
-    GUILD_MAX_COMMANDS_PER_SECOND,
-    GUILD_MAX_QUEUE_SIZE,
-    CIRCUIT_BREAK_DURATION,
-    CIRCUIT_PROGRESSIVE_PENALTIES,
-    CIRCUIT_PENALTY_RESET_TIME,
-    CIRCUIT_BREAKER_HISTORY_SIZE,
-    CIRCUIT_RATE_CALCULATION_WINDOW,
-    USER_SPAM_SESSION_TRIGGER_WINDOW,
-    USER_SPAM_SESSION_DURATION,
-    USER_SPAM_WARNINGS_ENABLED,
-    USER_SPAM_SESSION_CLEANUP_TIMEOUT,
+    COMMAND_MODE,
+    SPAM_PROTECTION_ENABLED,
+    MESSAGES,
     COMMAND_QUEUE_TIMEOUT,
+    GUILD_MAX_QUEUE_SIZE,
     QUEUE_SIZE_WARNING_THRESHOLD,
     PRIORITY_COMMAND_TIMEOUT_MULTIPLIER,
-    SPAM_PROTECTION_ENABLED,
-    AUTO_CLEANUP_ENABLED,
-    SPAM_CLEANUP_DELAY,
-    MESSAGES,
 )
+
+# Import prefix-specific config (Layers 1 & 2)
+if COMMAND_MODE == 'prefix':
+    from config import (
+        CIRCUIT_BREAKER_ENABLED,
+        GUILD_MAX_COMMANDS_PER_SECOND,
+        CIRCUIT_BREAK_DURATION,
+        CIRCUIT_PROGRESSIVE_PENALTIES,
+        CIRCUIT_PENALTY_RESET_TIME,
+        CIRCUIT_BREAKER_HISTORY_SIZE,
+        CIRCUIT_RATE_CALCULATION_WINDOW,
+        USER_SPAM_SESSION_TRIGGER_WINDOW,
+        USER_SPAM_SESSION_DURATION,
+        USER_SPAM_WARNINGS_ENABLED,
+        USER_SPAM_SESSION_CLEANUP_TIMEOUT,
+        AUTO_CLEANUP_ENABLED,
+        SPAM_CLEANUP_DELAY,
+    )
+else:
+    # Slash mode: Set safe defaults for unused Layer 1 & 2 settings
+    # These features are disabled in slash mode (Discord handles rate limiting)
+    CIRCUIT_BREAKER_ENABLED = False
+    GUILD_MAX_COMMANDS_PER_SECOND = 0
+    CIRCUIT_BREAK_DURATION = 0
+    CIRCUIT_PROGRESSIVE_PENALTIES = False
+    CIRCUIT_PENALTY_RESET_TIME = 0
+    CIRCUIT_BREAKER_HISTORY_SIZE = 0
+    CIRCUIT_RATE_CALCULATION_WINDOW = 0
+    USER_SPAM_SESSION_TRIGGER_WINDOW = 0
+    USER_SPAM_SESSION_DURATION = 0
+    USER_SPAM_WARNINGS_ENABLED = False
+    USER_SPAM_SESSION_CLEANUP_TIMEOUT = 0
+    AUTO_CLEANUP_ENABLED = False
+    SPAM_CLEANUP_DELAY = 0
 
 
 # =============================================================================
@@ -154,6 +176,9 @@ class UserSpamTracker:
 
         # Track spam sessions: user_id → UserSpamSession (per-user, not per-command)
         self._sessions: Dict[int, UserSpamSession] = {}
+
+        # Track cleanup tasks for proper cancellation during shutdown
+        self._cleanup_tasks: set = set()
 
     async def check_user_spam(
         self,
@@ -270,7 +295,10 @@ class UserSpamTracker:
                 try:
                     player = await get_player(self.guild_id, None, None)
                     if player and player.cleanup_manager:
-                        asyncio.create_task(self._delayed_cleanup(player))
+                        # Store task reference for proper cancellation during shutdown
+                        task = asyncio.create_task(self._delayed_cleanup(player))
+                        self._cleanup_tasks.add(task)
+                        task.add_done_callback(self._cleanup_tasks.discard)
                 except Exception as e:
                     logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Could not schedule warning cleanup: {e}")
         except Exception as e:
@@ -296,6 +324,23 @@ class UserSpamTracker:
 
         if old_users:
             logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Cleaned up {len(old_users)} old user sessions")
+
+    async def shutdown(self):
+        """
+        Shutdown user spam tracker and cleanup resources.
+
+        Cancels all pending cleanup tasks to ensure clean shutdown.
+        """
+        # Cancel all cleanup tasks
+        for task in list(self._cleanup_tasks):
+            if not task.done():
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+
+        logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: User spam tracker shutdown complete")
 
 
 # =============================================================================
@@ -722,5 +767,8 @@ class SpamProtector:
                 await self._processor_task
             except asyncio.CancelledError:
                 pass
+
+        # Shutdown user spam tracker (cleanup tasks)
+        await self.user_tracker.shutdown()
 
         logger.debug(f"{format_guild_log(self.guild_id, self.bot)}: Spam protector shutdown complete")

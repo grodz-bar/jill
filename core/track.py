@@ -31,8 +31,7 @@ logger = logging.getLogger(__name__)  # For debug/error logs
 user_logger = logging.getLogger('jill')  # For user-facing messages
 
 # Import from config
-from config import MUSIC_FOLDER, ALLOW_TRANSCODING, SUPPORTED_AUDIO_FORMATS
-from config.common.filename_patterns import COMPILED_PATTERNS
+from config import MUSIC_FOLDER, ALLOW_TRANSCODING, SUPPORTED_AUDIO_FORMATS, COMPILED_PATTERNS
 
 # Module-level regex pattern for numeric prefix removal (DRY - used by both Playlist and Track)
 # Pattern is now configurable via config/filename_patterns.py

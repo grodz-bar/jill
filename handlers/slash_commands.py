@@ -44,17 +44,19 @@ import disnake
 from disnake.ext import commands
 
 logger = logging.getLogger(__name__)
+user_logger = logging.getLogger('jill')
 
 # Import from our modules
 from core.playback import _play_current, _play_next, _play_first
 from core.track import has_playlist_structure, discover_playlists
+from systems.voice_manager import PlaybackState
 from config import (
     COMMAND_MODE, MESSAGES, COMMAND_DESCRIPTIONS,
     create_queue_embed, create_tracks_embed, create_playlists_embed,
-    create_help_embed, LIBRARY_PAGE_SIZE, PLAYLIST_PAGE_SIZE
+    create_help_embed, QUEUE_DISPLAY_COUNT, LIBRARY_PAGE_SIZE, PLAYLIST_PAGE_SIZE
 )
 from utils.response_helper import send_response
-from utils.discord_helpers import can_connect_to_channel, get_guild_player, ensure_voice_connected, format_guild_log
+from utils.discord_helpers import can_connect_to_channel, get_guild_player, ensure_voice_connected, format_guild_log, format_user_log, fuzzy_match
 from systems.control_panel import get_control_panel_manager
 
 
@@ -77,7 +79,7 @@ def setup(bot):
     )
     async def play_slash(
         inter: disnake.ApplicationCommandInteraction,
-        track: str = disnake.Option(description="Track name or number", required=False, default=None)
+        track: str = commands.Param(description="Track name or number", default=None)
     ):
         """Start playback or jump to a specific track."""
         await inter.response.defer(ephemeral=True)
@@ -86,7 +88,7 @@ def setup(bot):
 
         # Check voice
         if not inter.author.voice:
-            await send_response(inter, MESSAGES['USER_NOT_IN_VOICE'])
+            await send_response(inter, MESSAGES['error_not_in_voice'])
             return
 
         channel = inter.author.voice.channel
@@ -94,7 +96,7 @@ def setup(bot):
         # Connect if needed
         if not player.voice_client or not player.voice_client.is_connected():
             if not can_connect_to_channel(channel):
-                await send_response(inter, MESSAGES['CANNOT_CONNECT'])
+                await send_response(inter, MESSAGES['error_cant_connect'].format(error="Permission denied"))
                 return
 
             try:
@@ -102,55 +104,45 @@ def setup(bot):
                 player.set_voice_client(vc)
                 player.set_text_channel(inter.channel)
             except Exception as e:
-                await send_response(inter, MESSAGES['CANNOT_CONNECT'])
+                await send_response(inter, MESSAGES['error_cant_connect'].format(error=str(e)))
                 logger.error(f"{format_guild_log(inter.guild.id, bot)}: Connection failed: {e}")
                 return
 
         # If no track specified, just resume/start
         if not track:
-            if player.is_paused():
-                player.resume()
-                await send_response(inter, MESSAGES['RESUMED'])
-            elif not player.is_playing():
+            state = player.voice_manager.get_playback_state()
+            if state == PlaybackState.PAUSED:
+                player.voice_client.resume()
+                player.state = PlaybackState.PLAYING
+                # No message - control panel shows play state
+            elif state != PlaybackState.PLAYING:
                 await _play_first(inter.guild.id, bot)
-                await send_response(inter, MESSAGES['STARTING_PLAYBACK'])
-            else:
-                await send_response(inter, MESSAGES['STARTING_PLAYBACK'])
+                # No message - control panel updates
+            # If already playing, do nothing
         else:
-            # Jump to track
-            try:
-                track_num = int(track) - 1
-                if 0 <= track_num < len(player.library):
-                    player.jump_to_track(track_num)
-                    await _play_current(inter.guild.id, bot)
-                    track_name = player.library[track_num].display_name
-                    await send_response(inter, MESSAGES['JUMPED_TO_TRACK'].format(
-                        number=track_num + 1,
-                        name=track_name
-                    ))
-                else:
-                    await send_response(inter, MESSAGES['TRACK_NOT_FOUND'].format(query=track))
-            except ValueError:
-                # Search by name
-                found = False
-                for idx, t in enumerate(player.library):
-                    if track.lower() in t.display_name.lower():
-                        player.jump_to_track(idx)
-                        await _play_current(inter.guild.id, bot)
-                        await send_response(inter, MESSAGES['JUMPED_TO_TRACK'].format(
-                            number=idx + 1,
-                            name=t.display_name
-                        ))
-                        found = True
-                        break
+            # Jump to track using fuzzy matching
+            found = fuzzy_match(
+                track,
+                player.library,
+                lambda t: t.display_name,
+                lambda t: t.library_index
+            )
 
-                if not found:
-                    await send_response(inter, MESSAGES['TRACK_NOT_FOUND'].format(query=track))
+            if found:
+                player.jump_to_track(found.library_index)
+                await _play_current(inter.guild.id, bot)
+                # No message - "now playing" updates
+            else:
+                await send_response(inter, MESSAGES['error_track_not_found'].format(query=track))
+                return
 
         # Update control panel
         panel_manager = get_control_panel_manager(bot)
         if panel_manager:
             await panel_manager.update_panel(inter.guild.id, player)
+
+        # Delete deferred response (silent mode)
+        await inter.delete_original_response()
 
 
     @bot.slash_command(
@@ -163,21 +155,27 @@ def setup(bot):
 
         player = await get_guild_player(inter, bot)
 
-        if not player.is_playing():
-            await send_response(inter, MESSAGES['BOT_NOT_PLAYING'])
+        state = player.voice_manager.get_playback_state()
+        if state != PlaybackState.PLAYING and state != PlaybackState.PAUSED:
+            await send_response(inter, MESSAGES['error_not_playing'])
             return
 
-        if player.is_paused():
-            player.resume()
-            await send_response(inter, MESSAGES['RESUMED'])
+        if state == PlaybackState.PAUSED:
+            player.voice_client.resume()
+            player.state = PlaybackState.PLAYING
+            # No message - control panel shows play state
         else:
-            player.pause()
-            await send_response(inter, MESSAGES['PAUSED'])
+            player.voice_client.pause()
+            player.state = PlaybackState.PAUSED
+            # No message - control panel shows pause state
 
         # Update control panel
         panel_manager = get_control_panel_manager(bot)
         if panel_manager:
             await panel_manager.update_panel(inter.guild.id, player)
+
+        # Delete deferred response (silent mode)
+        await inter.delete_original_response()
 
 
     @bot.slash_command(
@@ -190,17 +188,21 @@ def setup(bot):
 
         player = await get_guild_player(inter, bot)
 
-        if not player.is_playing():
-            await send_response(inter, MESSAGES['BOT_NOT_PLAYING'])
+        state = player.voice_manager.get_playback_state()
+        if state != PlaybackState.PLAYING and state != PlaybackState.PAUSED:
+            await send_response(inter, MESSAGES['error_not_playing'])
             return
 
         await _play_next(inter.guild.id, bot)
-        await send_response(inter, MESSAGES['SKIPPED'])
+        # No message - "now playing" updates
 
         # Update control panel
         panel_manager = get_control_panel_manager(bot)
         if panel_manager:
             await panel_manager.update_panel(inter.guild.id, player)
+
+        # Delete deferred response (silent mode)
+        await inter.delete_original_response()
 
 
     @bot.slash_command(
@@ -217,12 +219,17 @@ def setup(bot):
             await player.voice_client.disconnect(force=True)
 
         player.reset_state()
-        await send_response(inter, MESSAGES['STOPPED'])
+
+        # Log stop command
+        user_logger.info(f"{format_guild_log(inter.guild.id, bot)}－{format_user_log(inter.author, bot)} stopped jill")
 
         # Update control panel
         panel_manager = get_control_panel_manager(bot)
         if panel_manager:
             await panel_manager.update_panel(inter.guild.id, player)
+
+        # Delete deferred response (silent mode)
+        await inter.delete_original_response()
 
 
     @bot.slash_command(
@@ -235,16 +242,19 @@ def setup(bot):
 
         player = await get_guild_player(inter, bot)
 
-        if player.previous_track():
-            await _play_current(inter.guild.id, bot)
-            await send_response(inter, MESSAGES['PREVIOUS'])
-        else:
-            await send_response(inter, MESSAGES['NO_PREVIOUS_TRACK'])
+        if player.go_to_previous():
+            await _play_current(inter.guild.id, bot, going_backward=True)
+            # No message - "now playing" updates
 
-        # Update control panel
-        panel_manager = get_control_panel_manager(bot)
-        if panel_manager:
-            await panel_manager.update_panel(inter.guild.id, player)
+            # Update control panel
+            panel_manager = get_control_panel_manager(bot)
+            if panel_manager:
+                await panel_manager.update_panel(inter.guild.id, player)
+
+            # Delete deferred response (silent mode)
+            await inter.delete_original_response()
+        else:
+            await send_response(inter, MESSAGES['error_no_previous'])
 
 
     @bot.slash_command(
@@ -257,17 +267,16 @@ def setup(bot):
 
         player = await get_guild_player(inter, bot)
 
-        player.toggle_shuffle()
-
-        if player.shuffle_enabled:
-            await send_response(inter, MESSAGES['SHUFFLE_ON'])
-        else:
-            await send_response(inter, MESSAGES['SHUFFLE_OFF'])
+        player.shuffle_enabled = not player.shuffle_enabled
+        # No message - shuffle button changes color
 
         # Update control panel
         panel_manager = get_control_panel_manager(bot)
         if panel_manager:
             await panel_manager.update_panel(inter.guild.id, player)
+
+        # Delete deferred response (silent mode)
+        await inter.delete_original_response()
 
 
     @bot.slash_command(
@@ -281,14 +290,18 @@ def setup(bot):
         player = await get_guild_player(inter, bot)
 
         current_track = None
-        if player.current_track_index is not None and player.library:
-            current_track = player.library[player.current_track_index].display_name
+        if player.now_playing:
+            current_track = player.now_playing.display_name
 
         upcoming = []
-        if player.queue:
-            upcoming = [player.library[idx].display_name for idx in player.queue[:10]]
+        if player.upcoming:
+            upcoming = [track.display_name for track in list(player.upcoming)[:QUEUE_DISPLAY_COUNT]]
 
-        embed = create_queue_embed(current_track, upcoming, player.shuffle_enabled)
+        last_played = None
+        if player.played:
+            last_played = player.played[-1].display_name
+
+        embed = create_queue_embed(current_track, upcoming, player.shuffle_enabled, last_played)
         await send_response(inter, "", embed=embed)
 
 
@@ -298,7 +311,7 @@ def setup(bot):
     )
     async def tracks_slash(
         inter: disnake.ApplicationCommandInteraction,
-        page: int = disnake.Option(description="Page number", required=False, default=1)
+        page: int = commands.Param(description="Page number", default=1)
     ):
         """List all available tracks."""
         await inter.response.defer(ephemeral=True)
@@ -306,7 +319,7 @@ def setup(bot):
         player = await get_guild_player(inter, bot)
 
         if not player.library:
-            await send_response(inter, MESSAGES['NO_TRACKS'])
+            await send_response(inter, MESSAGES['error_no_tracks'])
             return
 
         # Pagination
@@ -321,7 +334,7 @@ def setup(bot):
             track = player.library[i]
             track_list.append(f"{i+1}. {track.display_name}")
 
-        embed = create_tracks_embed(track_list, page, total_pages, player.current_playlist)
+        embed = create_tracks_embed(track_list, page, total_pages, player.current_playlist.display_name if player.current_playlist else None)
         await send_response(inter, "", embed=embed)
 
 
@@ -331,7 +344,7 @@ def setup(bot):
     )
     async def playlist_slash(
         inter: disnake.ApplicationCommandInteraction,
-        name: str = disnake.Option(description="Playlist name", required=True)
+        name: str = commands.Param(description="Playlist name", default=...)
     ):
         """Switch to a different playlist."""
         await inter.response.defer(ephemeral=True)
@@ -339,28 +352,31 @@ def setup(bot):
         player = await get_guild_player(inter, bot)
 
         if not has_playlist_structure():
-            await send_response(inter, MESSAGES['NO_PLAYLISTS'])
+            await send_response(inter, MESSAGES['error_no_playlists'])
             return
 
         playlists = discover_playlists(inter.guild.id)
-        found = None
 
-        for pl in playlists:
-            if pl.name.lower() == name.lower():
-                found = pl
-                break
+        found = fuzzy_match(
+            name,
+            playlists,
+            lambda p: p.display_name
+        )
 
         if not found:
-            await send_response(inter, MESSAGES['PLAYLIST_NOT_FOUND'].format(name=name))
+            await send_response(inter, MESSAGES['error_playlist_not_found'].format(name=name))
             return
 
-        player.switch_playlist(found.name)
-        await send_response(inter, MESSAGES['PLAYLIST_SWITCHED'].format(playlist=found.name))
+        player.switch_playlist(found.display_name)
+        # No message - control panel updates
 
         # Update control panel
         panel_manager = get_control_panel_manager(bot)
         if panel_manager:
             await panel_manager.update_panel(inter.guild.id, player)
+
+        # Delete deferred response (silent mode)
+        await inter.delete_original_response()
 
 
     @bot.slash_command(
@@ -372,16 +388,16 @@ def setup(bot):
         await inter.response.defer(ephemeral=True)
 
         if not has_playlist_structure():
-            await send_response(inter, MESSAGES['NO_PLAYLISTS'])
+            await send_response(inter, MESSAGES['error_no_playlists'])
             return
 
         playlists = discover_playlists(inter.guild.id)
 
         if not playlists:
-            await send_response(inter, MESSAGES['NO_PLAYLISTS'])
+            await send_response(inter, MESSAGES['error_no_playlists'])
             return
 
-        playlist_names = [f"{pl.name} ({pl.track_count} tracks)" for pl in playlists]
+        playlist_names = [f"{pl.display_name} ({pl.track_count} tracks)" for pl in playlists]
         embed = create_playlists_embed(playlist_names)
         await send_response(inter, "", embed=embed)
 

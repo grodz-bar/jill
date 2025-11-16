@@ -57,11 +57,4 @@ async def send_response(
             return await ctx.send(content=content, embed=embed)
 
 
-async def defer_response(ctx, ephemeral: bool = True):
-    """Defer response for slash commands."""
-    if COMMAND_MODE == 'slash' and isinstance(ctx, disnake.ApplicationCommandInteraction):
-        if not ctx.response.is_done():
-            await ctx.response.defer(ephemeral=ephemeral)
-
-
-__all__ = ['send_response', 'defer_response']
+__all__ = ['send_response']

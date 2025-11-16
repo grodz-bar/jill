@@ -291,11 +291,19 @@ Config Files
 ------------
 
 Edit files in the config/ folder to customize:
-- config/aliases.py - Command aliases
-- config/messages.py - Bot text responses
-- config/features.py - Turn features on/off
-- config/timing.py - Timing and cooldown settings (advanced)
-- config/paths.py - File paths (advanced)
+- config/common/basic_settings.py - Bot identity, music folder, feature toggles, logging
+- config/common/audio_settings.py - FFmpeg options, voice health monitoring
+- config/common/advanced.py - Bot token, persistence paths, watchdog intervals
+- config/common/messages.py - Shared messages (both modes)
+- config/common/spam_protection.py - Spam protection (Layer 3 serial queue, both modes)
+- config/prefix/features.py - Turn features on/off (prefix mode)
+- config/prefix/messages.py - Prefix-specific bot text responses
+- config/prefix/aliases.py - Command aliases (prefix mode only)
+- config/prefix/spam_protection.py - Command cooldowns (Layers 1-2, prefix mode)
+- config/prefix/cleanup.py - Message cleanup timing and TTL settings (prefix mode)
+- config/slash/features.py - Turn features on/off (slash mode)
+- config/slash/messages.py - Slash-specific bot text responses, button labels
+- config/slash/timing.py - Update throttling, interaction delays, button cooldowns (slash mode)
 
 Make sure to restart bot after changes.
 

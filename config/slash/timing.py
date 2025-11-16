@@ -17,27 +17,18 @@ DEFER_TIMEOUT = 3.0  # How long before deferring response
 
 # Message update delays
 MESSAGE_UPDATE_COOLDOWN = 1.0  # Cooldown between message edits
-MESSAGE_SETTLE_DELAY = 0.5  # Seconds to wait for new messages to settle
 
-# Connection delays
-VOICE_CONNECT_DELAY = 0.25  # Delay after connecting to voice
+# Button interaction cooldowns (spam protection Layer 4)
+# Prevents users from spam-clicking control panel buttons
+BUTTON_PLAY_PAUSE_COOLDOWN = 0.5  # Play/pause toggle (fast response)
+BUTTON_SKIP_COOLDOWN = 1.5  # Skip to next track
+BUTTON_PREVIOUS_COOLDOWN = 1.5  # Return to previous track
+BUTTON_SHUFFLE_COOLDOWN = 2.0  # Toggle shuffle mode (less frequent)
+BUTTON_STOP_COOLDOWN = 1.0  # Stop playback
 
-# Track Change Settling - Wait time after stopping before starting new track
-# This delay allows Discord's audio buffers to fully drain after stop(), preventing
-# pop and scratchiness artifacts when the next track starts playing.
-TRACK_CHANGE_SETTLE_DELAY = 1.0  # Wait after stop before playing next track (1000ms)
-
-# Core playback timing
-VOICE_SETTLE_DELAY = 0.2  # Let voice settle between tracks (prevents audio glitches)
-VOICE_RECONNECT_DELAY = 0.30  # Wait during voice reconnection (prevents race conditions)
-VOICE_CONNECTION_MAX_WAIT = 0.5  # Max wait for voice connection (500ms)
-VOICE_CONNECTION_CHECK_INTERVAL = 0.05  # Check voice connection every 50ms
-CALLBACK_MIN_INTERVAL = 1.0  # Min time between callback-triggered track advances
-FRAME_DURATION = 0.02  # Opus frame duration (20ms) for graceful stops
-
-# Button interaction throttling (control panel updates)
-DEBOUNCE_WINDOW = 0.5  # Debounce window for rapid button clicks
-COMMAND_COOLDOWN = 1.0  # Cooldown for button interactions
+# Controls whether to show "slow down" message when button cooldown triggered
+# False = silent (recommended), True = show ephemeral message to user
+BUTTON_SHOW_COOLDOWN_MESSAGE = False
 
 __all__ = [
     'UPDATE_THROTTLE_TIME',
@@ -46,15 +37,10 @@ __all__ = [
     'INTERACTION_TIMEOUT',
     'DEFER_TIMEOUT',
     'MESSAGE_UPDATE_COOLDOWN',
-    'MESSAGE_SETTLE_DELAY',
-    'VOICE_CONNECT_DELAY',
-    'TRACK_CHANGE_SETTLE_DELAY',
-    'VOICE_SETTLE_DELAY',
-    'VOICE_RECONNECT_DELAY',
-    'VOICE_CONNECTION_MAX_WAIT',
-    'VOICE_CONNECTION_CHECK_INTERVAL',
-    'CALLBACK_MIN_INTERVAL',
-    'FRAME_DURATION',
-    'DEBOUNCE_WINDOW',
-    'COMMAND_COOLDOWN',
+    'BUTTON_PLAY_PAUSE_COOLDOWN',
+    'BUTTON_SKIP_COOLDOWN',
+    'BUTTON_PREVIOUS_COOLDOWN',
+    'BUTTON_SHUFFLE_COOLDOWN',
+    'BUTTON_STOP_COOLDOWN',
+    'BUTTON_SHOW_COOLDOWN_MESSAGE',
 ]

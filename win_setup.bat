@@ -237,10 +237,10 @@ REM Command Mode Selection
 echo.
 echo =========================================
 echo Choose command style:
-echo 1) Classic (!play) - Text commands with auto message cleanup
+echo 1) Classic (^^!play) - Text commands with auto message cleanup
 echo 2) Modern (/play) - Slash commands with buttons
 echo.
-echo Classic Mode: Traditional text commands (e.g., !play, !skip)
+echo Classic Mode: Traditional text commands (e.g., ^^!play, ^^!skip)
 echo   - Bot messages auto-delete after a short time
 echo   - Great for keeping your music channel clean
 echo.

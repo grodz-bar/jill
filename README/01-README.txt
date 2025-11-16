@@ -120,22 +120,25 @@ COMMAND MODE:
 - .env - Set JILL_COMMAND_MODE to 'prefix' or 'slash'
 
 COMMON (Both Modes):
-- config/common/core.py - Bot token, music folder, logging, voice health
+- config/common/basic_settings.py - Bot identity, music folder, feature toggles, logging
+- config/common/audio_settings.py - FFmpeg options, voice health monitoring
+- config/common/advanced.py - Bot token, persistence paths, watchdog intervals
+- config/common/messages.py - Shared messages
+- config/common/spam_protection.py - Spam protection (Layer 3 serial queue)
 - config/common/permissions.py - VA-11 HALL-A themed permission system
 - config/common/filename_patterns.py - File naming patterns
-- config/common/paths.py - Path configuration
-- config/common/bot_identity.py - Bot name and avatar
 
 CLASSIC MODE (prefix):
 - config/prefix/features.py - Command prefix, feature toggles
-- config/prefix/messages.py - Bot response text
+- config/prefix/messages.py - Prefix-specific bot response text
 - config/prefix/aliases.py - Command aliases
-- config/prefix/timing.py - Cooldowns, spam protection, cleanup timing
+- config/prefix/spam_protection.py - Command cooldowns (Layers 1-2)
+- config/prefix/cleanup.py - Message cleanup timing and TTL settings
 
 MODERN MODE (slash):
 - config/slash/features.py - Feature toggles
-- config/slash/messages.py - Bot response text and button labels
-- config/slash/timing.py - Update throttling, interaction delays
+- config/slash/messages.py - Slash-specific bot response text and button labels
+- config/slash/timing.py - Update throttling, interaction delays, button cooldowns
 - config/slash/embeds.py - Rich embed formatting functions
 - config/slash/buttons.py - Button component builders
 

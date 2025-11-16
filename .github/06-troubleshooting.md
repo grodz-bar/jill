@@ -200,6 +200,35 @@ sudo journalctl -u jill.service -f
 sudo systemctl status jill.service
 ```
 
+### Enable debug logging
+
+For troubleshooting issues, enable DEBUG mode to see detailed logs:
+
+1. Add this line to your .env:
+
+```
+LOG_LEVEL=DEBUG
+```
+
+2. Restart the bot
+
+Debug mode shows technical details including:
+- Track playback state transitions
+- Queue operations and callbacks
+- Button interactions and state checks
+- Voice connection health
+- Spam protection filtering
+
+3. When done debugging, change back to INFO or remove the line.
+
+
+**Available log levels** (from least to most verbose):
+- `CRITICAL` = Only critical failures
+- `ERROR` = Errors and critical issues
+- `WARNING` = Warnings, errors, and critical issues
+- `INFO` = General bot activity (default)
+- `DEBUG` = Everything (very detailed, use for troubleshooting)
+
 ---
 
 ## Common Solutions

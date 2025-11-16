@@ -23,23 +23,21 @@ Uses composition pattern to delegate to specialized systems.
 """
 
 import asyncio
-import itertools
 import random
 import logging
 from collections import deque
-from difflib import SequenceMatcher
 from typing import Optional, List, Dict, Tuple
 import disnake
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)  # For debug/error logs
+user_logger = logging.getLogger('jill')  # For user-facing messages
 
 # Import our systems
 from systems.spam_protection import SpamProtector
-from utils.discord_helpers import format_guild_log
-from systems.cleanup import CleanupManager
+from utils.discord_helpers import format_guild_log, fuzzy_match
 from systems.voice_manager import VoiceManager, PlaybackState
 from core.track import Track, load_library, Playlist, discover_playlists, has_playlist_structure
-from config import DRINK_EMOJIS, MAX_HISTORY
+from config import DRINK_EMOJIS, MAX_HISTORY, COMMAND_MODE
 from utils.persistence import (
     load_last_channels,
     save_last_channel,
@@ -81,7 +79,14 @@ class MusicPlayer:
         # DELEGATE SYSTEMS (Composition Pattern)
         # =====================================================================
         self.spam_protector = SpamProtector(guild_id, bot_loop, bot=bot)
-        self.cleanup_manager = CleanupManager(guild_id, bot_user_id=bot_user_id, bot=bot)
+
+        # CleanupManager: Only load in prefix mode (slash uses ephemeral messages)
+        if COMMAND_MODE == 'prefix':
+            from systems.cleanup import CleanupManager
+            self.cleanup_manager = CleanupManager(guild_id, bot_user_id=bot_user_id, bot=bot)
+        else:
+            self.cleanup_manager = None  # Slash mode doesn't need message cleanup
+
         self.voice_manager = VoiceManager(guild_id, bot=bot)
 
         # =====================================================================
@@ -113,7 +118,7 @@ class MusicPlayer:
         # =====================================================================
         # UI STATE
         # =====================================================================
-        self._drink_cycle = itertools.cycle(DRINK_EMOJIS)
+        self._drink_counter = 0  # Counter for rotating drink emojis
 
         # =====================================================================
         # WATCHDOG TRACKING
@@ -164,7 +169,7 @@ class MusicPlayer:
             # If saved playlist not found, use first available
             if not playlist_to_load:
                 playlist_to_load = self.available_playlists[0]
-                logger.info(
+                user_logger.info(
                     f"{format_guild_log(self.guild_id, self.bot)}: Saved playlist not found, using first available: {playlist_to_load.display_name}"
                 )
                 # Persist fallback so future restarts load the existing playlist immediately
@@ -174,7 +179,7 @@ class MusicPlayer:
             self.library, self.track_by_index = load_library(self.guild_id, playlist_to_load.playlist_path)
         else:
             # Single-playlist mode: load from root music folder
-            logger.info(f"{format_guild_log(self.guild_id, self.bot)}: No playlists found, using root music folder")
+            user_logger.info(f"{format_guild_log(self.guild_id, self.bot)}: No playlists found, using root music folder")
             self.library, self.track_by_index = load_library(self.guild_id)
 
         # Initialize queue
@@ -184,12 +189,14 @@ class MusicPlayer:
         """Wire up references between systems for intercommunication."""
         # Give systems access to shared state
         self.spam_protector.set_text_channel(self.text_channel)
-        self.cleanup_manager.set_text_channel(self.text_channel)
+        if self.cleanup_manager:
+            self.cleanup_manager.set_text_channel(self.text_channel)
         self.voice_manager.set_text_channel(self.text_channel)
 
         # Set callbacks
-        self.spam_protector.set_cleanup_callback(self.cleanup_manager.trigger_spam_cleanup)
-        self.voice_manager.set_send_message_callback(self.cleanup_manager.send_with_ttl)
+        if self.cleanup_manager:
+            self.spam_protector.set_cleanup_callback(self.cleanup_manager.trigger_spam_cleanup)
+            self.voice_manager.set_send_message_callback(self.cleanup_manager.send_with_ttl)
         self.voice_manager.set_voice_client(self.voice_client)
 
     def start_background_tasks(self):
@@ -199,7 +206,8 @@ class MusicPlayer:
         Should be called after player is fully initialized.
         """
         self.spam_protector.start_processor()
-        self.cleanup_manager.start_workers()
+        if self.cleanup_manager:
+            self.cleanup_manager.start_workers()
 
     async def shutdown(self):
         """
@@ -208,7 +216,9 @@ class MusicPlayer:
         Cancels background tasks and cleans up state.
         """
         await self.spam_protector.shutdown()
-        await self.cleanup_manager.shutdown()
+        if self.cleanup_manager:
+            await self.cleanup_manager.shutdown()
+        await self.voice_manager.shutdown()
 
     # =========================================================================
     # Queue Management
@@ -324,6 +334,7 @@ class MusicPlayer:
         self.state = PlaybackState.IDLE
         self.voice_client = None
         self.voice_manager.reset_alone_state()
+        self.reset_drink_counter()  # Reset emoji rotation on stop
 
     def cancel_active_session(self):
         """Invalidate the current playback session token.
@@ -347,7 +358,8 @@ class MusicPlayer:
         """
         self.text_channel = channel
         self.spam_protector.set_text_channel(channel)
-        self.cleanup_manager.set_text_channel(channel)
+        if self.cleanup_manager:
+            self.cleanup_manager.set_text_channel(channel)
         self.voice_manager.set_text_channel(channel)
 
         # Save to persistent storage
@@ -382,9 +394,34 @@ class MusicPlayer:
     # UI Helpers
     # =========================================================================
 
-    def get_drink_emoji(self) -> str:
-        """Get next drink emoji in rotation."""
-        return next(self._drink_cycle)
+    def get_drink_emoji(self, offset: int = 0) -> str:
+        """
+        Get drink emoji with optional offset from current position.
+
+        Args:
+            offset: Offset from current counter (-1=previous, 0=current, 1=next)
+
+        Returns:
+            Drink emoji string, or empty string if DRINK_EMOJIS is empty
+        """
+        if not DRINK_EMOJIS:
+            return ""
+        emoji_index = (self._drink_counter + offset) % len(DRINK_EMOJIS)
+        return DRINK_EMOJIS[emoji_index]
+
+    def increment_drink_counter(self):
+        """Increment drink emoji counter (wraps automatically via modulo in get_drink_emoji)."""
+        if DRINK_EMOJIS:
+            self._drink_counter = (self._drink_counter + 1) % len(DRINK_EMOJIS)
+
+    def decrement_drink_counter(self):
+        """Decrement drink emoji counter (wraps automatically via modulo)."""
+        if DRINK_EMOJIS:
+            self._drink_counter = (self._drink_counter - 1) % len(DRINK_EMOJIS)
+
+    def reset_drink_counter(self):
+        """Reset drink emoji counter to 0."""
+        self._drink_counter = 0
 
     # =========================================================================
     # Additional Helper Methods
@@ -422,40 +459,11 @@ class MusicPlayer:
         if not self.available_playlists:
             return None
 
-        # Try parsing as number (1-based index)
-        try:
-            index = int(identifier) - 1
-            if 0 <= index < len(self.available_playlists):
-                return self.available_playlists[index]
-        except ValueError:
-            pass
-
-        # Fuzzy name matching with similarity scoring
-        identifier_lower = identifier.lower()
-        matches = []
-
-        # Find all playlists that contain the search term
-        for idx, playlist in enumerate(self.available_playlists):
-            playlist_name_lower = playlist.display_name.lower()
-            if identifier_lower in playlist_name_lower:
-                # Calculate similarity ratio (0.0 to 1.0)
-                similarity = SequenceMatcher(None, identifier_lower, playlist_name_lower).ratio()
-                matches.append((similarity, idx, playlist))
-
-        if not matches:
-            return None
-
-        # Sort by: similarity (descending), then list index (ascending)
-        # This ensures: best match first, ties broken by playlist order
-        matches.sort(key=lambda x: (-x[0], x[1]))
-
-        # Return the best match
-        best_match = matches[0]
-        logger.debug(
-            f"{format_guild_log(self.guild_id, self.bot)}: Fuzzy playlist match '{identifier}' → '{best_match[2].display_name}' "
-            f"(similarity: {best_match[0]:.2f})"
+        return fuzzy_match(
+            identifier,
+            self.available_playlists,
+            lambda p: p.display_name
         )
-        return best_match[2]
 
     def switch_playlist(self, identifier: str, voice_client=None) -> Tuple[bool, str]:
         """
@@ -502,6 +510,7 @@ class MusicPlayer:
         self.now_playing = None
         self.upcoming.clear()
         self.state = PlaybackState.IDLE
+        self.reset_drink_counter()  # Reset emoji rotation for new playlist
 
         # Load new library
         self.current_playlist = target_playlist
@@ -513,7 +522,7 @@ class MusicPlayer:
         # Save to persistence
         save_last_playlist(self.guild_id, target_playlist.playlist_id)
 
-        logger.info(
+        user_logger.info(
             f"{format_guild_log(self.guild_id, self.bot)}: Switched to playlist '{target_playlist.display_name}' "
             f"({len(self.library)} tracks)"
         )

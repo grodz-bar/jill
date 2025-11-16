@@ -32,11 +32,32 @@ import disnake
 from disnake.ext import commands
 
 from core.playback import _play_current, _play_next, _play_first
+from systems.voice_manager import PlaybackState
 from utils.permission_checks import check_permission, check_voice_channel
-from utils.discord_helpers import get_guild_player
-from config import MESSAGES, PERMISSION_MESSAGES, COMMAND_MODE
+from utils.discord_helpers import get_guild_player, format_guild_log
+from config import (
+    MESSAGES,
+    PERMISSION_MESSAGES,
+    COMMAND_MODE,
+    BUTTON_PLAY_PAUSE_COOLDOWN,
+    BUTTON_SKIP_COOLDOWN,
+    BUTTON_PREVIOUS_COOLDOWN,
+    BUTTON_SHUFFLE_COOLDOWN,
+    BUTTON_STOP_COOLDOWN,
+    BUTTON_SHOW_COOLDOWN_MESSAGE,
+)
 
 logger = logging.getLogger(__name__)
+
+# Button command to cooldown mapping (spam protection Layer 4)
+BUTTON_COOLDOWNS = {
+    'play': BUTTON_PLAY_PAUSE_COOLDOWN,
+    'pause': BUTTON_PLAY_PAUSE_COOLDOWN,
+    'skip': BUTTON_SKIP_COOLDOWN,
+    'previous': BUTTON_PREVIOUS_COOLDOWN,
+    'shuffle': BUTTON_SHUFFLE_COOLDOWN,
+    'stop': BUTTON_STOP_COOLDOWN,
+}
 
 
 class ButtonHandler(commands.Cog):
@@ -52,7 +73,25 @@ class ButtonHandler(commands.Cog):
         if not inter.component.custom_id.startswith('music_'):
             return
 
-        await inter.response.defer(ephemeral=True)
+        # Handle stale/duplicate interactions
+        # Discord can send duplicate button events for the same interaction
+        if inter.response.is_done():
+            logger.debug(
+                f"{format_guild_log(inter.guild.id, self.bot)}: "
+                f"Duplicate button event ignored: {inter.component.custom_id}"
+            )
+            return
+
+        # Defer the interaction (with fallback for edge cases)
+        # Discord interactions expire after 15 minutes
+        try:
+            await inter.response.defer(ephemeral=True)
+        except (disnake.NotFound, disnake.HTTPException):
+            logger.debug(
+                f"{format_guild_log(inter.guild.id, self.bot)}: "
+                f"Button interaction already handled/expired: {inter.component.custom_id}"
+            )
+            return
 
         command = inter.component.custom_id.replace('music_', '')
 
@@ -91,18 +130,53 @@ class ButtonHandler(commands.Cog):
         except Exception as e:
             logger.error(f"Error handling button {command}: {e}", exc_info=True)
             await inter.followup.send(
-                MESSAGES['ERROR_OCCURRED'],
+                MESSAGES['error_occurred'],
                 ephemeral=True
             )
 
     async def handle_button_action(self, command: str, player, inter) -> str:
-        """Handle button action."""
+        """
+        Handle button action with spam protection (Layer 4 cooldowns).
+
+        Returns error message string to show user, or None for silent success.
+        """
+
+        # Spam protection: Check cooldown (Layer 4)
+        # Layer 3 (serial queue) already handled by playback functions
+        cooldown = BUTTON_COOLDOWNS.get(command, 1.0)
+        allow, reason = player.spam_protector.check_cooldown(
+            f"button_{command}",
+            cooldown
+        )
+
+        if not allow:
+            # User clicking too fast - silently ignore or show message based on config
+            if BUTTON_SHOW_COOLDOWN_MESSAGE:
+                return MESSAGES['button_on_cooldown']
+            else:
+                return None  # Silent failure (recommended)
 
         if command == 'play':
-            if player.is_paused():
-                player.resume()
-                return MESSAGES['RESUMED']
-            elif not player.is_playing() and player.library:
+            state = player.voice_manager.get_playback_state()
+            logger.debug(
+                f"{format_guild_log(inter.guild.id, self.bot)}: Play button clicked - "
+                f"state={state}, library_size={len(player.library)}, "
+                f"has_voice_client={player.voice_client is not None}"
+            )
+
+            if state == PlaybackState.PAUSED:
+                # Resume paused playback
+                player.voice_client.resume()
+                player.state = PlaybackState.PLAYING
+                player.spam_protector.record_execution(f"button_{command}")
+                return None  # Control panel shows play state
+
+            elif state == PlaybackState.PLAYING:
+                # Already playing - silently ignore
+                return None
+
+            elif player.library:
+                # Start playback from beginning
                 if not player.voice_client:
                     if inter.author.voice and inter.author.voice.channel:
                         vc = await inter.author.voice.channel.connect(timeout=5.0, reconnect=True)
@@ -110,47 +184,61 @@ class ButtonHandler(commands.Cog):
                         player.set_text_channel(inter.channel)
 
                 await _play_first(inter.guild.id, self.bot)
-                return MESSAGES['STARTING_PLAYBACK']
+                player.spam_protector.record_execution(f"button_{command}")
+                return None  # Control panel updates
+
             else:
-                return MESSAGES['NO_TRACKS']
+                # No tracks in library
+                logger.warning(
+                    f"{format_guild_log(inter.guild.id, self.bot)}: Play button failed - "
+                    f"no tracks in library"
+                )
+                return MESSAGES['error_no_tracks']
 
         elif command == 'pause':
-            if player.is_playing():
-                player.pause()
-                return MESSAGES['PAUSED']
+            state = player.voice_manager.get_playback_state()
+            if state == PlaybackState.PLAYING:
+                player.voice_client.pause()
+                player.state = PlaybackState.PAUSED
+                player.spam_protector.record_execution(f"button_{command}")
+                return None  # Control panel shows pause state
             else:
-                return MESSAGES['BOT_NOT_PLAYING']
+                return MESSAGES['error_not_playing']
 
         elif command == 'skip':
-            if player.is_playing() or player.is_paused():
+            state = player.voice_manager.get_playback_state()
+            if state == PlaybackState.PLAYING or state == PlaybackState.PAUSED:
                 await _play_next(inter.guild.id, self.bot)
-                return MESSAGES['SKIPPED']
+                player.spam_protector.record_execution(f"button_{command}")
+                return None  # "Now playing" updates
             else:
-                return MESSAGES['BOT_NOT_PLAYING']
+                return MESSAGES['error_not_playing']
 
         elif command == 'previous':
-            if player.previous_track():
-                await _play_current(inter.guild.id, self.bot)
-                return MESSAGES['PREVIOUS']
+            if player.go_to_previous():
+                await _play_current(inter.guild.id, self.bot, going_backward=True)
+                player.spam_protector.record_execution(f"button_{command}")
+                return None  # "Now playing" updates
             else:
-                return MESSAGES['NO_PREVIOUS_TRACK']
+                return MESSAGES['error_no_previous']
 
         elif command == 'shuffle':
-            player.toggle_shuffle()
-            if player.shuffle_enabled:
-                return MESSAGES['SHUFFLE_ON']
-            else:
-                return MESSAGES['SHUFFLE_OFF']
+            player.shuffle_enabled = not player.shuffle_enabled
+            player.spam_protector.record_execution(f"button_{command}")
+            return None  # Shuffle button changes color
 
         elif command == 'stop':
-            if player.voice_client:
-                await player.voice_client.disconnect(force=True)
-
-            player.reset_state()
-            return MESSAGES['STOPPED']
+            # Stop button handling (if it exists)
+            state = player.voice_manager.get_playback_state()
+            if state != PlaybackState.IDLE:
+                # Stop logic would go here
+                player.spam_protector.record_execution(f"button_{command}")
+                return None
+            else:
+                return MESSAGES['error_not_playing']
 
         else:
-            return MESSAGES['ERROR_OCCURRED']
+            return MESSAGES['error_occurred']
 
 
 def setup(bot):

@@ -10,7 +10,7 @@ This file contains settings ONLY for prefix mode (!play commands).
 Slash mode (/play commands) does NOT use this file.
 
 SHARED SETTINGS:
-  Most settings (command prefix, auto-pause, cleanup, etc.) are in config/common/core.py
+  Most settings are in config/common/basic_settings.py, audio_settings.py, and advanced.py
   Go there first if you can't find what you're looking for!
 
 PREFIX-SPECIFIC SETTINGS:
@@ -61,129 +61,48 @@ def _get_config(python_value, env_name, default, converter=None):
     return default
 
 # =========================================================================================================
-# 🎵 PLAYBACK FEATURES
+#  PREFIX MODE SETTINGS
 # =========================================================================================================
 #
-# Control which commands are available to users.
-# Disabled features won't show up in the !help menu.
+# LOOKING FOR SETTINGS?
+#
+# Most settings have been moved to config/common/ (basic_settings.py, audio_settings.py, advanced.py) because they apply to BOTH modes:
+#   - Feature toggles (SHUFFLE_MODE_ENABLED, QUEUE_DISPLAY_ENABLED, etc.) - in basic_settings.py
+#   - Display settings (QUEUE_DISPLAY_COUNT, LIBRARY_PAGE_SIZE, etc.) - in basic_settings.py
+#   - Audio/voice settings - in audio_settings.py
+#   - Logging, watchdog intervals - in advanced.py
+#
+# Other prefix-specific settings are in:
+#   - config/prefix/aliases.py - Command shortcuts
+#   - config/prefix/messages.py - Message templates
+#   - config/prefix/cleanup.py - Cleanup timing and toggles
+#   - config/prefix/spam_protection.py - Spam protection layers 1-2
 
 # ----------------------------------------
-# Shuffle Mode
+# Smart Message Management (Prefix Only)
 # ----------------------------------------
-# Enable the !shuffle command (toggles random track order)
+# Edit existing "now playing" messages instead of sending new ones
 #
-# True = Users can type !shuffle to enable/disable shuffle
-# False = !shuffle command is disabled (responds with "feature disabled")
+# True = Edits existing messages when not buried (cleaner, recommended)
+# False = Always sends new message (more chat clutter)
 #
-SHUFFLE_MODE_ENABLED = None
-SHUFFLE_MODE_ENABLED = _get_config(SHUFFLE_MODE_ENABLED, 'SHUFFLE_MODE_ENABLED', True, _str_to_bool)
-
-# ----------------------------------------
-# Queue Display
-# ----------------------------------------
-# Enable the !queue command (shows upcoming tracks)
+# NOTE: Slash mode always edits control panels, so this setting doesn't apply there.
 #
-# True = Users can see what's coming up next
-# False = !queue command is disabled
-#
-QUEUE_DISPLAY_ENABLED = None
-QUEUE_DISPLAY_ENABLED = _get_config(QUEUE_DISPLAY_ENABLED, 'QUEUE_DISPLAY_ENABLED', True, _str_to_bool)
-
-# ----------------------------------------
-# Queue Display Count
-# ----------------------------------------
-# How many upcoming tracks to show in !queue
-#
-# Examples:
-#   3 = Show next 3 tracks (default, keeps message short)
-#   5 = Show next 5 tracks
-#   10 = Show next 10 tracks (longer message)
-#
-QUEUE_DISPLAY_COUNT = None
-QUEUE_DISPLAY_COUNT = _get_config(QUEUE_DISPLAY_COUNT, 'QUEUE_DISPLAY_COUNT', 3, int)
-
-# ----------------------------------------
-# Library Display
-# ----------------------------------------
-# Enable the !tracks command (lists all songs in current playlist)
-#
-# True = Users can browse the entire music library
-# False = !tracks command is disabled
-#
-LIBRARY_DISPLAY_ENABLED = None
-LIBRARY_DISPLAY_ENABLED = _get_config(LIBRARY_DISPLAY_ENABLED, 'LIBRARY_DISPLAY_ENABLED', True, _str_to_bool)
-
-# ----------------------------------------
-# Library Page Size
-# ----------------------------------------
-# How many tracks to show per page in !tracks
-#
-# Examples:
-#   20 = Show 20 tracks per page (default)
-#   50 = Show 50 tracks per page (good for large libraries)
-#   10 = Show 10 tracks per page (better for mobile)
-#
-LIBRARY_PAGE_SIZE = None
-LIBRARY_PAGE_SIZE = _get_config(LIBRARY_PAGE_SIZE, 'LIBRARY_PAGE_SIZE', 20, int)
-
-# ----------------------------------------
-# Playlist Switching
-# ----------------------------------------
-# Enable the !playlists and !tracks [name] commands (multi-playlist mode)
-#
-# True = Users can switch between playlists
-# False = Commands disabled (single-playlist mode)
-#
-# NOTE: Only works if you have music organized in subfolders
-# Example folder structure:
-#   music/
-#     ├── Rock/
-#     ├── Jazz/
-#     └── Electronic/
-#
-PLAYLIST_SWITCHING_ENABLED = None
-PLAYLIST_SWITCHING_ENABLED = _get_config(PLAYLIST_SWITCHING_ENABLED, 'PLAYLIST_SWITCHING_ENABLED', True, _str_to_bool)
-
-# ----------------------------------------
-# Playlist Page Size
-# ----------------------------------------
-# How many playlists to show per page in !playlists
-#
-# Examples:
-#   20 = Show 20 playlists per page (default)
-#   10 = Show 10 playlists per page
-#   50 = Show 50 playlists per page (if you have many playlists)
-#
-PLAYLIST_PAGE_SIZE = None
-PLAYLIST_PAGE_SIZE = _get_config(PLAYLIST_PAGE_SIZE, 'PLAYLIST_PAGE_SIZE', 20, int)
+SMART_MESSAGE_MANAGEMENT = None  # Leave as None to use .env or default (True)
+SMART_MESSAGE_MANAGEMENT = _get_config(SMART_MESSAGE_MANAGEMENT, 'SMART_MESSAGE_MANAGEMENT', True, _str_to_bool)
 
 # =========================================================================================================
-# 🔧 ADVANCED FEATURES
-# =========================================================================================================
-#
-# Technical features that most users won't need to change.
-
-# ----------------------------------------
-# Voice Reconnect
-# ----------------------------------------
-# Auto-reconnect to voice channel if connection drops
-#
-# True = Bot automatically rejoins if disconnected (recommended)
-# False = Requires manual !play to reconnect
-#
-VOICE_RECONNECT_ENABLED = None
-VOICE_RECONNECT_ENABLED = _get_config(VOICE_RECONNECT_ENABLED, 'VOICE_RECONNECT_ENABLED', True, _str_to_bool)
-
-# =========================================================================================================
-# 📝 NOTES FOR CUSTOMIZATION
+#  NOTES FOR CUSTOMIZATION
 # =========================================================================================================
 #
 # Looking for more settings? Check these files:
 #
-# config/common/core.py - Shared settings (prefix, status, cleanup, spam protection)
+# config/common/basic_settings.py - Bot identity, command prefix, feature toggles, logging
+# config/common/audio_settings.py - FFmpeg, voice health monitoring
+# config/common/advanced.py - Watchdog intervals, persistence paths
 # config/prefix/messages.py - Customize message text and wording
 # config/prefix/aliases.py - Add custom command shortcuts (!p for !play, etc.)
-# config/prefix/timing.py - Advanced: Timing values, cooldowns, TTLs
+# config/prefix/cleanup.py - Message cleanup timing and TTLs
 #
 # =========================================================================================================
 
@@ -192,12 +111,5 @@ VOICE_RECONNECT_ENABLED = _get_config(VOICE_RECONNECT_ENABLED, 'VOICE_RECONNECT_
 # =========================================================================================================
 
 __all__ = [
-    'SHUFFLE_MODE_ENABLED',
-    'QUEUE_DISPLAY_ENABLED',
-    'QUEUE_DISPLAY_COUNT',
-    'LIBRARY_DISPLAY_ENABLED',
-    'LIBRARY_PAGE_SIZE',
-    'PLAYLIST_SWITCHING_ENABLED',
-    'PLAYLIST_PAGE_SIZE',
-    'VOICE_RECONNECT_ENABLED',
+    'SMART_MESSAGE_MANAGEMENT',
 ]

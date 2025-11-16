@@ -34,6 +34,7 @@ import time
 from typing import Dict, Optional
 import disnake
 
+from systems.voice_manager import PlaybackState
 from config import (
     COMMAND_MODE,
     MESSAGES,
@@ -53,16 +54,27 @@ logger = logging.getLogger(__name__)
 
 
 class ControlPanelManager:
-    """Manages control panel and now playing messages per guild."""
+    """Manages control panel per guild."""
 
     def __init__(self, bot):
         self.bot = bot
         self.panels: Dict[int, Dict] = {}
         self.last_update_time: Dict[int, float] = {}
+        self._init_task: Optional[asyncio.Task] = None
 
         # Initialize panels on startup
         if COMMAND_MODE == 'slash':
-            asyncio.create_task(self._initialize_panels())
+            self._init_task = asyncio.create_task(self._initialize_panels())
+            self._init_task.add_done_callback(self._handle_init_error)
+
+    def _handle_init_error(self, task: asyncio.Task):
+        """Handle errors from initialization task."""
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            logger.debug("Control panel initialization cancelled")
+        except Exception as e:
+            logger.error(f"Control panel initialization failed: {e}", exc_info=True)
 
     async def _initialize_panels(self):
         """Initialize panels from saved message IDs after bot startup."""
@@ -108,45 +120,44 @@ class ControlPanelManager:
             except (disnake.NotFound, disnake.Forbidden):
                 pass
 
-        # Now playing message
-        if 'now_playing_id' in message_info:
-            try:
-                msg = await channel.fetch_message(message_info['now_playing_id'])
-                await msg.delete()
-            except (disnake.NotFound, disnake.Forbidden):
-                pass
-
     async def create_panel(self, guild_id: int, channel: disnake.TextChannel):
-        """Create control panel and now playing messages."""
+        """Create control panel for a guild."""
         if guild_id in self.panels:
             await self.delete_panel(guild_id)
 
         try:
             # Create control panel
-            control_embed = create_control_panel_embed(is_playing=False)
-            control_components = create_control_buttons(is_playing=False, is_paused=False)
+            control_embed = create_control_panel_embed(
+                is_playing=False,
+                track_name=None,
+                track_index=None,
+                playlist_name=None,
+                is_paused=False,
+                upcoming_track_names=None,
+                total_upcoming=0,
+                shuffle_enabled=False,
+                current_drink_emoji=None,
+                last_track_name=None,
+                last_drink_emoji=None,
+                next_drink_emoji=None
+            )
+            control_components = create_control_buttons(is_playing=False, is_paused=False, shuffle_enabled=False)
 
             control_msg = await channel.send(
                 embed=control_embed,
                 components=control_components
             )
 
-            # Create now playing message
-            now_playing_content = self._format_now_playing(None, None)
-            now_playing_msg = await channel.send(content=now_playing_content)
-
             # Store panel info
             self.panels[guild_id] = {
                 'channel': channel,
                 'control_panel': control_msg,
-                'now_playing': now_playing_msg,
             }
 
             # Save message IDs
             save_message_ids(
                 guild_id,
                 control_panel_id=control_msg.id,
-                now_playing_id=now_playing_msg.id,
                 channel_id=channel.id
             )
 
@@ -156,20 +167,15 @@ class ControlPanelManager:
             logger.error(f"Failed to create control panel for {format_guild_log(guild_id, self.bot)}: {e}")
 
     async def delete_panel(self, guild_id: int):
-        """Delete control panel messages for a guild."""
+        """Delete control panel for a guild."""
         if guild_id not in self.panels:
             return
 
         panel_info = self.panels[guild_id]
 
-        # Delete messages
+        # Delete control panel message
         try:
             await panel_info['control_panel'].delete()
-        except (disnake.NotFound, disnake.Forbidden):
-            pass
-
-        try:
-            await panel_info['now_playing'].delete()
         except (disnake.NotFound, disnake.Forbidden):
             pass
 
@@ -178,46 +184,6 @@ class ControlPanelManager:
         clear_message_ids(guild_id)
 
         logger.debug(f"Deleted control panel for {format_guild_log(guild_id, self.bot)}")
-
-    def _format_now_playing(self, player, track) -> str:
-        """Format the now playing message text."""
-        if not track:
-            return f"{MESSAGES['NOW_PLAYING_TITLE']}\n{MESSAGES['NOTHING_PLAYING']}\n{MESSAGES['QUEUE_EMPTY_MESSAGE']}"
-
-        # Basic track info
-        lines = [
-            MESSAGES['NOW_PLAYING_TITLE'],
-            MESSAGES['TRACK_INFO'].format(
-                index=player.current_track_index + 1 if player else 1,
-                name=track.display_name
-            )
-        ]
-
-        # Playlist info
-        if player and hasattr(player, 'current_playlist') and player.current_playlist:
-            lines.append(MESSAGES['PLAYLIST_INFO'].format(name=player.current_playlist))
-
-        # Status
-        if player:
-            if player.is_paused():
-                lines.append(MESSAGES['STATUS_PAUSED'])
-            elif player.is_playing():
-                lines.append(MESSAGES['STATUS_PLAYING'])
-
-        # Queue preview
-        if player and hasattr(player, 'queue') and player.queue:
-            lines.append("")
-            lines.append(MESSAGES['UP_NEXT'])
-
-            for i in range(min(3, len(player.queue))):
-                idx = player.queue[i]
-                if idx < len(player.library):
-                    lines.append(f"  {i+1}. {player.library[idx].display_name}")
-
-            if len(player.queue) > 3:
-                lines.append(f"  {MESSAGES['AND_MORE'].format(count=len(player.queue) - 3)}")
-
-        return "\n".join(lines)
 
     async def update_panel(self, guild_id: int, player):
         """Update control panel based on player state."""
@@ -250,14 +216,56 @@ class ControlPanelManager:
                 if not panel_info:
                     return
 
-            # Update control panel
-            is_playing = player.is_playing()
-            is_paused = player.is_paused()
+            # Gather playback state
+            state = player.voice_manager.get_playback_state()
+            is_playing = (state == PlaybackState.PLAYING)
+            is_paused = (state == PlaybackState.PAUSED)
 
-            control_embed = create_control_panel_embed(is_playing=(is_playing or is_paused))
+            # Get current track info
+            current_track = player.now_playing
+            track_name = current_track.display_name if current_track else None
+            track_index = (current_track.library_index + 1) if current_track else None
+
+            # Get playlist info
+            playlist_name = player.current_playlist.display_name if hasattr(player, 'current_playlist') and player.current_playlist else None
+
+            # Get last track info (from played history)
+            last_track_name = None
+            if player.played and len(player.played) > 0:
+                last_track_name = player.played[-1].display_name
+
+            # Get drink emojis with offsets for Last/Now/Coming sections
+            current_drink_emoji = player.get_drink_emoji(offset=0) if current_track else None
+            last_drink_emoji = player.get_drink_emoji(offset=-1) if last_track_name else None
+            next_drink_emoji = player.get_drink_emoji(offset=1) if current_track else None
+
+            # Build upcoming tracks list
+            upcoming_track_names = []
+            if player.upcoming:
+                upcoming_list = list(player.upcoming)
+                upcoming_track_names = [track.display_name for track in upcoming_list[:3]]
+
+            total_upcoming = len(player.upcoming) if player.upcoming else 0
+
+            # Update control panel
+            control_embed = create_control_panel_embed(
+                is_playing=(is_playing or is_paused),
+                track_name=track_name,
+                track_index=track_index,
+                playlist_name=playlist_name,
+                is_paused=is_paused,
+                upcoming_track_names=upcoming_track_names,
+                total_upcoming=total_upcoming,
+                shuffle_enabled=player.shuffle_enabled,
+                current_drink_emoji=current_drink_emoji,
+                last_track_name=last_track_name,
+                last_drink_emoji=last_drink_emoji,
+                next_drink_emoji=next_drink_emoji
+            )
             control_components = create_control_buttons(
                 is_playing=(is_playing or is_paused),
-                is_paused=is_paused
+                is_paused=is_paused,
+                shuffle_enabled=player.shuffle_enabled
             )
 
             await panel_info['control_panel'].edit(
@@ -265,18 +273,22 @@ class ControlPanelManager:
                 components=control_components
             )
 
-            # Update now playing message
-            current_track = None
-            if player.current_track_index is not None and player.library:
-                current_track = player.library[player.current_track_index]
-
-            now_playing_content = self._format_now_playing(player, current_track)
-            await panel_info['now_playing'].edit(content=now_playing_content)
-
         except Exception as e:
             logger.error(f"Failed to update control panel for {format_guild_log(guild_id, self.bot)}: {e}")
             if guild_id in self.panels:
                 del self.panels[guild_id]
+
+    async def shutdown(self):
+        """Gracefully shutdown the control panel manager."""
+        # Cancel initialization task if still running
+        if self._init_task and not self._init_task.done():
+            self._init_task.cancel()
+            try:
+                await self._init_task
+            except asyncio.CancelledError:
+                pass
+
+        logger.debug("Control panel manager shutdown complete")
 
 
 # Global instance

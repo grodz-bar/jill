@@ -68,14 +68,13 @@ class PlaybackSession:
 
 # Import from config
 from config import (
+    COMMAND_MODE,
     VOICE_SETTLE_DELAY,
     MESSAGE_SETTLE_DELAY,
     CALLBACK_MIN_INTERVAL,
     VOICE_CONNECTION_MAX_WAIT,
     VOICE_CONNECTION_CHECK_INTERVAL,
     TRACK_CHANGE_SETTLE_DELAY,
-    SMART_MESSAGE_MANAGEMENT,
-    TTL_CLEANUP_ENABLED,
     MESSAGES, DRINK_EMOJIS,
 )
 from systems.voice_manager import PlaybackState
@@ -89,7 +88,7 @@ from utils.discord_helpers import (
 from utils.context_managers import suppress_callbacks
 
 
-async def _play_current(guild_id: int, bot) -> None:
+async def _play_current(guild_id: int, bot, going_backward: bool = False) -> None:
     """
     Play the current track (whatever is in now_playing).
 
@@ -169,10 +168,6 @@ async def _play_current(guild_id: int, bot) -> None:
         await player.spam_protector.queue_command(lambda: _play_next(guild_id, bot), priority=True)
         return
 
-    # Create a playback session token so stale callbacks can be ignored safely.
-    session = PlaybackSession(track_id=track.track_id)
-    player._playback_session = session
-
     # Stop current playback if any (suppress callback to prevent race condition)
     try:
         vc = player.voice_client
@@ -210,7 +205,14 @@ async def _play_current(guild_id: int, bot) -> None:
     # This prevents pop/scratchiness artifacts (1s mimics the natural delay from manual pause workflow)
     await asyncio.sleep(TRACK_CHANGE_SETTLE_DELAY)
 
+    # Create a playback session token so stale callbacks can be ignored safely.
+    # Session is created AFTER old playback is stopped to prevent suppress_callbacks()
+    # from cancelling the wrong session during cleanup
+    session = PlaybackSession(track_id=track.track_id)
+    player._playback_session = session
+
     audio_source = None
+    audio_source_cleaned = False  # Flag to prevent double cleanup
     try:
         # Create audio source (format-aware: opus passthrough or transcoding)
         audio_source = make_audio_source(str(track.file_path))
@@ -244,7 +246,7 @@ async def _play_current(guild_id: int, bot) -> None:
             rely on CPython's GIL for atomicity. This is acceptable for boolean/integer
             checks used as early-exit conditions.
             """
-            nonlocal audio_source
+            nonlocal audio_source, audio_source_cleaned
 
             if error:
                 error_str = str(error)
@@ -256,14 +258,15 @@ async def _play_current(guild_id: int, bot) -> None:
                 if not any(benign in error_str for benign in benign_errors):
                     logger.error(f'{format_guild_log(guild_id, bot)} playback error: {error}')
 
-            # Clean up audio source
-            if audio_source:
+            # Clean up audio source (only if not already cleaned)
+            if audio_source and not audio_source_cleaned:
                 try:
                     audio_source.cleanup()
                 except (OSError, RuntimeError, AttributeError) as e:
                     logger.debug(f"{format_guild_log(guild_id, bot)}: audio_source.cleanup() failed: {e}", exc_info=True)
                 finally:
                     audio_source = None
+                    audio_source_cleaned = True
 
             # Don't advance if reconnecting
             if player._is_reconnecting:
@@ -271,7 +274,7 @@ async def _play_current(guild_id: int, bot) -> None:
                 return
 
             # Don't advance if callback suppressed
-            if player._suppress_callbacks:
+            if player._suppress_callback:
                 logger.debug(f"{format_guild_log(guild_id, bot)}: Skipping callback (suppressed)")
                 return
 
@@ -300,15 +303,25 @@ async def _play_current(guild_id: int, bot) -> None:
             bot.loop.call_soon_threadsafe(setattr, player, '_last_callback_time', current_time)
 
             # Queue the next track (priority=True to ensure internal commands aren't dropped)
+            logger.debug(f"{format_guild_log(guild_id, bot)}: Track finished, queuing next track")
             asyncio.run_coroutine_threadsafe(
                 player.spam_protector.queue_command(lambda: _play_next(guild_id, bot), priority=True),
                 bot.loop
             )
 
-            if player._playback_session is session:
-                session.cancel()
-                # Thread-safe mutation from FFmpeg thread
-                bot.loop.call_soon_threadsafe(setattr, player, '_playback_session', None)
+            # Cancel session and clear if still current (atomic operation)
+            session.cancel()
+            # Make check-and-clear atomic by executing both in main thread
+            def clear_session_if_current():
+                if player._playback_session is session:
+                    player._playback_session = None
+            bot.loop.call_soon_threadsafe(clear_session_if_current)
+
+        # Update drink emoji counter for rotating drink display
+        if going_backward:
+            player.decrement_drink_counter()  # Going to previous track
+        else:
+            player.increment_drink_counter()  # Normal play/skip
 
         # Start playback with callback
         player.voice_client.play(audio_source, after=after_track)
@@ -320,24 +333,28 @@ async def _play_current(guild_id: int, bot) -> None:
 
         logger.debug(f"{format_guild_log(guild_id, bot)}: Now playing: {track.display_name}")
 
-        # Send "Now serving" message
-        await asyncio.sleep(MESSAGE_SETTLE_DELAY)
-        drink = player.get_drink_emoji()
-        new_content = MESSAGES['now_serving'].format(drink=drink, track=sanitize_for_format(track.display_name))
+        # Send "Now serving" message (prefix mode only - slash has visual control panel)
+        if COMMAND_MODE == 'prefix':
+            await asyncio.sleep(MESSAGE_SETTLE_DELAY)
+            drink = player.get_drink_emoji()
+            new_content = MESSAGES['now_serving'].format(drink=drink, track=sanitize_for_format(track.display_name))
 
-        # Use cleanup manager's smart message handling
-        await player.cleanup_manager.update_now_playing_message(new_content)
+            # Use cleanup manager's smart message handling
+            await player.cleanup_manager.update_now_playing_message(new_content)
 
         # Update bot presence
         await update_presence(bot, track.display_name)
 
     except Exception as e:
         logger.exception(f"{format_guild_log(guild_id, bot)} error in _play_current")
-        if audio_source:
+        # Clean up audio source if exception occurred (only if not already cleaned)
+        if audio_source and not audio_source_cleaned:
             try:
                 audio_source.cleanup()
             except (OSError, RuntimeError, AttributeError) as cleanup_err:
                 logger.debug(f"{format_guild_log(guild_id, bot)}: cleanup after exception failed: {cleanup_err}")
+            finally:
+                audio_source_cleaned = True
         vc = player.voice_client
         unsafe_or_down = True
         try:
@@ -368,9 +385,13 @@ async def _play_next(guild_id: int, bot) -> None:
     """
     from core.player import get_player
     player = await get_player(guild_id, bot, bot.user.id)
+    logger.debug(f"{format_guild_log(guild_id, bot)}: _play_next() called")
     next_track = player.advance_to_next()
     if next_track:
+        logger.debug(f"{format_guild_log(guild_id, bot)}: Advanced to next track: {next_track.display_name}")
         await _play_current(guild_id, bot)
+    else:
+        logger.debug(f"{format_guild_log(guild_id, bot)}: No more tracks in queue, playback ending")
 
 
 async def _play_first(guild_id: int, bot) -> None:

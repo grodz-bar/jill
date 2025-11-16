@@ -8,6 +8,7 @@ bot.log
 # Runtime state files
 last_channels.json
 last_playlists.json
+last_message_ids.json
 
 # Python cache directories
 .mypy_cache/
@@ -99,6 +100,7 @@ audiofiles/
 
 # IDE
 .vscode/
+.claude/
 .idea/
 *.sublime-project
 *.sublime-workspace

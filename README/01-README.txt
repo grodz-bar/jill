@@ -125,7 +125,7 @@ COMMON (Both Modes):
 - config/common/advanced.py - Bot token, persistence paths, watchdog intervals
 - config/common/messages.py - Shared messages
 - config/common/spam_protection.py - Spam protection (Layer 3 serial queue)
-- config/common/permissions.py - VA-11 HALL-A themed permission system
+- config/common/permissions.py - Role-based permission system
 - config/common/filename_patterns.py - File naming patterns
 
 CLASSIC MODE (prefix):

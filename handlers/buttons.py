@@ -20,7 +20,7 @@ Button Interaction Handler (Modern Mode Only)
 
 Handles button clicks from control panel in Modern (/play) mode:
 - 6 button types: play, pause, skip, previous, shuffle, stop
-- Permission checking (VA-11 HALL-A themed)
+- Permission checking (role-based)
 - Ephemeral error responses
 - Updates control panel after actions
 

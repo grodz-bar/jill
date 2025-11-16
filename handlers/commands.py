@@ -20,7 +20,7 @@ Classic Mode Commands (Prefix Commands)
 
 All 12 bot commands for Classic (!play) mode with:
 - Spam protection (4-layer system with guild isolation)
-- Permission checks (VA-11 HALL-A themed decorator)
+- Permission checks (role-based decorator)
 - Automatic message cleanup (TTL-based)
 - Context-aware behavior (e.g., !play resumes or jumps)
 

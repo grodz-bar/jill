@@ -1,7 +1,7 @@
 """
 Permission Configuration - Shared Between All Modes
 
-VA-11 HALL-A themed permission system.
+Role-based permission system.
 Default: All commands available to everyone (PERMISSION_MODE='none')
 """
 
@@ -10,7 +10,7 @@ import os
 # Permission mode: 'none' (no restrictions) or 'role' (role-based)
 PERMISSION_MODE = os.getenv('PERMISSION_MODE', 'none').lower()
 
-# VA-11 HALL-A themed role tiers
+# Role tiers (customizable via .env)
 BARTENDER_ROLES = os.getenv('BARTENDER_ROLES', 'Bartender,DJ').split(',')
 BARTENDER_ROLES = [r.strip() for r in BARTENDER_ROLES if r.strip()]
 

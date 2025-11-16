@@ -25,7 +25,7 @@ A comprehensive reference of the bot's directory structure and file descriptions
 │   │   ├── advanced.py               # Bot token, persistence paths, watchdog intervals
 │   │   ├── messages.py               # Shared messages
 │   │   ├── spam_protection.py        # Spam protection (Layer 3 serial queue)
-│   │   ├── permissions.py            # VA-11 HALL-A themed permission system
+│   │   ├── permissions.py            # Role-based permission system
 │   │   └── filename_patterns.py      # File naming patterns
 │   ├── /prefix/                      # Classic mode (!play) configuration
 │   │   ├── features.py               # Command prefix, feature toggles

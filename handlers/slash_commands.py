@@ -23,7 +23,7 @@ All 11 bot commands for Modern (/play) mode with:
 - Ephemeral responses (only command user sees them)
 - Interactive button controls via control panel
 - Auto-updating embeds with live playback status
-- Permission checks (VA-11 HALL-A themed)
+- Permission checks (role-based)
 
 SPAM PROTECTION:
 Slash commands bypass most spam protection layers (Layers 1, 2, 4) because

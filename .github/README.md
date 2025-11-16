@@ -116,7 +116,7 @@ raw code. If it sings, credit the ensemble. If it glitches, that’s on me.
 - [`config/common/advanced.py`](../config/common/advanced.py) — Bot token, persistence paths, watchdog intervals
 - [`config/common/messages.py`](../config/common/messages.py) — Shared messages
 - [`config/common/spam_protection.py`](../config/common/spam_protection.py) — Spam protection (Layer 3 serial queue)
-- [`config/common/permissions.py`](../config/common/permissions.py) — VA-11 HALL-A themed permissions
+- [`config/common/permissions.py`](../config/common/permissions.py) — Role-based permissions
 - [`config/common/filename_patterns.py`](../config/common/filename_patterns.py) — File naming patterns
 
 **Classic Mode (prefix):**

@@ -248,7 +248,7 @@ COMMON (Both Modes):
 - config\common\core.py - Bot settings, logging, voice health
 - config\common\messages.py - Shared messages
 - config\common\spam_protection.py - Spam protection (Layer 3 serial queue)
-- config\common\permissions.py - VA-11 HALL-A themed permissions
+- config\common\permissions.py - Role-based permissions
 - config\common\filename_patterns.py - File naming patterns
 
 CLASSIC MODE (prefix):

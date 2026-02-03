@@ -247,7 +247,7 @@ async def scan_playlist_metadata(
     updated = False
     seen_keys: set[tuple] = set()  # Track duplicates by dedup key
     duplicates: list[str] = []  # Collect duplicate filenames for grouped logging
-    extensions = ['*.mp3', '*.flac', '*.ogg', '*.m4a', '*.wav', '*.aac']
+    extensions = ['*.mp3', '*.flac', '*.ogg', '*.opus', '*.m4a', '*.wav', '*.aac']
 
     for ext in extensions:
         for audio_file in playlist_path.glob(ext):

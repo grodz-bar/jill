@@ -22,7 +22,7 @@ music/
 > [!NOTE]
 > Files in root are ignored if subfolders exist.
 
-> Supported formats: MP3, FLAC, OGG, M4A, WAV, AAC
+> Supported formats: MP3, FLAC, OGG, OPUS, M4A, WAV, AAC
 
 ### Using Your Existing Library
 

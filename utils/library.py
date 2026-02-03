@@ -25,7 +25,7 @@ from loguru import logger
 
 
 # Glob patterns for supported audio formats (Lavalink-compatible)
-AUDIO_EXTENSIONS = ['*.mp3', '*.flac', '*.ogg', '*.m4a', '*.wav', '*.aac']
+AUDIO_EXTENSIONS = ['*.mp3', '*.flac', '*.ogg', '*.opus', '*.m4a', '*.wav', '*.aac']
 
 # Maximum tracks per playlist to prevent memory issues with very large libraries
 MAX_PLAYLIST_SIZE = 1000

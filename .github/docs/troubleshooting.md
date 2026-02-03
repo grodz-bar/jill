@@ -26,11 +26,11 @@
 - **Config value cut off**: In `.env` and `docker-compose.yml`, text after ` #` (space + hash) is treated as a comment:
   ```env
   # Won't work - becomes "lofi"
-  DEFAULT_PLAYLIST=lofi #4
+  DEFAULT_PLAYLIST=lofi #444
 
   # Works
-  DEFAULT_PLAYLIST=lofi#4
-  DEFAULT_PLAYLIST=lofi-4
+  DEFAULT_PLAYLIST=lofi#444
+  DEFAULT_PLAYLIST=lofi-444
   ```
 
 ---

@@ -134,6 +134,8 @@
   - Code changes: `docker-compose up -d --build`
   - Config changes: `docker-compose restart jill`
 
+- **"Memory limit capabilities" warning (Raspberry Pi)**: Harmless. Your kernel doesn't support Docker memory limits, but Jill runs fine without them.
+
 ---
 
 ### Logs

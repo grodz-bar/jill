@@ -143,4 +143,11 @@ If you didn't set your `GUILD_ID` it can take 1 hour.
 
 </details>
 
+<details>
+<summary><strong>"Memory limit capabilities" warning (Raspberry Pi)</strong></summary>
+
+Harmless. Your kernel doesn't support Docker memory limits, but Jill runs fine without them.
+
+</details>
+
 For other issues, see [Troubleshooting](../troubleshooting.md).

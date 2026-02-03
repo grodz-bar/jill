@@ -13,6 +13,8 @@ Docker configuration reference. Set these in the `environment:` section.
 |----------|---------|-------------|
 | `DISCORD_TOKEN` | — | **Required.** Bot token |
 | `GUILD_ID` | — | Server ID for instant slash commands |
+| `PUID` | 1000 | User ID for file permissions |
+| `PGID` | 1000 | Group ID for file permissions |
 | `DEFAULT_VOLUME` | 50 | Initial volume (0-100) |
 | `DEFAULT_PLAYLIST` | — | Playlist folder name to auto-load |
 | `AUTO_RESCAN` | true | Scan for new music on startup |
@@ -52,6 +54,9 @@ Docker configuration reference. Set these in the `environment:` section.
 
 > [!WARNING]
 > Never share your `DISCORD_TOKEN` or commit it to version control.
+
+> [!TIP]
+> **PUID/PGID**: Find your IDs with `id -u` and `id -g`. Most Linux users are 1000:1000 (the default).
 
 > [!NOTE]
 > **Playlist name**: `DEFAULT_PLAYLIST` uses the folder name from `music/`, not a display name.

@@ -64,7 +64,7 @@ docker compose logs -f jill  # Watch for: "time to mix drinks and change lives"
 > Using older Docker? Replace `docker compose` with `docker-compose` throughout.
 
 > [!NOTE]
-> Running without Compose? Use `docker run -u $(id -u):$(id -g) ...` to avoid running as root.
+> Running without Compose? Use `docker run -e PUID=$(id -u) -e PGID=$(id -g) ...` to match your user.
 
 ---
 
@@ -121,7 +121,11 @@ docker compose down && docker compose up -d
 <details>
 <summary><strong>"Permission denied" on volumes</strong></summary>
 
-Jill runs as user 1000:1000. Check your ID with `id -u`, then edit the `user:` line in docker-compose.yml to match.
+Jill defaults to user 1000:1000. Check your ID with `id -u` and `id -g`, then set PUID/PGID in docker-compose.yml to match:
+```yaml
+- PUID=1001
+- PGID=1001
+```
 
 </details>
 

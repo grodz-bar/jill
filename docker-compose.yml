@@ -29,7 +29,7 @@ services:
     expose:
       - "4440"
     healthcheck:
-      test: 'curl -sf http://localhost:4440/version || exit 1'
+      test: ["CMD-SHELL", "curl -sf -H \"Authorization: $${LAVALINK_SERVER_PASSWORD}\" http://localhost:4440/version || exit 1"]
       interval: 30s
       start_interval: 2s
       timeout: 5s
@@ -49,7 +49,6 @@ services:
     image: ghcr.io/grodz-bar/jill:latest
     container_name: jill
     restart: unless-stopped
-    user: "1000:1000"
     depends_on:
       lavalink:
         condition: service_healthy
@@ -61,6 +60,11 @@ services:
       # CONFIGURE THESE TWO LINES
       - DISCORD_TOKEN=paste_your_token_here
       - GUILD_ID=paste_your_guild_id_here
+      # ============================================
+      # User/group ID for file permissions (run: id $USER)
+      # Most users can leave these as default (1000)
+      - PUID=1000
+      - PGID=1000
       # ============================================
       # Leave everything below as-is
       - LAVALINK_HOST=lavalink

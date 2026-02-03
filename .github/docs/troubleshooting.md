@@ -128,7 +128,7 @@
 
 - **Container won't start**: Check `docker-compose logs jill`, verify token in docker-compose.yml, ensure Docker daemon is running.
 
-- **Permission denied on volumes**: Jill runs as user 1000:1000. Check your user ID with `id -u` and update the `user:` line in docker-compose.yml if needed. Or: `chmod -R 755 music/ config/ data/`
+- **Permission denied on volumes**: Jill defaults to user 1000:1000. Check your IDs with `id -u` and `id -g`, then set PUID/PGID in docker-compose.yml to match. Or: `chmod -R 755 music/ config/ data/`
 
 - **Config changes not working**:
   - Code changes: `docker-compose up -d --build`

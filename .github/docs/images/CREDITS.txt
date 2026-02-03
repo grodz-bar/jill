@@ -1,3 +1,5 @@
 banner.png
   Background art: Eder Muniz (https://edermunizz.itch.io/)
   Font: CyberpunkWaifus (https://github.com/tokamach/newtab)
+
+Social preview art: @kiririn51 (https://x.com/kiririn51)

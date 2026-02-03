@@ -45,7 +45,7 @@ services:
         limits:
           memory: 1G
 
-  bot:
+  jill:
     image: ghcr.io/grodz-bar/jill:latest
     container_name: jill
     restart: unless-stopped

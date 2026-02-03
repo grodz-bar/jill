@@ -53,6 +53,7 @@ lavalink/
 setup/
 *.bat
 *.sh
+!entrypoint.sh
 
 # Claude
 .claude/

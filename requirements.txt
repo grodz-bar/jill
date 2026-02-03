@@ -1,0 +1,8 @@
+discord.py==2.6.4
+loguru==0.7.3
+mafic==2.10.1
+aiohttp==3.13.2
+mutagen==1.47.0
+pyyaml==6.0.3
+rapidfuzz==3.14.3
+python-dotenv==1.0.1

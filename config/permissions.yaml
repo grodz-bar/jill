@@ -1,0 +1,42 @@
+# Jill Permission System
+# Set enabled: true to activate role-based permissions
+
+enabled: false
+
+# Discord role ID for Bartender tier
+# Get this by enabling Developer Mode and right-clicking the role
+# This value should look something like this:
+# bartender_role_id: 1947232103103759351
+
+bartender_role_id:
+
+# Environment variable overrides (optional):
+# ENABLE_PERMISSIONS=true     - enable permission system
+# BARTENDER_ROLE_ID=123...    - set bartender role ID
+
+# Note: Control panel buttons use the same permission system.
+# Users without required tier see "no permission" messages.
+
+# Command tier assignments (only these 3 tiers are supported)
+# customer: Available to everyone
+# bartender: Requires bartender role
+# owner: Requires admin/manage_guild permission
+# Move commands between tiers as needed
+tiers:
+  customer:
+    - queue
+    - playlists
+    - np
+  bartender:
+    - play
+    - pause
+    - skip
+    - previous
+    - stop
+    - seek
+    - shuffle
+    - loop
+    - playlist
+    - volume
+  owner:
+    - rescan

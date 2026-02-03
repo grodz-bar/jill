@@ -1,0 +1,112 @@
+# Jill Discord Music Bot
+#
+# Setup:
+#   1. Edit DISCORD_TOKEN and GUILD_ID below
+#   2. Set up your music folder (see MUSIC LIBRARY section)
+#   3. Run: docker-compose up -d
+#
+# Logs: docker-compose logs -f jill
+# Stop: docker-compose down
+
+services:
+  lavalink:
+    image: ghcr.io/lavalink-devs/lavalink:4
+    container_name: lavalink
+    restart: unless-stopped
+    environment:
+      - SERVER_PORT=4440
+      - SERVER_ADDRESS=0.0.0.0
+      - LAVALINK_SERVER_PASSWORD=timetomixdrinksandnotchangepasswords
+      - LAVALINK_SERVER_SOURCES_LOCAL=true
+      - LAVALINK_SERVER_SOURCES_HTTP=true
+      - LAVALINK_SERVER_SOURCES_YOUTUBE=false
+      - LAVALINK_SERVER_SOURCES_BANDCAMP=false
+      - LAVALINK_SERVER_SOURCES_SOUNDCLOUD=false
+      - LAVALINK_SERVER_SOURCES_TWITCH=false
+      - LAVALINK_SERVER_SOURCES_VIMEO=false
+    networks:
+      - jill-network
+    expose:
+      - "4440"
+    healthcheck:
+      test: 'curl -sf http://localhost:4440/version || exit 1'
+      interval: 30s
+      start_interval: 2s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  bot:
+    image: ghcr.io/grodz-bar/jill:latest
+    container_name: jill
+    restart: unless-stopped
+    user: "1000:1000"
+    depends_on:
+      lavalink:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false  # Optional: users can use .env file if they prefer
+    environment:
+      # ============================================
+      # CONFIGURE THESE TWO LINES
+      # ============================================
+      - DISCORD_TOKEN=paste_your_token_here
+      - GUILD_ID=paste_your_guild_id_here
+      # ============================================
+      # Leave everything below as-is
+      - LAVALINK_HOST=lavalink
+      - HTTP_SERVER_HOST=0.0.0.0
+      - CONFIG_PATH=/config
+      - DATA_PATH=/data
+      - MUSIC_PATH=/music
+    volumes:
+      # ============================================
+      # MUSIC LIBRARY
+      # Subfolders become playlists. Example:
+      #   /home/user/Music/
+      #     lofi/         -> playlist "lofi"
+      #     late-night/   -> playlist "late-night"
+      #
+      # Point to an existing library:
+      #   - /home/user/Music:/music:ro
+      #   - /mnt/nas/music:/music:ro
+      #   - C:\Users\You\Music:/music:ro  (Windows with WSL2)
+      #
+      # Or create a music/ folder inside Jill's main folder
+      - ./music:/music:ro
+      # ============================================
+      # Config and data folders (created automatically)
+      - ./config:/config
+      - ./data:/data
+      # ============================================
+    networks:
+      - jill-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4444/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+networks:
+  jill-network:
+    driver: bridge

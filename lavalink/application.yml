@@ -1,0 +1,25 @@
+server:
+  port: 4440
+  address: 0.0.0.0
+
+lavalink:
+  server:
+    password: "timetomixdrinksandnotchangepasswords"
+    sources:
+      local: true
+      http: true
+      youtube: false
+      bandcamp: false
+      soundcloud: false
+      twitch: false
+      vimeo: false
+    bufferDurationMs: 400
+    frameBufferDurationMs: 5000
+    playerUpdateInterval: 5
+    youtubeSearchEnabled: false
+    soundcloudSearchEnabled: false
+
+logging:
+  level:
+    root: INFO
+    lavalink: INFO

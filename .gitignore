@@ -1,0 +1,78 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Runtime state
+*.json
+data/
+
+# Python
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+
+# Python tooling
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Lavalink
+lavalink/logs/
+
+# Music files (local library)
+music/
+songs/
+audiofiles/
+*.opus
+*.mp3
+*.wav
+*.flac
+*.ogg
+*.m4a
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+nul
+*.swp
+*.swo
+*~
+
+# Claude
+.claude/
+
+# Binary files
+*.jar
+*.exe
+*.dll
+
+# Dev overrides
+docker-compose.dev.yml
+
+# Backup files
+*.bak
+
+# Python version managers
+.python-version
+
+# Misc

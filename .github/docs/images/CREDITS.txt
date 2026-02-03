@@ -1,0 +1,3 @@
+banner.png
+  Background art: Eder Muniz (https://edermunizz.itch.io/)
+  Font: CyberpunkWaifus (https://github.com/tokamach/newtab)

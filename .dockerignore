@@ -1,0 +1,62 @@
+# Docker build exclusions
+# These files are not needed in the container image
+
+# Sensitive files (user creates their own)
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+
+# Docker files (not needed inside container)
+Dockerfile
+docker-compose.yml
+docker-compose.dev.yml
+.dockerignore
+
+# Runtime directories (mounted as volumes)
+music/
+config/
+data/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+
+# Virtual environment (from local setup)
+venv/
+.python-version
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs
+.github/
+*.md
+
+# Native install only (Docker doesn't use these)
+lavalink/
+setup/
+*.bat
+*.sh
+
+# Claude
+.claude/
+
+# Logs/backups
+*.log
+*.bak

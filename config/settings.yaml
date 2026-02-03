@@ -1,0 +1,64 @@
+# Jill Bot Settings
+# Edit these values to customize behavior
+
+# Playback
+default_volume: 50          # 0-100: volume on startup/reconnect
+default_playlist: null      # Playlist to auto-load on startup (null = none)
+inactivity_timeout: 10      # 0+: minutes before auto-disconnect (0 to disable)
+presence_enabled: true      # Show "Listening to [song]" in bot status
+
+# Panel appearance
+panel:
+  enabled: true             # Set false to disable control panel entirely
+
+  color: 0xA03E72           # Hex value (A03E72 or 0xA03E72, use quotes for "#A03E72")
+
+  # Decorative emojis that cycle with each track (must be non-empty list)
+  drink_emojis: ['🍸', '🍹', '🍻', '🍸', '🍷', '🧉', '🍶', '🥃']
+  drink_emojis_enabled: true  # Set false to hide
+
+  # Progress bar
+  progress_bar_enabled: true
+  progress_bar_filled: "🟪"
+  progress_bar_empty: "⬛"
+
+  # Message shown when no album/artist/playlist info available
+  info_fallback_message: "mixing drinks and changing lives"
+
+  # Button visibility (set false to hide from panel)
+  shuffle_button: true
+  loop_button: true
+  playlist_button: true     # Auto-hidden if only 1 playlist exists
+
+  # Panel performance
+  progress_update_interval: 15  # seconds between progress bar updates (10-3600)
+  update_debounce_ms: 500       # wait time (ms) before updating after actions
+                                # higher = less flicker, slower response
+  recreate_interval: 30         # minutes before auto-recreating panel (0 to disable)
+                                # recreating prevents Discord lag from many edits
+
+# UI timing
+ui:
+  extended_auto_delete: 90  # seconds before /queue, /playlists, /np auto-delete (0 = never)
+  brief_auto_delete: 10     # seconds before error/confirmation messages auto-delete (0 = never)
+
+# Slash command availability (set false to disable)
+commands:
+  shuffle_command: true
+  loop_command: true
+  rescan_command: true
+
+# Queue/playlist display
+queue_display_size: 15      # 1-50: tracks shown per page in /queue
+playlists_display_size: 15  # 1-50: playlists shown per page in /playlists
+
+# Library scanning
+auto_rescan: true           # Check for new/changed music files on startup
+# Logging (LOG_LEVEL env var overrides this)
+logging:
+  level: "verbose"          # minimal, verbose, or debug
+
+# Infrastructure (advanced)
+# Lavalink is the audio server that streams music to Discord.
+# By default, Jill stops Lavalink when she shuts down.
+kill_lavalink_on_shutdown: true  # Set false if sharing one Lavalink between multiple bots

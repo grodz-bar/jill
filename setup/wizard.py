@@ -231,9 +231,9 @@ def run_wizard(project_root: Path = None) -> bool:
     print("Next steps:")
     print("  1. Add music to the music/ folder (subfolders become playlists)")
     if sys.platform == "win32":
-        print("  2. Run: start-jill-win.bat")
+        print("  2. Run: START-jill-win.bat")
     else:
-        print("  2. Run: ./start-jill-linux.sh")
+        print("  2. Run: ./START-jill-linux.sh")
     print()
 
     return True

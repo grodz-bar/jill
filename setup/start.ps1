@@ -1,7 +1,7 @@
 # Jill Launcher - Windows PowerShell
 #
 # This script starts Lavalink and the bot with proper health checking.
-# Called by start-jill-win.bat (which handles ExecutionPolicy bypass)
+# Called by START-jill-win.bat (which handles ExecutionPolicy bypass)
 
 #Requires -Version 5.1
 

@@ -1,0 +1,15 @@
+# Force LF line endings for files that run on Linux/Docker
+*.sh text eol=lf
+entrypoint.sh text eol=lf
+
+# Windows files can use native line endings
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Common files - normalize to LF
+*.py text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.json text eol=lf

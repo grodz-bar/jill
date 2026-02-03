@@ -59,7 +59,6 @@ services:
     environment:
       # ============================================
       # CONFIGURE THESE TWO LINES
-      # ============================================
       - DISCORD_TOKEN=paste_your_token_here
       - GUILD_ID=paste_your_guild_id_here
       # ============================================

@@ -134,7 +134,7 @@
   - Code changes: `docker-compose up -d --build`
   - Config changes: `docker-compose restart jill`
 
-- **"Your kernel does not support memory limit capabilities..." warning (Raspberry Pi)**: Harmless, safe to ignore.
+- **"`Your kernel does not support memory limit capabilities...`" warning (Rasp Pi)**: Harmless, safe to ignore.
 
 ---
 

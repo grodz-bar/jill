@@ -69,6 +69,7 @@ services:
       # Leave everything below as-is
       - LAVALINK_HOST=lavalink
       - HTTP_SERVER_HOST=0.0.0.0
+      - HTTP_SERVER_URL_HOST=jill
       - CONFIG_PATH=/config
       - DATA_PATH=/data
       - MUSIC_PATH=/music

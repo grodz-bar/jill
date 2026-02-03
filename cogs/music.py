@@ -825,7 +825,7 @@ class Music(ResponseMixin, commands.Cog):
             folder_name = ROOT_PLAYLIST_NAME
         else:
             folder_name = self.bot.library.get_playlist_path(playlist_name).name
-        http_url = f"http://{self.bot.http_host}:{self.bot.http_port}/files/{quote(folder_name, safe='')}/{quote(track.name, safe='')}"
+        http_url = f"http://{self.bot.http_url_host}:{self.bot.http_port}/files/{quote(folder_name, safe='')}/{quote(track.name, safe='')}"
         try:
             tracks = await player.fetch_tracks(http_url)
             if tracks:

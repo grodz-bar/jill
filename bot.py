@@ -50,7 +50,7 @@ def _sanitize_env_vars() -> None:
     env_vars = [
         # Critical (module-level constants with int() conversion)
         "DISCORD_TOKEN", "GUILD_ID",
-        "HTTP_SERVER_HOST", "HTTP_SERVER_PORT",
+        "HTTP_SERVER_HOST", "HTTP_SERVER_PORT", "HTTP_SERVER_URL_HOST",
         "LAVALINK_HOST", "LAVALINK_PORT", "LAVALINK_PASSWORD",
         "MUSIC_PATH", "DATA_PATH", "CONFIG_PATH",
         # Config overrides (int conversions)
@@ -288,6 +288,7 @@ METADATA_CACHE_PATH = DATA_PATH / "metadata"
 CONFIG_PATH = Path(os.getenv("CONFIG_PATH") or str(_bot_dir / "config"))
 HTTP_HOST = os.getenv("HTTP_SERVER_HOST", "127.0.0.1")
 HTTP_PORT = int(os.getenv("HTTP_SERVER_PORT", "4444"))
+HTTP_URL_HOST = os.getenv("HTTP_SERVER_URL_HOST") or HTTP_HOST
 LAVALINK_HOST = os.getenv("LAVALINK_HOST", "127.0.0.1")
 LAVALINK_PORT = int(os.getenv("LAVALINK_PORT", "4440"))
 LAVALINK_PASSWORD = os.getenv("LAVALINK_PASSWORD", "timetomixdrinksandnotchangepasswords")
@@ -444,6 +445,7 @@ class MusicBot(commands.Bot):
         # Store config as instance attributes for cog access
         self.http_host = HTTP_HOST
         self.http_port = HTTP_PORT
+        self.http_url_host = HTTP_URL_HOST
         self.metadata_cache_path = METADATA_CACHE_PATH
 
         # Phase 7: Control panel

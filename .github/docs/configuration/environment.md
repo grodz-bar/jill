@@ -112,6 +112,7 @@ Lavalink connection settings. Defaults work for standard deployments.
 | `LAVALINK_PORT` | 4440 | 4440 | Lavalink port |
 | `LAVALINK_PASSWORD` | timetomixdrinksandnotchangepasswords | (same) | Lavalink auth |
 | `HTTP_SERVER_HOST` | 127.0.0.1 | 0.0.0.0 | Bot's audio server bind |
+| `HTTP_SERVER_URL_HOST` | (HTTP_SERVER_HOST) | jill | Hostname in audio URLs |
 | `HTTP_SERVER_PORT` | 4444 | 4444 | Bot's audio server port |
 | `KILL_LAVALINK_ON_SHUTDOWN` | true | true | Stop Lavalink with bot |
 

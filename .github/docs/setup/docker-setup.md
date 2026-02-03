@@ -8,6 +8,7 @@ Docker is the easiest way to run Jill. One file, two lines to edit, done.
 
 ### Requirements
 
+- 64-bit system (amd64/arm64)
 - Docker Engine 25.0+ or Docker Desktop 4.27+
 - Docker Compose 2.24.0+
 - Discord bot token and guild ID from [Discord Setup](discord-setup.md)

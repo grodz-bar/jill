@@ -8,6 +8,7 @@ This guide walks you through setting up Jill on Linux.
 
 ### Requirements
 
+- 64-bit system (amd64/arm64)
 - Python 3.11+ (3.13+ recommended)
 - Java 17+ (21+ recommended)
 

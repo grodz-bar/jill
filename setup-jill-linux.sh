@@ -28,7 +28,7 @@ echo "[+] java found"
 
 # Check if existing venv is broken (e.g., system Python was upgraded)
 if [[ -d "venv" ]]; then
-    if [[ ! -e "venv/bin/python" ]] || ! "venv/bin/python" -c "import sys" 2>/dev/null; then
+    if [[ ! -f "venv/bin/activate" ]] || [[ ! -e "venv/bin/python" ]] || ! "venv/bin/python" -c "import sys" 2>/dev/null; then
         echo "rebuilding virtual environment..."
         rm -rf venv
     fi

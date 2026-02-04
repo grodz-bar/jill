@@ -29,22 +29,24 @@ Docker is the easiest way to run Jill. One file, two lines to edit, done.
 
 **1. Download**
 
-Copy from [GitHub](../../../docker-compose.yml) or right-click [docker-compose.yml](https://raw.githubusercontent.com/grodz-bar/jill/main/docker-compose.yml) → **Save Link As...**
-
-> **Terminal:** `curl -LO https://raw.githubusercontent.com/grodz-bar/jill/main/docker-compose.yml`
+```bash
+curl -LO https://raw.githubusercontent.com/grodz-bar/jill/main/docker-compose.yml
+```
 
 <br>
 
-**2. Configure** - Open `docker-compose.yml` and find:
+**2. Configure**
 
-> **Terminal:** `nano docker-compose.yml`
-
-```yaml
-- DISCORD_TOKEN=paste_your_token_here
-- GUILD_ID=paste_your_guild_id_here
+```bash
+nano docker-compose.yml
 ```
 
-Replace with your actual token and guild ID.
+Find and replace with your actual values:
+
+```yaml
+- DISCORD_TOKEN=paste_your_token_here  # <-- your bot token
+- GUILD_ID=paste_your_guild_id_here    # <-- your server ID
+```
 
 > [!TIP]
 > `GUILD_ID` makes slash commands appear instantly instead of taking up to an hour.
@@ -58,15 +60,15 @@ Replace with your actual token and guild ID.
 
 Edit the music volume in `docker-compose.yml` to point to your library (pick one):
 
-> **Terminal:** `nano docker-compose.yml`
-
 ```yaml
 - /home/user/Music:/music:ro    # existing library
 - /mnt/nas/music:/music:ro      # NAS library
 - ./music:/music:ro             # new folder (default)
 ```
 
-Subfolders become playlists. Supported formats: MP3, FLAC, OGG, OPUS, M4A, WAV, AAC.
+> Subfolders become playlists. Supported formats: MP3, FLAC, OGG, OPUS, M4A, WAV, AAC.
+>
+> See [Music Library](../usage/music-library.md) for details.
 
 <br>
 
@@ -79,9 +81,6 @@ docker compose logs -f jill  # Watch for: "time to mix drinks and change lives"
 
 > [!TIP]
 > Using older Docker? Replace `docker compose` with `docker-compose` throughout.
-
-> [!NOTE]
-> Running without Compose? Use `docker run -e PUID=$(id -u) -e PGID=$(id -g) ...` to match your user.
 
 ---
 

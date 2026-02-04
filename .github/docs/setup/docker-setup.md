@@ -48,10 +48,9 @@ Find and replace with your actual values:
 - GUILD_ID=paste_your_guild_id_here    # <-- your server ID
 ```
 
-> [!TIP]
-> `GUILD_ID` makes slash commands appear instantly instead of taking up to an hour.
-
 > [!NOTE]
+> `GUILD_ID` makes slash commands appear instantly instead of taking up to an hour.
+>
 > Jill is single-server - run separate instances for multiple servers.
 
 <br>
@@ -78,9 +77,6 @@ Edit the music volume in `docker-compose.yml` to point to your library (pick one
 docker compose up -d
 docker compose logs -f jill  # Watch for: "time to mix drinks and change lives"
 ```
-
-> [!TIP]
-> Using older Docker? Replace `docker compose` with `docker-compose` throughout.
 
 ---
 

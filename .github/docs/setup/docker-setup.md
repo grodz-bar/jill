@@ -15,15 +15,29 @@ Docker is the easiest way to run Jill. One file, two lines to edit, done.
 
 ---
 
+### Installing Dependencies
+
+- Install [Docker Engine + Compose](https://docs.docker.com/engine/install/)
+
+- **Debian / Ubuntu / Raspberry Pi:** `sudo apt install curl nano`
+- **Arch Linux:** `sudo pacman -Syu curl nano`
+- **Fedora:** `sudo dnf install nano`
+
+---
+
 ### Setup
 
 **1. Download**
 
 Copy from [GitHub](../../../docker-compose.yml) or right-click [docker-compose.yml](https://raw.githubusercontent.com/grodz-bar/jill/main/docker-compose.yml) → **Save Link As...**
 
+> **Terminal:** `curl -LO https://raw.githubusercontent.com/grodz-bar/jill/main/docker-compose.yml`
+
 <br>
 
 **2. Configure** - Open `docker-compose.yml` and find:
+
+> **Terminal:** `nano docker-compose.yml`
 
 ```yaml
 - DISCORD_TOKEN=paste_your_token_here
@@ -43,6 +57,8 @@ Replace with your actual token and guild ID.
 **3. Set Up Music**
 
 Edit the music volume in `docker-compose.yml` to point to your library (pick one):
+
+> **Terminal:** `nano docker-compose.yml`
 
 ```yaml
 - /home/user/Music:/music:ro    # existing library
@@ -107,17 +123,6 @@ Docker Compose creates three folders:
 ---
 
 ### Troubleshooting
-
-<details>
-<summary><strong>"cannot connect to lavalink"</strong></summary>
-
-Lavalink needs time to start. Try:
-
-```bash
-docker compose down && docker compose up -d
-```
-
-</details>
 
 <details>
 <summary><strong>"Permission denied" on volumes</strong></summary>

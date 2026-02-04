@@ -16,41 +16,9 @@ This guide walks you through setting up Jill on Linux.
 
 ### Installing Dependencies
 
-<details>
-<summary><strong>Debian / Ubuntu</strong></summary>
-
-```bash
-sudo apt install python3 python3-venv openjdk-25-jre-headless unzip
-```
-
-</details>
-
-<details>
-<summary><strong>Raspberry Pi</strong></summary>
-
-```bash
-sudo apt install python3 python3-venv openjdk-17-jre-headless unzip
-```
-
-</details>
-
-<details>
-<summary><strong>Arch Linux</strong></summary>
-
-```bash
-sudo pacman -S python jre-openjdk unzip
-```
-
-</details>
-
-<details>
-<summary><strong>Fedora</strong></summary>
-
-```bash
-sudo dnf install python3 java-25-openjdk-headless unzip
-```
-
-</details>
+- **Debian / Ubuntu / Raspberry Pi:** `sudo apt install python3 python3-venv default-jre-headless unzip curl nano`
+- **Arch Linux:** `sudo pacman -Syu python jre-openjdk unzip curl nano`
+- **Fedora:** `sudo dnf install python3 java-latest-openjdk-headless unzip nano`
 
 > **Verify:** `python3 --version` and `java -version`
 
@@ -62,7 +30,7 @@ sudo dnf install python3 java-25-openjdk-headless unzip
 > This section is for experienced users who want to get running fast. If you're new to this, skip to [Step-by-Step Setup](#step-by-step-setup).
 
 1. Install Python 3.11+ and Java 17+ (see [Installing Dependencies](#installing-dependencies))
-2. Download from [releases](https://github.com/grodz-bar/jill/releases): `unzip jill-*.zip && cd jill`
+2. Download [jill-linux.zip](https://github.com/grodz-bar/jill/releases/latest/download/jill-linux.zip): `unzip jill-linux.zip && cd jill`
 3. Make scripts executable: `chmod +x setup-jill-linux.sh START-jill-linux.sh`
 4. Run setup: `./setup-jill-linux.sh`
 5. Add music to `music/` subfolders, or [link your existing library](../usage/music-library.md)
@@ -75,9 +43,11 @@ sudo dnf install python3 java-25-openjdk-headless unzip
 
 **1. Get the Files**
 
-- Go to the [releases page](https://github.com/grodz-bar/jill/releases)
-- Download the latest `.zip` file
-- Extract it: `unzip jill-*.zip && cd jill`
+- Download [jill-linux.zip](https://github.com/grodz-bar/jill/releases/latest/download/jill-linux.zip)
+
+> **Terminal:** `curl -LO https://github.com/grodz-bar/jill/releases/latest/download/jill-linux.zip`
+
+- Extract it: `unzip jill-linux.zip && cd jill`
 
 <br>
 
@@ -102,6 +72,8 @@ chmod +x setup-jill-linux.sh START-jill-linux.sh
 **3. Add Your Music**
 
 Create folders in `music/` for your playlists, or use your existing library. See [Music Library](../usage/music-library.md) for options.
+
+> **Example:** `mkdir music/fez-ost music/celeste-ost`
 
 <br>
 
@@ -136,13 +108,17 @@ Head to Discord and summon Jill with `/play`.
 
 Config files in `config/` are auto-generated on first run. See [Settings Reference](../configuration/settings.md).
 
+> **Example:** `nano config/settings.yaml`
+
 ---
 
 ### Running as a Service (Optional)
 
-To run Jill automatically on boot, create a systemd service.
+To run Jill automatically on boot, create a systemd service:
 
-Create `/etc/systemd/system/jill.service` with the following content (adjust paths and username):
+`sudo nano /etc/systemd/system/jill.service`
+
+Paste the following (adjust paths and username):
 
 ```ini
 [Unit]

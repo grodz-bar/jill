@@ -20,7 +20,7 @@ This guide covers Windows installation.
 > This section is for experienced users who want to get running fast. If you're new to this, skip to [Step-by-Step Setup](#step-by-step-setup).
 
 1. Install [Python 3.11+](https://www.python.org/downloads/) (click **"Download Python install manager"**) and [Java 17+](https://adoptium.net/temurin/releases/?version=25&os=windows&arch=x64) (Select ***JRE***, download the ***.msi***)
-2. Download and extract Jill from the [releases page](https://github.com/grodz-bar/jill/releases)
+2. Download and extract [jill-windows.zip](https://github.com/grodz-bar/jill/releases/latest/download/jill-windows.zip)
 3. Double-click `setup-jill-win.bat`
 4. Add music to `music\` subfolders, or [link your existing library](../usage/music-library.md)
 5. Double-click `START-jill-win.bat`
@@ -66,9 +66,8 @@ java -version
 
 **3. Get Jill**
 
-1. Go to the [releases page](https://github.com/grodz-bar/jill/releases)
-2. Download the latest `.zip` file
-3. Extract to a folder of your choice (e.g., `C:\Jill`)
+1. Download [jill-windows.zip](https://github.com/grodz-bar/jill/releases/latest/download/jill-windows.zip)
+2. Extract to a folder of your choice (e.g., `C:\Jill`)
 
 <br>
 

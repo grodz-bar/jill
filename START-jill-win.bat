@@ -6,7 +6,7 @@ cd /d "%~dp0"
 
 REM Check if setup was run
 if not exist "venv\Scripts\python.exe" (
-    echo [x] virtual environment not found.
+    powershell -Command "Write-Host '[x] virtual environment not found.' -ForegroundColor Red"
     echo     run: setup-jill-win.bat
     pause
     exit /b 1
@@ -15,7 +15,7 @@ if not exist "venv\Scripts\python.exe" (
 REM Check if venv is broken (e.g., Python was uninstalled)
 venv\Scripts\python.exe --version >nul 2>&1
 if errorlevel 1 (
-    echo [x] virtual environment is broken.
+    powershell -Command "Write-Host '[x] virtual environment is broken.' -ForegroundColor Red"
     echo     run: setup-jill-win.bat
     pause
     exit /b 1
@@ -24,7 +24,7 @@ if errorlevel 1 (
 REM Check Java and capture its path (PowerShell may have different PATH)
 where java >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [x] java 17+ is required for lavalink.
+    powershell -Command "Write-Host '[x] java 17+ is required for lavalink.' -ForegroundColor Red"
     echo.
     echo     1. download from: https://adoptium.net/temurin/releases/
     echo        select: Windows x64, JRE, version 17+, .msi installer
@@ -40,6 +40,7 @@ REM Launch PowerShell script (handles ExecutionPolicy, uses JAVA_PATH if needed)
 powershell -ExecutionPolicy Bypass -File "%~dp0setup\start.ps1"
 if %errorlevel% neq 0 (
     echo.
-    echo startup failed. see error above.
+    powershell -Command "Write-Host '[x] startup failed. see error above.' -ForegroundColor Red"
     pause
+    exit /b 1
 )

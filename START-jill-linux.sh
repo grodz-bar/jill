@@ -9,6 +9,7 @@ RED='\e[31m'
 YELLOW='\e[2;33m'
 CYAN='\e[36m'
 MAGENTA='\e[35m'
+LTBLUE='\e[94m'
 NC='\e[0m'  # No Color
 
 # Track Lavalink PID for cleanup
@@ -16,7 +17,7 @@ LAVALINK_PID=""
 
 cleanup() {
     if [[ -n "$LAVALINK_PID" ]] && kill -0 "$LAVALINK_PID" 2>/dev/null; then
-        echo "stopping lavalink..."
+        echo -e "${LTBLUE}[.] stopping lavalink...${NC}"
         kill "$LAVALINK_PID" 2>/dev/null
         wait "$LAVALINK_PID" 2>/dev/null
     fi
@@ -43,7 +44,7 @@ fi
 
 # Check Java version
 if ! command -v java >/dev/null 2>&1; then
-    echo -e "${RED}[x] java 17+ required for lavalink.${NC}"
+    echo -e "${RED}[x] java 17+ is required for lavalink.${NC}"
     echo ""
     echo "    Ubuntu/Debian/Pi: sudo apt install openjdk-17-jre"
     echo "    Fedora:          sudo dnf install java-17-openjdk"
@@ -51,7 +52,7 @@ if ! command -v java >/dev/null 2>&1; then
     exit 1
 fi
 
-java_version=$(java -version 2>&1 | grep -o 'version "[0-9]*' | grep -o '[0-9]*' | head -1)
+java_version=$(java -version 2>&1 | grep -oE '(version|release) "[0-9]+' | grep -o '[0-9]*' | head -1)
 if [[ -z "$java_version" ]]; then
     echo -e "${YELLOW}[!] could not determine java version${NC}"
 elif [[ "$java_version" -lt 17 ]]; then
@@ -83,7 +84,7 @@ echo -e "${CYAN}[+] application.yml found${NC}"
 export LAVALINK_PASSWORD="${LAVALINK_PASSWORD:-timetomixdrinksandnotchangepasswords}"
 if [[ -f ".env" ]]; then
     # Strip trailing comment (space + # + anything) - matches .env.example format
-    env_password=$(grep -E "^LAVALINK_PASSWORD=" .env 2>/dev/null | cut -d'=' -f2- | sed 's/[[:space:]][[:space:]]*#.*//')
+    env_password=$(grep -E "^LAVALINK_PASSWORD=" .env 2>/dev/null | cut -d'=' -f2- | sed "s/[[:space:]][[:space:]]*#.*//; s/^[\"']//; s/[\"']$//")
     if [[ -n "$env_password" ]]; then
         export LAVALINK_PASSWORD="$env_password"
     fi
@@ -93,7 +94,7 @@ fi
 export LAVALINK_PORT="${LAVALINK_PORT:-2333}"
 if [[ -f ".env" ]]; then
     # Strip trailing comment (space + # + anything) - matches .env.example format
-    env_port=$(grep -E "^LAVALINK_PORT=" .env 2>/dev/null | cut -d'=' -f2- | sed 's/[[:space:]][[:space:]]*#.*//')
+    env_port=$(grep -E "^LAVALINK_PORT=" .env 2>/dev/null | cut -d'=' -f2- | sed "s/[[:space:]][[:space:]]*#.*//; s/^[\"']//; s/[\"']$//")
     if [[ -n "$env_port" ]]; then
         export LAVALINK_PORT="$env_port"
     fi
@@ -103,7 +104,7 @@ fi
 # When true, kills stale Lavalink on startup. Set false if sharing Lavalink with other bots.
 export MANAGE_LAVALINK="${MANAGE_LAVALINK:-true}"
 if [[ -f ".env" ]]; then
-    env_manage=$(grep -E "^MANAGE_LAVALINK=" .env 2>/dev/null | cut -d'=' -f2- | sed 's/[[:space:]][[:space:]]*#.*//')
+    env_manage=$(grep -E "^MANAGE_LAVALINK=" .env 2>/dev/null | cut -d'=' -f2- | sed "s/[[:space:]][[:space:]]*#.*//; s/^[\"']//; s/[\"']$//")
     if [[ -n "$env_manage" ]]; then
         export MANAGE_LAVALINK="$env_manage"
     fi
@@ -112,7 +113,7 @@ fi
 # Load HTTP port from .env if present
 export HTTP_SERVER_PORT="${HTTP_SERVER_PORT:-2334}"
 if [[ -f ".env" ]]; then
-    env_http_port=$(grep -E "^HTTP_SERVER_PORT=" .env 2>/dev/null | cut -d'=' -f2- | sed 's/[[:space:]][[:space:]]*#.*//')
+    env_http_port=$(grep -E "^HTTP_SERVER_PORT=" .env 2>/dev/null | cut -d'=' -f2- | sed "s/[[:space:]][[:space:]]*#.*//; s/^[\"']//; s/[\"']$//")
     if [[ -n "$env_http_port" ]]; then
         export HTTP_SERVER_PORT="$env_http_port"
     fi
@@ -146,15 +147,15 @@ try:
     yml_pass = cfg.get('lavalink', {}).get('server', {}).get('password')
 
     if yml_port is not None and str(yml_port).strip() != env_port:
-        print(f'[x] port mismatch: LAVALINK_PORT={env_port} but application.yml has port: {yml_port}')
+        print(f'\033[91m[x] port mismatch: LAVALINK_PORT={env_port} but application.yml has port: {yml_port}\033[0m')
         print('    fix in .env or lavalink/application.yml')
         sys.exit(1)
     if yml_pass is not None and yml_pass.strip() != env_pass:
-        print('[x] password mismatch: LAVALINK_PASSWORD does not match application.yml')
+        print('\033[91m[x] password mismatch: LAVALINK_PASSWORD does not match application.yml\033[0m')
         print('    fix in .env or lavalink/application.yml')
         sys.exit(1)
 except yaml.YAMLError:
-    print('[!] warning: could not parse application.yml')
+    print('\033[93m[!] warning: could not parse application.yml\033[0m')
 except FileNotFoundError:
     pass
 except Exception:
@@ -176,6 +177,7 @@ is_port_in_use() {
 }
 
 # Health check using Python (no curl dependency, reads password from env to avoid injection)
+# Returns: "ready", "auth_failed", or "waiting" on stdout; exit 0 for ready, 1 otherwise
 is_lavalink_ready() {
     venv/bin/python -c "
 import urllib.request
@@ -186,15 +188,20 @@ port = os.environ.get('LAVALINK_PORT', '2333')
 try:
     req = urllib.request.Request(f'http://127.0.0.1:{port}/version', headers={'Authorization': password})
     urllib.request.urlopen(req, timeout=2)
+    print('ready')
     sys.exit(0)
 except urllib.error.HTTPError as e:
-    print(f'HTTP {e.code}: {e.reason}', file=sys.stderr)
+    if e.code == 401:
+        print('auth_failed')
+    else:
+        print('waiting')
     sys.exit(1)
 except urllib.error.URLError as e:
-    # Connection refused is expected during startup, don't print
+    # Connection refused is expected during startup
+    print('waiting')
     sys.exit(1)
 except Exception as e:
-    print(f'Unexpected: {type(e).__name__}: {e}', file=sys.stderr)
+    print('waiting')
     sys.exit(1)
 "
 }
@@ -204,8 +211,14 @@ if is_port_in_use "$LAVALINK_PORT"; then
     echo -e "${YELLOW}[!] port $LAVALINK_PORT may be in use by another process${NC}"
 fi
 
-if is_lavalink_ready; then
+status=$(is_lavalink_ready 2>/dev/null) || true
+: "${status:=waiting}"
+if [[ "$status" == "ready" ]]; then
     echo -e "${CYAN}[+] lavalink already running${NC}"
+elif [[ "$status" == "auth_failed" ]]; then
+    echo -e "${RED}[x] existing lavalink has wrong password${NC}"
+    echo "    password in .env must match lavalink/application.yml"
+    exit 1
 else
     # Kill any stale Lavalink process on our port (may be unresponsive zombie)
     # Respects MANAGE_LAVALINK setting - skip if sharing Lavalink with other bots
@@ -233,7 +246,18 @@ else
     echo -ne "${CYAN}[.] waiting for lavalink${NC}"
     elapsed=0
     timeout=90  # Longer timeout for slower devices (Pi)
-    while ! is_lavalink_ready && [[ $elapsed -lt $timeout ]]; do
+    while [[ $elapsed -lt $timeout ]]; do
+        status=$(is_lavalink_ready 2>/dev/null) || true
+        : "${status:=waiting}"
+        if [[ "$status" == "ready" ]]; then
+            break
+        fi
+        if [[ "$status" == "auth_failed" ]]; then
+            echo
+            echo -e "${RED}[x] lavalink auth failed - check LAVALINK_PASSWORD${NC}"
+            echo "    password in .env must match lavalink/application.yml"
+            exit 1
+        fi
         # Check if process died
         if ! kill -0 "$LAVALINK_PID" 2>/dev/null; then
             echo

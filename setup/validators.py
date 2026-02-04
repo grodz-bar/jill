@@ -72,7 +72,7 @@ def check_java_version(min_version: int = 17) -> tuple[bool, str]:
         # Parse version from output like:
         # openjdk version "17.0.1" or java version "21.0.1"
         # Also handles legacy 1.x format: java version "1.8.0_321"
-        match = re.search(r'version "(\d+)(?:\.(\d+))?', output)
+        match = re.search(r'(?:version|release) "(\d+)(?:\.(\d+))?', output)
         if match:
             major = int(match.group(1))
             # Java 8 and earlier used 1.x format (1.8 = Java 8)

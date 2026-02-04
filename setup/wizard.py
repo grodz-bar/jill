@@ -17,9 +17,11 @@
 
 """Interactive setup wizard - stdlib only."""
 
+import os
 import shutil
 import stat
 import sys
+import tempfile
 from pathlib import Path
 
 from .validators import (
@@ -121,15 +123,23 @@ def run_wizard(project_root: Path = None) -> bool:
                         _print_status(True, "Using existing GUILD_ID from .env")
                     break
     else:
-        if env_example.exists():
-            shutil.copy(env_example, env_file)
-            _print_status(True, "Created .env from template")
-        else:
-            env_file.touch()
-            _print_status(True, "Created empty .env file")
-        # Restrict .env permissions on Linux (contains token)
+        # Set restrictive umask on Linux before creating .env (contains token)
         if sys.platform != "win32":
-            env_file.chmod(stat.S_IRUSR | stat.S_IWUSR)  # 0600
+            old_umask = os.umask(0o077)
+        try:
+            if env_example.exists():
+                shutil.copyfile(env_example, env_file)  # copyfile, not copy (doesn't preserve perms)
+                _print_status(True, "Created .env from template")
+            else:
+                env_file.touch()
+                _print_status(True, "Created empty .env file")
+        except OSError as e:
+            print(f"\033[91m[x] Failed to create .env file: {e}\033[0m")
+            print("    Check that you have write permission in the jill directory.")
+            return False
+        finally:
+            if sys.platform != "win32":
+                os.umask(old_umask)
 
     print()
 
@@ -157,7 +167,7 @@ def run_wizard(project_root: Path = None) -> bool:
                 _update_env_value(env_file, "DISCORD_TOKEN", token)
                 break
             else:
-                print(f"[!] {msg}")
+                print(f"\033[93m[!] {msg}\033[0m")
                 print("Try again or Ctrl+C to cancel.")
 
         print()
@@ -224,11 +234,12 @@ def run_wizard(project_root: Path = None) -> bool:
 
         if reserved_ports:
             port_list = ", ".join(str(p) for p in sorted(reserved_ports))
-            _print_status(False, f"Port {port_list} in reserved range")
+            port_word = "Port" if len(reserved_ports) == 1 else "Ports"
+            _print_status(False, f"{port_word} {port_list} in reserved range")
             print("    currently reserved port ranges:")
             for start, end in excluded_ranges:
                 print(f"    {start}-{end}")
-            print("    change ports in .env or try restarting your computer")
+            print(f"    change {port_word.lower()} in .env or try restarting your computer")
             print()
             print("Fix ports and run setup again.")
             return False
@@ -290,12 +301,31 @@ def _print_status(ok: bool, msg: str, warning_only: bool = False):
         msg: Message to display
         warning_only: If True and ok is False, prints [!] instead of [x]
     """
+    # ANSI colors (work on both Linux and Windows 10+)
+    GREEN = "\033[92m"
+    RED = "\033[91m"
+    YELLOW = "\033[93m"
+    NC = "\033[0m"
+
     if ok:
-        print(f"[+] {msg}")
+        print(f"{GREEN}[+] {msg}{NC}")
     elif warning_only:
-        print(f"[!] {msg}")
+        print(f"{YELLOW}[!] {msg}{NC}")
     else:
-        print(f"[x] {msg}")
+        print(f"{RED}[x] {msg}{NC}")
+
+
+def _write_atomic(file_path: Path, content: str) -> None:
+    """Write content atomically using temp-file-then-rename."""
+    temp_fd, temp_path = tempfile.mkstemp(dir=file_path.parent, suffix='.tmp')
+    try:
+        f = os.fdopen(temp_fd, 'w', encoding='utf-8')
+    except Exception:
+        os.close(temp_fd)
+        raise
+    with f:
+        f.write(content)
+    Path(temp_path).replace(file_path)
 
 
 def _update_env_value(env_file: Path, key: str, value: str):
@@ -308,30 +338,36 @@ def _update_env_value(env_file: Path, key: str, value: str):
         key: Environment variable name
         value: Value to set
     """
-    if not env_file.exists():
-        env_file.write_text(f"{key}={value}\n", encoding='utf-8')
-        return
+    try:
+        if not env_file.exists():
+            _write_atomic(env_file, f"{key}={value}\n")
+            return
 
-    lines = env_file.read_text(encoding='utf-8').splitlines()
-    found = False
+        lines = env_file.read_text(encoding='utf-8').splitlines()
+        found = False
 
-    for i, line in enumerate(lines):
-        # Check for active key
-        if line.startswith(f"{key}="):
-            lines[i] = f"{key}={value}"
-            found = True
-            break
-        # Check for commented key (various formats)
-        stripped = line.lstrip('#').lstrip()
-        if stripped.startswith(f"{key}="):
-            lines[i] = f"{key}={value}"
-            found = True
-            break
+        for i, line in enumerate(lines):
+            # Check for active key
+            if line.startswith(f"{key}="):
+                lines[i] = f"{key}={value}"
+                found = True
+                break
+            # Check for commented key (various formats)
+            stripped = line.lstrip('#').lstrip()
+            if stripped.startswith(f"{key}="):
+                lines[i] = f"{key}={value}"
+                found = True
+                break
 
-    if not found:
-        lines.append(f"{key}={value}")
+        if not found:
+            lines.append(f"{key}={value}")
 
-    env_file.write_text("\n".join(lines) + "\n", encoding='utf-8')
+        _write_atomic(env_file, "\n".join(lines) + "\n")
+    except OSError as e:
+        print(f"\033[91m[x] Failed to write to {env_file}: {e}\033[0m")
+        print("    Check disk space and file permissions.")
+        print("    You may need to re-enter your credentials when you retry.")
+        sys.exit(1)
 
 
 def _get_env_value(env_file: Path, key: str, default: str) -> str:

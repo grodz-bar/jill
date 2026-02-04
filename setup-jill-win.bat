@@ -13,17 +13,17 @@ py --version >nul 2>&1 && set PYTHON_CMD=py
 if not defined PYTHON_CMD python --version >nul 2>&1 && set PYTHON_CMD=python
 
 if not defined PYTHON_CMD (
-    echo [x] python is required.
+    powershell -Command "Write-Host '[x] Python is required.' -ForegroundColor Red"
     echo     download from: https://www.python.org/downloads/
     pause
     exit /b 1
 )
-echo [+] python found
+powershell -Command "Write-Host '[+] Python found' -ForegroundColor Green"
 
 REM Check Java
 java -version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [x] java 17+ is required for lavalink.
+    powershell -Command "Write-Host '[x] Java 17+ is required for Lavalink.' -ForegroundColor Red"
     echo.
     echo     1. download from: https://adoptium.net/temurin/releases/
     echo        select: Windows x64, JRE, version 17+, .msi installer
@@ -32,27 +32,27 @@ if %errorlevel% neq 0 (
     pause
     exit /b 1
 )
-echo [+] java found
+powershell -Command "Write-Host '[+] Java found' -ForegroundColor Green"
 
 REM Check if existing venv is broken (missing python.exe, won't run, or no pip)
 if exist "venv" (
     if not exist "venv\Scripts\python.exe" (
-        echo rebuilding virtual environment...
+        powershell -Command "Write-Host '[!] Rebuilding virtual environment...' -ForegroundColor Yellow"
         rd /s /q "venv" 2>nul
         if exist "venv" rd /s /q "venv" 2>nul
         if exist "venv" (
-            echo [x] could not delete venv folder. close any programs using it.
+            powershell -Command "Write-Host '[x] Could not delete venv folder. Close any programs using it.' -ForegroundColor Red"
             pause
             exit /b 1
         )
     ) else (
         venv\Scripts\python.exe -c "import pip" >nul 2>&1
         if errorlevel 1 (
-            echo rebuilding virtual environment...
+            powershell -Command "Write-Host '[!] Rebuilding virtual environment...' -ForegroundColor Yellow"
             rd /s /q "venv" 2>nul
             if exist "venv" rd /s /q "venv" 2>nul
             if exist "venv" (
-                echo [x] could not delete venv folder. close any programs using it.
+                powershell -Command "Write-Host '[x] Could not delete venv folder. Close any programs using it.' -ForegroundColor Red"
                 pause
                 exit /b 1
             )
@@ -62,19 +62,19 @@ if exist "venv" (
 
 REM Create venv if missing (or was just deleted above)
 if not exist "venv" (
-    echo creating virtual environment...
+    powershell -Command "Write-Host '[.] Creating virtual environment...' -ForegroundColor Cyan"
     %PYTHON_CMD% -m venv venv
 ) else (
-    echo [+] virtual environment found
+    powershell -Command "Write-Host '[+] Virtual environment found' -ForegroundColor Green"
 )
 
 REM Verify pip exists (some Python installs create venv without pip)
 venv\Scripts\python.exe -m pip --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo bootstrapping pip...
+    powershell -Command "Write-Host '[.] Bootstrapping pip...' -ForegroundColor Cyan"
     venv\Scripts\python.exe -m ensurepip --default-pip >nul 2>&1
     if %errorlevel% neq 0 (
-        echo [x] could not install pip in virtual environment.
+        powershell -Command "Write-Host '[x] Could not install pip in virtual environment.' -ForegroundColor Red"
         echo     delete the venv folder and re-run this script.
         echo     if that fails, reinstall python.
         pause
@@ -83,15 +83,21 @@ if %errorlevel% neq 0 (
 )
 
 REM Install dependencies
-echo installing dependencies...
+powershell -Command "Write-Host '[.] Installing dependencies...' -ForegroundColor Cyan"
 venv\Scripts\python.exe -m pip install -q -r requirements.txt
+if %errorlevel% neq 0 (
+    powershell -Command "Write-Host '[x] Failed to install dependencies' -ForegroundColor Red"
+    echo     check your internet connection and try again
+    pause
+    exit /b 1
+)
 
 REM Run Python setup wizard
 echo.
 venv\Scripts\python.exe -m setup
 if %errorlevel% neq 0 (
     echo.
-    echo setup did not complete successfully.
+    powershell -Command "Write-Host '[x] Setup did not complete successfully.' -ForegroundColor Red"
     pause
     exit /b 1
 )

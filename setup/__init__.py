@@ -25,8 +25,6 @@ from .validators import (
     check_disk_space,
 )
 from .download import download_lavalink
-from .health import wait_for_lavalink, is_lavalink_running
-
 __all__ = [
     "check_python_version",
     "check_java_version",
@@ -34,6 +32,4 @@ __all__ = [
     "check_port_available",
     "check_disk_space",
     "download_lavalink",
-    "wait_for_lavalink",
-    "is_lavalink_running",
 ]

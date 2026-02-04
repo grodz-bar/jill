@@ -20,6 +20,7 @@
 import asyncio
 import functools
 import os
+import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
@@ -170,7 +171,22 @@ tiers:
   owner:
     - rescan
 """
-        await asyncio.to_thread(self.config_path.write_text, content, encoding='utf-8')
+        def write_atomic():
+            temp_fd, temp_path = tempfile.mkstemp(dir=self.config_path.parent, suffix='.tmp')
+            try:
+                f = os.fdopen(temp_fd, 'w', encoding='utf-8')
+            except Exception:
+                os.close(temp_fd)
+                raise
+            try:
+                with f:
+                    f.write(content)
+                Path(temp_path).replace(self.config_path)
+            except Exception:
+                Path(temp_path).unlink(missing_ok=True)
+                raise
+
+        await asyncio.to_thread(write_atomic)
         logger.debug(f"generated {self.config_path.name}")
 
     def get_tier(self, command_name: str) -> str:

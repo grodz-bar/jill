@@ -55,7 +55,7 @@ Now you'll create a URL to invite Jill to your server.
 > [!TIP]
 > Without a Guild ID, slash commands can take up to an hour to appear.
 
-1. Enable **Developer Mode** - Discord Settings > App Settings > Advanced > Developer Mode ON
+1. Enable **Developer Mode** - click the gear icon (⚙️) → Advanced → Developer Mode ON
 2. Right-click your server's icon > **Copy Server ID** - this is your `GUILD_ID`
 
 ### Next Steps

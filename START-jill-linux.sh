@@ -23,7 +23,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo -e "${MAGENTA}=== JILL STARTUP ===${NC}"
+echo -e "${MAGENTA}=== jill startup ===${NC}"
 echo
 
 # Check venv
@@ -33,6 +33,13 @@ if [[ ! -f "venv/bin/activate" ]]; then
     exit 1
 fi
 echo -e "${CYAN}[+] virtual environment found${NC}"
+
+# Check venv Python is functional
+if [[ ! -e "venv/bin/python" ]] || ! "venv/bin/python" -c "import sys" 2>/dev/null; then
+    echo -e "${RED}[x] virtual environment is broken.${NC}"
+    echo "    run: ./setup-jill-linux.sh"
+    exit 1
+fi
 
 # Check Java version
 if ! command -v java >/dev/null 2>&1; then

@@ -19,7 +19,7 @@ This guide covers Windows installation.
 > [!TIP]
 > This section is for experienced users who want to get running fast. If you're new to this, skip to [Step-by-Step Setup](#step-by-step-setup).
 
-1. Install [Python 3.11+](https://www.python.org/downloads/) and [Java 17+](https://adoptium.net/temurin/releases/?version=25&os=windows&arch=x64) (Select ***JRE***, download the ***.msi***)
+1. Install [Python 3.11+](https://www.python.org/downloads/) (click **"Download Python install manager"**) and [Java 17+](https://adoptium.net/temurin/releases/?version=25&os=windows&arch=x64) (Select ***JRE***, download the ***.msi***)
 2. Download and extract Jill from the [releases page](https://github.com/grodz-bar/jill/releases)
 3. Double-click `setup-jill-win.bat`
 4. Add music to `music\` subfolders, or [link your existing library](../usage/music-library.md)
@@ -32,10 +32,11 @@ This guide covers Windows installation.
 
 **1. Install Python**
 
-1. Go to [python.org/downloads](https://www.python.org/downloads/) and click the big download button
-2. Run the installer (default options are fine)
+1. Go to [python.org/downloads](https://www.python.org/downloads/)
+2. Click the yellow **"Download Python install manager"** button
+3. Run the downloaded `.msix` file
 
-**Verify installation** - open Command Prompt and run:
+**Verify installation** - open a **new** Command Prompt and run:
 ```batch
 py --version
 ```
@@ -97,7 +98,7 @@ Create folders in `music\` for your playlists, or use your existing library. See
 2. A command window opens showing startup progress:
 
 ```
-=== JILL STARTUP ===
+=== jill startup ===
 
 [+] virtual environment found
 [+] java 25

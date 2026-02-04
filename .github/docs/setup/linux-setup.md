@@ -113,7 +113,7 @@ Create folders in `music/` for your playlists, or use your existing library. See
 
 The terminal shows startup progress:
 ```
-=== JILL STARTUP ===
+=== jill startup ===
 
 [+] virtual environment found
 [+] java 25
@@ -213,7 +213,7 @@ pkill -f Lavalink.jar
 </details>
 
 <details>
-<summary><strong>"[x] Failed to activate virtual environment."</strong></summary>
+<summary><strong>"[x] failed to activate virtual environment."</strong></summary>
 
 On Debian, Ubuntu, and Raspberry Pi, the `python3-venv` package isn't installed by default.
 

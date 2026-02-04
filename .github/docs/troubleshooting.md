@@ -11,7 +11,7 @@
 
 ### Installation
 
-- **Python not found**: Install Python 3.11+ and ensure it's in PATH. Windows: reinstall with "Add to PATH" checked.
+- **Python not found**: Install Python 3.11+ from [python.org/downloads](https://www.python.org/downloads/). Windows: use the **"Download Python install manager"** button.
 
 - **Java not found**: Install Java 17+ from [adoptium.net](https://adoptium.net).
 

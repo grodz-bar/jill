@@ -4,7 +4,7 @@ REM Uses Python setup wizard for better cross-platform experience.
 
 cd /d "%~dp0"
 
-echo === Jill Setup ===
+echo === jill setup ===
 echo.
 
 REM Check Python - try py launcher first (doesn't need PATH), then python
@@ -13,8 +13,8 @@ py --version >nul 2>&1 && set PYTHON_CMD=py
 if not defined PYTHON_CMD python --version >nul 2>&1 && set PYTHON_CMD=python
 
 if not defined PYTHON_CMD (
-    echo [x] Python is required.
-    echo     Download from: https://www.python.org/downloads/
+    echo [x] python is required.
+    echo     download from: https://www.python.org/downloads/
     pause
     exit /b 1
 )
@@ -22,26 +22,41 @@ if not defined PYTHON_CMD (
 REM Check Java
 java -version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [x] Java 17+ is required for Lavalink.
+    echo [x] java 17+ is required for lavalink.
     echo.
-    echo     1. Download from: https://adoptium.net/temurin/releases/
-    echo        Select: Windows x64, JRE, version 17+, .msi installer
-    echo     2. Run the installer
-    echo     3. Restart this terminal and try again
+    echo     1. download from: https://adoptium.net/temurin/releases/
+    echo        select: Windows x64, JRE, version 17+, .msi installer
+    echo     2. run the installer
+    echo     3. restart this terminal and try again
     pause
     exit /b 1
 )
 
+REM Check if existing venv is broken (e.g., Python was uninstalled)
+if exist "venv\Scripts\python.exe" (
+    venv\Scripts\python.exe --version >nul 2>&1
+    if errorlevel 1 (
+        echo rebuilding virtual environment...
+        rd /s /q "venv" 2>nul
+        if exist "venv" rd /s /q "venv" 2>nul
+        if exist "venv" (
+            echo [x] could not delete venv folder. close any programs using it.
+            pause
+            exit /b 1
+        )
+    )
+)
+
 REM Create venv if missing
 if not exist "venv" (
-    echo Creating virtual environment...
+    echo creating virtual environment...
     %PYTHON_CMD% -m venv venv
 ) else (
-    echo [+] Virtual environment exists
+    echo [+] virtual environment found
 )
 
 REM Install dependencies
-echo Installing dependencies...
+echo installing dependencies...
 venv\Scripts\python.exe -m pip install -q -r requirements.txt
 
 REM Run Python setup wizard
@@ -49,7 +64,7 @@ echo.
 venv\Scripts\python.exe -m setup
 if %errorlevel% neq 0 (
     echo.
-    echo Setup did not complete successfully.
+    echo setup did not complete successfully.
     pause
     exit /b 1
 )

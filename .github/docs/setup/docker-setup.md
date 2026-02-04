@@ -19,7 +19,7 @@ Docker is the easiest way to run Jill. One file, two lines to edit, done.
 
 **1. Download**
 
-Download [docker-compose.yml](https://raw.githubusercontent.com/grodz-bar/jill/main/docker-compose.yml) or copy from [GitHub](../../../docker-compose.yml).
+Copy from [GitHub](../../../docker-compose.yml) or right-click [docker-compose.yml](https://raw.githubusercontent.com/grodz-bar/jill/main/docker-compose.yml) → **Save Link As...**
 
 <br>
 

@@ -44,7 +44,7 @@
 - **"cannot connect to lavalink"**:
   - Wait for healthcheck (Docker shows "healthy")
   - Check host setting: `lavalink` (Docker) or `127.0.0.1` (native)
-  - Check ports 4440/4444 aren't in use
+  - Check ports 2333/2334 aren't in use
 
 - **Lavalink keeps restarting**: Check logs for Java errors (need 17+), YAML syntax errors, or out of memory.
   > To see Lavalink errors directly: `cd lavalink && java -jar Lavalink.jar`
@@ -52,12 +52,11 @@
 - **Lavalink disconnected**: Jill reconnects automatically once Lavalink is back up. If she seems stuck, press any playback button to nudge her.
   > Jill can't restart Lavalink on her own. If you're not sure how to fix it, try restarting Jill - the start script should bring Lavalink back too.
 
-- **Lavalink closes when Jill stops**: This is intentional - Jill kills Lavalink on shutdown by default. To keep Lavalink running:
-  ```yaml
-  # settings.yaml
-  kill_lavalink_on_shutdown: false
+- **Lavalink closes when Jill stops**: This is intentional - Jill manages Lavalink by default (kills stale on startup, kills on shutdown). To keep Lavalink running, add to `.env`:
   ```
-  > Docker: `KILL_LAVALINK_ON_SHUTDOWN=false`
+  MANAGE_LAVALINK=false
+  ```
+  > Docker: Add `MANAGE_LAVALINK=false` to environment variables in docker-compose.yml
 
 ---
 

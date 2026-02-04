@@ -189,3 +189,48 @@ def check_disk_space(path: Path, min_mb: int = 300) -> tuple[bool, str]:
 
     except Exception as e:
         return False, f"Disk check failed: {e}"
+
+
+def get_windows_excluded_port_ranges() -> list[tuple[int, int]]:
+    """Get Windows reserved/excluded port ranges.
+
+    Only runs on Windows - returns empty list on other platforms or errors.
+
+    Returns:
+        List of (start, end) tuples for reserved ranges
+    """
+    if sys.platform != "win32":
+        return []
+
+    try:
+        result = subprocess.run(
+            ["netsh", "interface", "ipv4", "show", "excludedportrange", "protocol=tcp"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        if result.returncode != 0:
+            return []
+
+        ranges = []
+        for line in result.stdout.splitlines():
+            match = re.match(r'^\s*(\d+)\s+(\d+)', line)
+            if match:
+                ranges.append((int(match.group(1)), int(match.group(2))))
+        return ranges
+
+    except Exception:
+        return []
+
+
+def check_port_reserved(port: int, ranges: list[tuple[int, int]]) -> bool:
+    """Check if port is in any of the given ranges.
+
+    Args:
+        port: Port to check
+        ranges: List of (start, end) tuples (inclusive bounds)
+
+    Returns:
+        True if port is in a reserved range
+    """
+    return any(start <= port <= end for start, end in ranges)

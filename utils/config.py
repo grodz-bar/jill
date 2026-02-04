@@ -71,9 +71,6 @@ from utils.holidays import get_active_holiday
 #
 # Logging Settings (logging.*):
 #   level                  - Log verbosity: "minimal", "verbose", or "debug"
-#
-# Lavalink Settings:
-#   kill_lavalink_on_shutdown - Stop Lavalink server when bot shuts down
 # =============================================================================
 
 DEFAULT_SETTINGS = {
@@ -119,8 +116,6 @@ DEFAULT_SETTINGS = {
     "logging": {
         "level": "verbose",  # minimal, verbose, debug
     },
-    # Lavalink shutdown behavior
-    "kill_lavalink_on_shutdown": True,
 }
 
 # =============================================================================
@@ -536,8 +531,6 @@ class ConfigManager:
             # UI timeouts
             "EXTENDED_AUTO_DELETE": ("ui.extended_auto_delete", non_negative("EXTENDED_AUTO_DELETE")),
             "BRIEF_AUTO_DELETE": ("ui.brief_auto_delete", non_negative("BRIEF_AUTO_DELETE")),
-            # Lavalink
-            "KILL_LAVALINK_ON_SHUTDOWN": ("kill_lavalink_on_shutdown", lambda x: x.lower() == "true"),
         }
 
         for env_key, (setting_key, converter) in env_map.items():
@@ -705,8 +698,15 @@ async def validate_configuration() -> None:
 
     # Check Lavalink connectivity
     lavalink_host = os.getenv("LAVALINK_HOST", "127.0.0.1")
-    lavalink_port = os.getenv("LAVALINK_PORT", "4440")
+    lavalink_port = os.getenv("LAVALINK_PORT", "2333")
     lavalink_password = os.getenv("LAVALINK_PASSWORD", "timetomixdrinksandnotchangepasswords")
+
+    # Check for duplicate ports (will definitely fail at runtime)
+    http_port = os.getenv("HTTP_SERVER_PORT", "2334")
+    if lavalink_port == http_port:
+        errors.append(
+            f"LAVALINK_PORT and HTTP_SERVER_PORT are both set to {lavalink_port} - they must be different"
+        )
 
     try:
         async with aiohttp.ClientSession() as session:

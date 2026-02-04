@@ -94,10 +94,34 @@ Customize Jill's panel appearance, playback behavior, and commands.
 
 Discord embeds get sluggish after many edits. Periodic recreation keeps things responsive.
 
-### Infrastructure
+</details>
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `kill_lavalink_on_shutdown` | `true` | Stop Lavalink when Jill shuts down. `false` if sharing Lavalink across bots |
+> For setting up who can do what, see [Permissions](permissions.md).
+
+<details>
+<summary><strong>Environment-Only Settings</strong></summary>
+
+<br>
+
+These settings are configured in `.env`, not settings.yaml. See [.env.example](../../../.env.example) for details.
+
+#### Paths
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MUSIC_PATH` | `./music` | Music library location |
+| `CONFIG_PATH` | `./config` | YAML config files |
+| `DATA_PATH` | `./data` | Runtime state files |
+
+#### Infrastructure
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LAVALINK_HOST` | `127.0.0.1` | Lavalink server address |
+| `LAVALINK_PORT` | `2333` | Lavalink port |
+| `LAVALINK_PASSWORD` | (see .env.example) | Lavalink auth |
+| `HTTP_SERVER_HOST` | `127.0.0.1` | Bot's audio server bind |
+| `HTTP_SERVER_PORT` | `2334` | Bot's audio server port |
+| `MANAGE_LAVALINK` | `true` | Kill stale Lavalink on startup/shutdown |
 
 </details>

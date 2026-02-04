@@ -27,7 +27,7 @@ DEFAULT_PASSWORD = "timetomixdrinksandnotchangepasswords"
 
 def is_lavalink_running(
     host: str = "127.0.0.1",
-    port: int = 4440,
+    port: int = 2333,
     password: str = DEFAULT_PASSWORD
 ) -> bool:
     """Quick check if Lavalink is responding.
@@ -51,7 +51,7 @@ def is_lavalink_running(
 
 def wait_for_lavalink(
     host: str = "127.0.0.1",
-    port: int = 4440,
+    port: int = 2333,
     password: str = DEFAULT_PASSWORD,
     timeout: int = 60,
     verbose: bool = True

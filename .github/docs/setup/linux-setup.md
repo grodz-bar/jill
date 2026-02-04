@@ -94,7 +94,7 @@ chmod +x setup-jill-linux.sh START-jill-linux.sh
 > 1. **Prerequisites** - checks Python, Java, disk space
 > 2. **Lavalink** - downloads the audio server (~85MB)
 > 3. **Discord** - prompts for token and Guild ID
-> 4. **Ports** - verifies 4440/4444 are available
+> 4. **Ports** - verifies 2333/2334 are available
 > 5. **Directories** - creates music/, config/, data/
 
 <br>

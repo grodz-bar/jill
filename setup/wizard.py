@@ -28,6 +28,8 @@ from .validators import (
     validate_token_format,
     check_port_available,
     check_disk_space,
+    get_windows_excluded_port_ranges,
+    check_port_reserved,
 )
 from .download import download_lavalink
 
@@ -39,7 +41,7 @@ def run_wizard(project_root: Path = None) -> bool:
         1. Check prerequisites (Python, Java, disk space)
         2. Download Lavalink.jar if missing or incomplete
         3. Configure .env (create from template, prompt for token/guild ID)
-        4. Check port availability (4440, 4444)
+        4. Check port availability (2333, 2334)
         5. Create required directories (music/, config/, data/)
 
     Args:
@@ -105,7 +107,7 @@ def run_wizard(project_root: Path = None) -> bool:
         if "DISCORD_TOKEN=" in env_content:
             for line in env_content.splitlines():
                 if line.startswith("DISCORD_TOKEN="):
-                    value = line.split("=", 1)[1].split("#", 1)[0].strip()
+                    value = line.split("=", 1)[1].split(" #")[0].strip()
                     if value:
                         needs_token = False
                         _print_status(True, "Using existing DISCORD_TOKEN from .env")
@@ -113,7 +115,7 @@ def run_wizard(project_root: Path = None) -> bool:
         if "GUILD_ID=" in env_content:
             for line in env_content.splitlines():
                 if line.startswith("GUILD_ID="):
-                    value = line.split("=", 1)[1].split("#", 1)[0].strip()
+                    value = line.split("=", 1)[1].split(" #")[0].strip()
                     if value:
                         needs_guild = False
                         _print_status(True, "Using existing GUILD_ID from .env")
@@ -193,11 +195,52 @@ def run_wizard(project_root: Path = None) -> bool:
     # Phase 4: Check ports
     print("Checking ports...")
 
-    ok, msg = check_port_available(4440)
-    _print_status(ok, msg, warning_only=True)
+    # Read configured ports from .env, fall back to defaults if missing or invalid
+    try:
+        lavalink_port = int(_get_env_value(env_file, "LAVALINK_PORT", "2333"))
+    except ValueError:
+        lavalink_port = 2333  # Invalid value in .env, use default
 
-    ok, msg = check_port_available(4444)
-    _print_status(ok, msg, warning_only=True)
+    try:
+        http_port = int(_get_env_value(env_file, "HTTP_SERVER_PORT", "2334"))
+    except ValueError:
+        http_port = 2334  # Invalid value in .env, use default
+
+    # Check for duplicate ports (blocking - will definitely fail at runtime)
+    if lavalink_port == http_port:
+        _print_status(False, "LAVALINK_PORT and HTTP_SERVER_PORT are the same")
+        print(f"    both set to {lavalink_port} - they must be different")
+        print()
+        print("Fix in .env and run setup again.")
+        return False
+
+    # Check Windows reserved ranges first (no-op on Linux/Mac)
+    excluded_ranges = get_windows_excluded_port_ranges()
+    reserved_ports = set()
+    if excluded_ranges:
+        for port in [lavalink_port, http_port]:
+            if check_port_reserved(port, excluded_ranges):
+                reserved_ports.add(port)
+
+        if reserved_ports:
+            port_list = ", ".join(str(p) for p in sorted(reserved_ports))
+            _print_status(False, f"Port {port_list} in reserved range")
+            print("    currently reserved port ranges:")
+            for start, end in excluded_ranges:
+                print(f"    {start}-{end}")
+            print("    change ports in .env or try restarting your computer")
+            print()
+            print("Fix ports and run setup again.")
+            return False
+
+    # Check port availability (skip reserved ports - already warned)
+    if lavalink_port not in reserved_ports:
+        ok, msg = check_port_available(lavalink_port)
+        _print_status(ok, msg, warning_only=True)
+
+    if http_port not in reserved_ports:
+        ok, msg = check_port_available(http_port)
+        _print_status(ok, msg, warning_only=True)
 
     print()
 
@@ -289,6 +332,39 @@ def _update_env_value(env_file: Path, key: str, value: str):
         lines.append(f"{key}={value}")
 
     env_file.write_text("\n".join(lines) + "\n", encoding='utf-8')
+
+
+def _get_env_value(env_file: Path, key: str, default: str) -> str:
+    """Read a value from .env file, returning default if not found.
+
+    Parses simple KEY=value format. Skips comment lines (starting with #)
+    and strips trailing comments (requires space before #, e.g. "value # comment").
+
+    Args:
+        env_file: Path to .env file
+        key: Environment variable name to look for
+        default: Value returned if file missing, key not found, or read error
+
+    Returns:
+        The value from .env file, or default
+    """
+    if not env_file.exists():
+        return default
+
+    try:
+        for line in env_file.read_text(encoding='utf-8').splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith('#'):
+                continue
+            if stripped.startswith(f"{key}="):
+                value = stripped[len(key) + 1:]
+                # Strip trailing comments (space + # protects values like "playlist#1")
+                if ' #' in value:
+                    value = value.split(' #')[0]
+                return value.strip()
+    except Exception:
+        pass
+    return default
 
 
 if __name__ == "__main__":

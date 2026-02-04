@@ -17,7 +17,7 @@
 
 """Jill Discord Music Bot - Main Entry Point."""
 
-__version__ = "2.0.2"
+__version__ = "2.0.3"
 
 import asyncio
 import colorsys
@@ -40,7 +40,7 @@ load_dotenv(Path(__file__).parent / ".env")
 def _sanitize_env_vars() -> None:
     """Strip trailing comments from environment variables.
 
-    Handles: LAVALINK_PORT=4440 # my port  →  4440
+    Handles: LAVALINK_PORT=2333 # my port  →  2333
 
     Pattern requires space before # to protect values like 'playlist#1'.
     Must run before module-level constants that use int(os.getenv(...)).
@@ -62,7 +62,7 @@ def _sanitize_env_vars() -> None:
         "AUTO_RESCAN", "PANEL_ENABLED", "PROGRESS_BAR_ENABLED",
         "SHUFFLE_BUTTON", "LOOP_BUTTON", "PLAYLIST_BUTTON",
         "DRINK_EMOJIS_ENABLED", "SHUFFLE_COMMAND", "LOOP_COMMAND",
-        "RESCAN_COMMAND", "KILL_LAVALINK_ON_SHUTDOWN",
+        "RESCAN_COMMAND", "MANAGE_LAVALINK",
         # Config overrides (strings - strip for consistency)
         "DEFAULT_PLAYLIST", "LOG_LEVEL", "INFO_FALLBACK_MESSAGE",
         "PROGRESS_BAR_FILLED", "PROGRESS_BAR_EMPTY", "PANEL_COLOR",
@@ -287,10 +287,10 @@ DATA_PATH = Path(os.getenv("DATA_PATH") or str(_bot_dir / "data"))
 METADATA_CACHE_PATH = DATA_PATH / "metadata"
 CONFIG_PATH = Path(os.getenv("CONFIG_PATH") or str(_bot_dir / "config"))
 HTTP_HOST = os.getenv("HTTP_SERVER_HOST", "127.0.0.1")
-HTTP_PORT = int(os.getenv("HTTP_SERVER_PORT", "4444"))
+HTTP_PORT = int(os.getenv("HTTP_SERVER_PORT", "2334"))
 HTTP_URL_HOST = os.getenv("HTTP_SERVER_URL_HOST") or HTTP_HOST
 LAVALINK_HOST = os.getenv("LAVALINK_HOST", "127.0.0.1")
-LAVALINK_PORT = int(os.getenv("LAVALINK_PORT", "4440"))
+LAVALINK_PORT = int(os.getenv("LAVALINK_PORT", "2333"))
 LAVALINK_PASSWORD = os.getenv("LAVALINK_PASSWORD", "timetomixdrinksandnotchangepasswords")
 
 # Track last served file to deduplicate Lavalink's multiple requests per track
@@ -704,11 +704,12 @@ class MusicBot(commands.Bot):
 
         await super().close()
 
-        # Kill Lavalink if enabled (default: true, set to false for shared Lavalink)
+        # Kill Lavalink if managed (default: true, set to false for shared Lavalink)
         # Blocking subprocess is intentional - event loop has no work after super().close()
-        kill_lavalink = self.config_manager.get("kill_lavalink_on_shutdown", True)
+        # Note: env var only, not in settings.yaml (start scripts also need this before Python runs)
+        manage_lavalink = os.getenv("MANAGE_LAVALINK", "true").lower() != "false"
 
-        if kill_lavalink:
+        if manage_lavalink:
             lavalink_port = LAVALINK_PORT
             lavalink_killed = False
             try:

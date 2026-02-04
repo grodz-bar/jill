@@ -1,5 +1,5 @@
 server:
-  port: 4440
+  port: 2333
   address: 0.0.0.0
 
 lavalink:
@@ -18,6 +18,7 @@ lavalink:
     playerUpdateInterval: 5
     youtubeSearchEnabled: false
     soundcloudSearchEnabled: false
+    gc-warnings: true
 
 logging:
   level:

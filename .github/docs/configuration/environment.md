@@ -69,6 +69,8 @@ Docker configuration reference. Set these in the `environment:` section.
 >
 > **Recreation**: `RECREATE_INTERVAL` - Discord gets sluggish after many edits. Recreating keeps it responsive.
 >
+> **Drink emojis**: Customize via `panel.drink_emojis` in [settings.yaml](settings.md#panel-appearance).
+>
 > **Comments**: A `space` followed by `#` starts a comment: `playlist #1` is treated as `playlist`.
 
 ### Tips
@@ -109,11 +111,11 @@ Lavalink connection settings. Defaults work for standard deployments.
 | Variable | Default | Docker Default | Purpose |
 |----------|---------|----------------|---------|
 | `LAVALINK_HOST` | 127.0.0.1 | lavalink | Lavalink server address |
-| `LAVALINK_PORT` | 4440 | 4440 | Lavalink port |
+| `LAVALINK_PORT` | 2333 | 2333 | Lavalink port |
 | `LAVALINK_PASSWORD` | timetomixdrinksandnotchangepasswords | (same) | Lavalink auth |
 | `HTTP_SERVER_HOST` | 127.0.0.1 | 0.0.0.0 | Bot's audio server bind |
 | `HTTP_SERVER_URL_HOST` | (HTTP_SERVER_HOST) | jill | Hostname in audio URLs |
-| `HTTP_SERVER_PORT` | 4444 | 4444 | Bot's audio server port |
-| `KILL_LAVALINK_ON_SHUTDOWN` | true | true | Stop Lavalink with bot |
+| `HTTP_SERVER_PORT` | 2334 | 2334 | Bot's audio server port |
+| `MANAGE_LAVALINK` | true | true | Kill stale Lavalink on startup/shutdown |
 
 </details>

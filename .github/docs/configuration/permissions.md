@@ -7,6 +7,8 @@ Restrict playback control to specific users. By default, everyone can use all co
 > [!NOTE]
 > Docker users: edit this file in your mounted `config/` folder.
 
+> For other bot settings, see [Settings](settings.md).
+
 #### Default Permission Tiers
 
 | Tier | Requirement | Commands |

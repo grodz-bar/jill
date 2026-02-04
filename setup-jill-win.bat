@@ -34,7 +34,7 @@ if %errorlevel% neq 0 (
 )
 echo [+] java found
 
-REM Check if existing venv is broken (missing python.exe or won't run)
+REM Check if existing venv is broken (missing python.exe, won't run, or no pip)
 if exist "venv" (
     if not exist "venv\Scripts\python.exe" (
         echo rebuilding virtual environment...
@@ -46,7 +46,7 @@ if exist "venv" (
             exit /b 1
         )
     ) else (
-        venv\Scripts\python.exe --version >nul 2>&1
+        venv\Scripts\python.exe -c "import pip" >nul 2>&1
         if errorlevel 1 (
             echo rebuilding virtual environment...
             rd /s /q "venv" 2>nul
@@ -66,6 +66,20 @@ if not exist "venv" (
     %PYTHON_CMD% -m venv venv
 ) else (
     echo [+] virtual environment found
+)
+
+REM Verify pip exists (some Python installs create venv without pip)
+venv\Scripts\python.exe -m pip --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo bootstrapping pip...
+    venv\Scripts\python.exe -m ensurepip --default-pip >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo [x] could not install pip in virtual environment.
+        echo     delete the venv folder and re-run this script.
+        echo     if that fails, reinstall python.
+        pause
+        exit /b 1
+    )
 )
 
 REM Install dependencies

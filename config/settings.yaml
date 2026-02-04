@@ -57,8 +57,3 @@ auto_rescan: true           # Check for new/changed music files on startup
 # Logging (LOG_LEVEL env var overrides this)
 logging:
   level: "verbose"          # minimal, verbose, or debug
-
-# Infrastructure (advanced)
-# Lavalink is the audio server that streams music to Discord.
-# By default, Jill stops Lavalink when she shuts down.
-kill_lavalink_on_shutdown: true  # Set false if sharing one Lavalink between multiple bots

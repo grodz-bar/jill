@@ -22,12 +22,21 @@ if (Test-Path ".env") {
 }
 
 # Configuration
-$LavalinkPort = if ($env:LAVALINK_PORT) { $env:LAVALINK_PORT } else { 4440 }
+$LavalinkPort = if ($env:LAVALINK_PORT) { $env:LAVALINK_PORT } else { 2333 }
 $LavalinkTimeout = 60
 $LavalinkPassword = if ($env:LAVALINK_PASSWORD) { $env:LAVALINK_PASSWORD } else { "timetomixdrinksandnotchangepasswords" }
 $LavalinkJar = "lavalink\Lavalink.jar"
 $LavalinkConfig = "lavalink\application.yml"
 $VenvPython = "venv\Scripts\python.exe"
+# MANAGE_LAVALINK: when true, kill stale on startup and shutdown. Default true.
+$ManageLavalink = if ($env:MANAGE_LAVALINK -eq "false") { $false } else { $true }
+# Check for duplicate ports
+$HttpPort = if ($env:HTTP_SERVER_PORT) { $env:HTTP_SERVER_PORT } else { 2334 }
+if ($LavalinkPort -eq $HttpPort) {
+    Write-Host "[x] LAVALINK_PORT and HTTP_SERVER_PORT are both set to $LavalinkPort" -ForegroundColor Red
+    Write-Host "    they must be different - fix in .env"
+    exit 1
+}
 
 # Track Lavalink process for cleanup
 $script:LavalinkProcess = $null
@@ -81,6 +90,43 @@ function Stop-LavalinkIfStarted {
     }
 }
 
+function Get-ExcludedPortRanges {
+    # Get all Windows reserved/excluded port ranges
+    # Returns array of "start-end" strings, or empty array if none/error
+    try {
+        $output = netsh interface ipv4 show excludedportrange protocol=tcp 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            return @()
+        }
+    } catch {
+        return @()
+    }
+
+    $ranges = @()
+    foreach ($line in $output) {
+        if ($line -match '^\s*(\d+)\s+(\d+)') {
+            $ranges += "$($Matches[1])-$($Matches[2])"
+        }
+    }
+    return $ranges
+}
+
+function Test-PortExcluded {
+    # Check if port is in any excluded range
+    param([int]$Port, [string[]]$Ranges)
+
+    foreach ($range in $Ranges) {
+        if ($range -match '^(\d+)-(\d+)$') {
+            $start = [int]$Matches[1]
+            $end = [int]$Matches[2]
+            if ($Port -ge $start -and $Port -le $end) {
+                return $true
+            }
+        }
+    }
+    return $false
+}
+
 # Register cleanup handler
 $null = Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action { Stop-LavalinkIfStarted }
 trap { Stop-LavalinkIfStarted; break }
@@ -96,6 +142,16 @@ if (-not (Test-Path $VenvPython)) {
     exit 1
 }
 Write-Host "[+] virtual environment found" -ForegroundColor Cyan
+
+# Check venv Python is functional (test pip - if missing, packages won't be installed)
+try {
+    $null = & $VenvPython -c "import pip" 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "pip check failed" }
+} catch {
+    Write-Host "[x] virtual environment is broken." -ForegroundColor Red
+    Write-Host "    run setup-jill-win.bat to fix."
+    exit 1
+}
 
 # Check Java version
 $javaVersion = Get-JavaMajorVersion
@@ -133,15 +189,76 @@ if (-not (Test-Path $LavalinkConfig)) {
 }
 Write-Host "[+] application.yml found" -ForegroundColor Cyan
 
+# Check if Lavalink port is reserved by Windows
+$excludedRanges = Get-ExcludedPortRanges
+if (Test-PortExcluded $LavalinkPort $excludedRanges) {
+    Write-Host "[x] port $LavalinkPort is in a reserved range in your system" -ForegroundColor Red
+    Write-Host "    currently reserved port ranges:"
+    foreach ($range in $excludedRanges) {
+        Write-Host "    $range"
+    }
+    Write-Host "    change LAVALINK_PORT in .env to a port outside these ranges, or try restarting your computer"
+    exit 1
+}
+
+# Validate application.yml matches .env (local installs only)
+if (Test-Path $LavalinkConfig) {
+    & $VenvPython -c @"
+import yaml, os, sys
+
+def clean_env(key, default):
+    return os.environ.get(key, default).split('#')[0].strip()
+
+env_port = clean_env('LAVALINK_PORT', '2333')
+env_pass = clean_env('LAVALINK_PASSWORD', 'timetomixdrinksandnotchangepasswords')
+
+try:
+    with open('lavalink/application.yml', encoding='utf-8') as f:
+        cfg = yaml.safe_load(f)
+
+    yml_port = cfg.get('server', {}).get('port')
+    yml_pass = cfg.get('lavalink', {}).get('server', {}).get('password')
+
+    if yml_port is not None and str(yml_port).strip() != env_port:
+        print(f'[x] port mismatch: LAVALINK_PORT={env_port} but application.yml has port: {yml_port}')
+        print('    fix in .env or lavalink/application.yml')
+        sys.exit(1)
+    if yml_pass is not None and yml_pass.strip() != env_pass:
+        print('[x] password mismatch: LAVALINK_PASSWORD does not match application.yml')
+        print('    fix in .env or lavalink/application.yml')
+        sys.exit(1)
+except yaml.YAMLError:
+    print('[!] warning: could not parse application.yml')
+except FileNotFoundError:
+    pass
+except Exception:
+    pass
+"@
+    if ($LASTEXITCODE -ne 0) { exit 1 }
+}
+
 # Start Lavalink if not running
 if (Test-LavalinkReady) {
     Write-Host "[+] lavalink already running" -ForegroundColor Cyan
 } else {
+    # Kill any stale Lavalink process on our port (may be unresponsive zombie)
+    # Respects MANAGE_LAVALINK setting - skip if sharing Lavalink with other bots
+    if ($ManageLavalink) {
+        $existing = Get-NetTCPConnection -LocalPort $LavalinkPort -State Listen -ErrorAction SilentlyContinue
+        if ($existing) {
+            Write-Host "[.] killing stale process on port $LavalinkPort..." -ForegroundColor Yellow
+            Stop-Process -Id $existing.OwningProcess -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 2
+        }
+    }
+
     Write-Host "[.] starting lavalink..." -ForegroundColor Cyan
 
     $javaPath = Get-JavaPath
+    # JVM args: limit heap to 512MB, use G1GC for better memory management
+    $jvmArgs = @("-Xmx512m", "-Xms256m", "-XX:+UseG1GC", "-jar", "Lavalink.jar")
     $script:LavalinkProcess = Start-Process -FilePath $javaPath `
-        -ArgumentList "-jar", "Lavalink.jar" `
+        -ArgumentList $jvmArgs `
         -WorkingDirectory "lavalink" `
         -WindowStyle Hidden `
         -PassThru
@@ -149,6 +266,13 @@ if (Test-LavalinkReady) {
     Write-Host "[.] waiting for lavalink" -NoNewline -ForegroundColor Cyan
     $elapsed = 0
     while (-not (Test-LavalinkReady) -and $elapsed -lt $LavalinkTimeout) {
+        # Check if process crashed during startup
+        if ($script:LavalinkProcess.HasExited) {
+            Write-Host
+            Write-Host "[x] lavalink crashed during startup (exit code: $($script:LavalinkProcess.ExitCode))" -ForegroundColor Red
+            Write-Host "    run manually to see error: cd lavalink && java -jar Lavalink.jar"
+            exit 1
+        }
         Start-Sleep -Seconds 1
         Write-Host "." -NoNewline
         $elapsed++

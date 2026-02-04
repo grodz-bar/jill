@@ -14,7 +14,8 @@ services:
     container_name: lavalink
     restart: unless-stopped
     environment:
-      - SERVER_PORT=4440
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m -XX:+UseG1GC
+      - SERVER_PORT=2333
       - SERVER_ADDRESS=0.0.0.0
       - LAVALINK_SERVER_PASSWORD=timetomixdrinksandnotchangepasswords
       - LAVALINK_SERVER_SOURCES_LOCAL=true
@@ -27,9 +28,9 @@ services:
     networks:
       - jill-network
     expose:
-      - "4440"
+      - "2333"
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf -H \"Authorization: $${LAVALINK_SERVER_PASSWORD}\" http://localhost:4440/version || exit 1"]
+      test: ["CMD-SHELL", "curl -sf -H \"Authorization: $${LAVALINK_SERVER_PASSWORD}\" http://localhost:2333/version || exit 1"]
       interval: 30s
       start_interval: 2s
       timeout: 5s
@@ -96,7 +97,7 @@ services:
     networks:
       - jill-network
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4444/health', timeout=3)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:2334/health', timeout=3)"]
       interval: 30s
       timeout: 5s
       retries: 3

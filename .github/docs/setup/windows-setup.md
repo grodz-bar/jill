@@ -104,7 +104,7 @@ Create folders in `music\` for your playlists, or use your existing library. See
 [+] lavalink.jar found
 [+] application.yml found
 [.] starting lavalink...
-[.] waiting for lavalink.
+[.] waiting for lavalink
 [+] lavalink ready
 
 [.] starting jill...

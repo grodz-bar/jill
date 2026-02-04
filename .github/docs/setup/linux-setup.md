@@ -120,7 +120,7 @@ The terminal shows startup progress:
 [+] lavalink.jar found
 [+] application.yml found
 [.] starting lavalink...
-[.] waiting for lavalink.
+[.] waiting for lavalink
 [+] lavalink ready
 
 [.] starting jill...
@@ -213,7 +213,7 @@ pkill -f Lavalink.jar
 </details>
 
 <details>
-<summary><strong>"Failed to activate virtual environment"</strong></summary>
+<summary><strong>"[x] Failed to activate virtual environment."</strong></summary>
 
 On Debian, Ubuntu, and Raspberry Pi, the `python3-venv` package isn't installed by default.
 

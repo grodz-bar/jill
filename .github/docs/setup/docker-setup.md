@@ -109,7 +109,7 @@ Docker Compose creates three folders:
 ### Troubleshooting
 
 <details>
-<summary><strong>"Cannot connect to Lavalink"</strong></summary>
+<summary><strong>"cannot connect to lavalink"</strong></summary>
 
 Lavalink needs time to start. Try:
 

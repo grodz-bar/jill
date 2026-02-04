@@ -41,7 +41,7 @@
 
 - **Jill shows offline**: Check token is correct, no quotes around the value, internet works, [Discord status](https://discordstatus.com) is OK.
 
-- **Cannot connect to Lavalink**:
+- **"cannot connect to lavalink"**:
   - Wait for healthcheck (Docker shows "healthy")
   - Check host setting: `lavalink` (Docker) or `127.0.0.1` (native)
   - Check ports 4440/4444 aren't in use
@@ -67,7 +67,7 @@
 
 - **No audio**: Check logs show "lavalink connected", music folder has files, Jill has read access. Also check if her volume, both in Discord and with /volume is not set too low.
 
-- **"Shelves are empty"**: No playlists found. See [Music Library](usage/music-library.md) for folder structure.
+- **"shelves are empty"**: No playlists found. See [Music Library](usage/music-library.md) for folder structure.
 
 - **Songs not appearing**: Run `/rescan`. Check format is supported (MP3, FLAC, OGG, OPUS, M4A, WAV, AAC) and file isn't corrupted.
 
@@ -75,7 +75,7 @@
 
 - **Playback stops**: Check inactivity timeout (Jill leaves when alone), Lavalink logs, network stability.
 
-- **"Playback failed... fault error"**: A leftover Lavalink process may be running. Kill any **OpenJDK Platform binary** (~450MB RAM) in Task Manager or `pkill -f Lavalink`, then restart.
+- **"that broke, try again"**: A leftover Lavalink process may be running. Kill any **OpenJDK Platform binary** (~450MB RAM) in Task Manager or `pkill -f Lavalink`, then restart.
 
 - **Metadata not showing**: Check file has embedded tags, run `/rescan`. Raw WAV has limited tag support.
 
@@ -94,9 +94,9 @@
 
 - **Slash commands not appearing**: Commands show up instantly with `GUILD_ID` set. Without it, Discord can take up to an hour to sync them. Restart Jill after permission changes.
 
-- **"That's for staff only"**: Check your role ID in `permissions.yaml` is correct.
+- **"sorry, that's for staff only"**: Check your role ID in `permissions.yaml` is correct.
 
-- **Command says disabled**: Command is turned off in config:
+- **"`/command` isn't available"**: Command is turned off in config:
   ```yaml
   # settings.yaml
   commands:
@@ -110,9 +110,9 @@
 
 ### Panel
 
-- **"Panel's gone"**: Message was deleted. Run `/play` to create a new one.
+- **"panel's gone"**: Message was deleted. Run `/play` to create a new one.
 
-- **"That panel's outdated"**: You clicked an old panel. Scroll down or run `/play`.
+- **"that panel's outdated"**: You clicked an old panel. Scroll down or run `/play`.
 
 - **Buttons not responding**: You're not in the same voice channel as Jill, you lack the required role (check `permissions.yaml`), Lavalink isn't connected, or [Discord is having issues](https://discordstatus.com).
 

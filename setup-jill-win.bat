@@ -9,17 +9,10 @@ echo.
 
 REM Check Python - try py launcher first (doesn't need PATH), then python
 set PYTHON_CMD=
-py --version >nul 2>&1
-if %errorlevel% equ 0 (
-    set PYTHON_CMD=py
-) else (
-    python --version >nul 2>&1
-    if %errorlevel% equ 0 (
-        set PYTHON_CMD=python
-    )
-)
+py --version >nul 2>&1 && set PYTHON_CMD=py
+if not defined PYTHON_CMD python --version >nul 2>&1 && set PYTHON_CMD=python
 
-if "%PYTHON_CMD%"=="" (
+if not defined PYTHON_CMD (
     echo [x] Python is required.
     echo     Download from: https://www.python.org/downloads/
     pause

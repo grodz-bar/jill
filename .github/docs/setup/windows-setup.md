@@ -123,7 +123,7 @@ Once Jill's running, here's how to control things:
 
 | Task | How |
 |------|-----|
-| Stop | Close the command window, or press <kbd>Ctrl</kbd>+<kbd>C</kbd> |
+| Stop | Press <kbd>Ctrl</kbd>+<kbd>C</kbd> inside her cmd/powershell window|
 | Restart | Close the window, run `START-jill-win.bat` again |
 | View logs | Watch the command window (live activity) |
 | Update music | Add files to `music/`, then `/rescan` in Discord |

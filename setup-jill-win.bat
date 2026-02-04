@@ -32,10 +32,9 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-REM Check if existing venv is broken (e.g., Python was uninstalled)
-if exist "venv\Scripts\python.exe" (
-    venv\Scripts\python.exe --version >nul 2>&1
-    if errorlevel 1 (
+REM Check if existing venv is broken (missing python.exe or won't run)
+if exist "venv" (
+    if not exist "venv\Scripts\python.exe" (
         echo rebuilding virtual environment...
         rd /s /q "venv" 2>nul
         if exist "venv" rd /s /q "venv" 2>nul
@@ -44,10 +43,22 @@ if exist "venv\Scripts\python.exe" (
             pause
             exit /b 1
         )
+    ) else (
+        venv\Scripts\python.exe --version >nul 2>&1
+        if errorlevel 1 (
+            echo rebuilding virtual environment...
+            rd /s /q "venv" 2>nul
+            if exist "venv" rd /s /q "venv" 2>nul
+            if exist "venv" (
+                echo [x] could not delete venv folder. close any programs using it.
+                pause
+                exit /b 1
+            )
+        )
     )
 )
 
-REM Create venv if missing
+REM Create venv if missing (or was just deleted above)
 if not exist "venv" (
     echo creating virtual environment...
     %PYTHON_CMD% -m venv venv

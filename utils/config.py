@@ -703,10 +703,13 @@ async def validate_configuration() -> None:
 
     # Check for duplicate ports (will definitely fail at runtime)
     http_port = os.getenv("HTTP_SERVER_PORT", "2334")
-    if lavalink_port == http_port:
-        errors.append(
-            f"LAVALINK_PORT and HTTP_SERVER_PORT are both set to {lavalink_port} - they must be different"
-        )
+    try:
+        if int(lavalink_port) == int(http_port):
+            errors.append(
+                f"LAVALINK_PORT and HTTP_SERVER_PORT are both set to {lavalink_port} - they must be different"
+            )
+    except ValueError:
+        errors.append("LAVALINK_PORT and HTTP_SERVER_PORT must be valid port numbers")
 
     try:
         async with aiohttp.ClientSession() as session:

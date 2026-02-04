@@ -29,7 +29,7 @@ $LavalinkJar = "lavalink\Lavalink.jar"
 $LavalinkConfig = "lavalink\application.yml"
 $VenvPython = "venv\Scripts\python.exe"
 # MANAGE_LAVALINK: when true, kill stale on startup and shutdown. Default true.
-$ManageLavalink = if ($env:MANAGE_LAVALINK -eq "false") { $false } else { $true }
+$ManageLavalink = if ($env:MANAGE_LAVALINK -and $env:MANAGE_LAVALINK.ToLower() -eq "false") { $false } else { $true }
 # Check for duplicate ports
 $HttpPort = if ($env:HTTP_SERVER_PORT) { $env:HTTP_SERVER_PORT } else { 2334 }
 if ($LavalinkPort -eq $HttpPort) {
@@ -207,7 +207,8 @@ if (Test-Path $LavalinkConfig) {
 import yaml, os, sys
 
 def clean_env(key, default):
-    return os.environ.get(key, default).split('#')[0].strip()
+    val = os.environ.get(key, default)
+    return val.split(' #')[0].strip() if ' #' in val else val.strip()
 
 env_port = clean_env('LAVALINK_PORT', '2333')
 env_pass = clean_env('LAVALINK_PASSWORD', 'timetomixdrinksandnotchangepasswords')

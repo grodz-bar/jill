@@ -83,7 +83,7 @@ echo -e "${CYAN}[+] application.yml found${NC}"
 export LAVALINK_PASSWORD="${LAVALINK_PASSWORD:-timetomixdrinksandnotchangepasswords}"
 if [[ -f ".env" ]]; then
     # Strip trailing comment (space + # + anything) - matches .env.example format
-    env_password=$(grep -E "^LAVALINK_PASSWORD=" .env 2>/dev/null | cut -d'=' -f2- | sed 's/[[:space:]]*#.*//')
+    env_password=$(grep -E "^LAVALINK_PASSWORD=" .env 2>/dev/null | cut -d'=' -f2- | sed 's/[[:space:]][[:space:]]*#.*//')
     if [[ -n "$env_password" ]]; then
         export LAVALINK_PASSWORD="$env_password"
     fi
@@ -93,7 +93,7 @@ fi
 export LAVALINK_PORT="${LAVALINK_PORT:-2333}"
 if [[ -f ".env" ]]; then
     # Strip trailing comment (space + # + anything) - matches .env.example format
-    env_port=$(grep -E "^LAVALINK_PORT=" .env 2>/dev/null | cut -d'=' -f2- | sed 's/[[:space:]]*#.*//')
+    env_port=$(grep -E "^LAVALINK_PORT=" .env 2>/dev/null | cut -d'=' -f2- | sed 's/[[:space:]][[:space:]]*#.*//')
     if [[ -n "$env_port" ]]; then
         export LAVALINK_PORT="$env_port"
     fi
@@ -103,7 +103,7 @@ fi
 # When true, kills stale Lavalink on startup. Set false if sharing Lavalink with other bots.
 export MANAGE_LAVALINK="${MANAGE_LAVALINK:-true}"
 if [[ -f ".env" ]]; then
-    env_manage=$(grep -E "^MANAGE_LAVALINK=" .env 2>/dev/null | cut -d'=' -f2- | sed 's/[[:space:]]*#.*//')
+    env_manage=$(grep -E "^MANAGE_LAVALINK=" .env 2>/dev/null | cut -d'=' -f2- | sed 's/[[:space:]][[:space:]]*#.*//')
     if [[ -n "$env_manage" ]]; then
         export MANAGE_LAVALINK="$env_manage"
     fi
@@ -112,7 +112,7 @@ fi
 # Load HTTP port from .env if present
 export HTTP_SERVER_PORT="${HTTP_SERVER_PORT:-2334}"
 if [[ -f ".env" ]]; then
-    env_http_port=$(grep -E "^HTTP_SERVER_PORT=" .env 2>/dev/null | cut -d'=' -f2- | sed 's/[[:space:]]*#.*//')
+    env_http_port=$(grep -E "^HTTP_SERVER_PORT=" .env 2>/dev/null | cut -d'=' -f2- | sed 's/[[:space:]][[:space:]]*#.*//')
     if [[ -n "$env_http_port" ]]; then
         export HTTP_SERVER_PORT="$env_http_port"
     fi
@@ -131,8 +131,9 @@ if [[ -f "lavalink/application.yml" ]]; then
 import yaml, os, sys
 
 def clean_env(key, default):
-    '''Strip trailing comments from env vars for safety.'''
-    return os.environ.get(key, default).split('#')[0].strip()
+    '''Strip trailing comments from env vars (requires space before #).'''
+    val = os.environ.get(key, default)
+    return val.split(' #')[0].strip() if ' #' in val else val.strip()
 
 env_port = clean_env('LAVALINK_PORT', '2333')
 env_pass = clean_env('LAVALINK_PASSWORD', 'timetomixdrinksandnotchangepasswords')
@@ -208,7 +209,7 @@ if is_lavalink_ready; then
 else
     # Kill any stale Lavalink process on our port (may be unresponsive zombie)
     # Respects MANAGE_LAVALINK setting - skip if sharing Lavalink with other bots
-    if [[ "$MANAGE_LAVALINK" != "false" ]]; then
+    if [[ "${MANAGE_LAVALINK,,}" != "false" ]]; then
         if command -v fuser >/dev/null 2>&1; then
             stale_pid=$(fuser "$LAVALINK_PORT/tcp" 2>/dev/null)
             if [[ -n "$stale_pid" ]]; then

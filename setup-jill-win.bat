@@ -18,6 +18,7 @@ if not defined PYTHON_CMD (
     pause
     exit /b 1
 )
+echo [+] python found
 
 REM Check Java
 java -version >nul 2>&1
@@ -31,6 +32,7 @@ if %errorlevel% neq 0 (
     pause
     exit /b 1
 )
+echo [+] java found
 
 REM Check if existing venv is broken (missing python.exe or won't run)
 if exist "venv" (

@@ -15,4 +15,4 @@
 - [Discord.py](https://github.com/Rapptz/discord.py) — bot framework
 - [Mafic](https://github.com/ooliver1/mafic) — Lavalink client
 - [Lavalink](https://github.com/lavalink-devs/Lavalink) — audio server
-- [Claude](https://claude.ai/) — did the typing
+- [Claude](https://claude.ai/) — most of the work

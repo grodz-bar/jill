@@ -292,6 +292,7 @@ HTTP_URL_HOST = os.getenv("HTTP_SERVER_URL_HOST") or HTTP_HOST
 LAVALINK_HOST = os.getenv("LAVALINK_HOST", "127.0.0.1")
 LAVALINK_PORT = int(os.getenv("LAVALINK_PORT", "2333"))
 LAVALINK_PASSWORD = os.getenv("LAVALINK_PASSWORD", "timetomixdrinksandnotchangepasswords")
+GITHUB_API_URL = "https://api.github.com/repos/grodz-bar/jill/releases/latest"
 
 # Track last served file to deduplicate Lavalink's multiple requests per track
 # (safe: check-write is after yield point, no await between them)
@@ -785,6 +786,27 @@ class MusicBot(commands.Bot):
         print("jill copyright (c) 2026 grodz - licensed under gpl 3.0\n")
         print(_colorize_banner(BANNER_TEXT, BANNER_COLORS))
         logger.log("NOTICE", f"v{__version__} - time to mix drinks and change lives")
+        self._update_check_task = asyncio.create_task(self._check_for_updates())
+
+    async def _check_for_updates(self) -> None:
+        """Check GitHub for a newer Jill release. Logs NOTICE if available."""
+        try:
+            async with self.session.get(
+                GITHUB_API_URL,
+                headers={"User-Agent": "Jill-Discord-Bot"},
+                timeout=aiohttp.ClientTimeout(total=15)
+            ) as resp:
+                data = await resp.json()
+
+            tag = data["tag_name"]
+            remote = tuple(int(x) for x in tag.lstrip("v").split("."))
+            local = tuple(int(x) for x in __version__.split("."))
+
+            if remote > local:
+                remote_str = ".".join(str(x) for x in remote)
+                logger.log("NOTICE", f"update available: v{remote_str}")
+        except Exception:
+            logger.debug("update check failed")
 
     # Mafic event listeners (Bot class auto-registers on_<event> methods)
     async def on_node_ready(self, node: mafic.Node) -> None:

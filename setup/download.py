@@ -17,6 +17,7 @@
 
 """Lavalink downloader - stdlib only, with progress bar."""
 
+import hashlib
 import json
 import time
 import urllib.error
@@ -34,9 +35,9 @@ MIN_JAR_SIZE = 45 * 1024 * 1024  # 45MB (actual Lavalink.jar is ~85MB)
 
 
 def download_lavalink(dest_dir: Path, verbose: bool = True) -> tuple[bool, str]:
-    """Download Lavalink.jar if missing or incomplete.
+    """Download Lavalink.jar if missing, incomplete, or outdated.
 
-    Returns early if valid Lavalink.jar exists. Re-downloads if file is undersized.
+    Checks for updates via GitHub API digest comparison when a valid jar exists.
     Creates dest_dir if needed.
 
     Fallback order: direct URL, GitHub API, manual instructions.
@@ -56,7 +57,14 @@ def download_lavalink(dest_dir: Path, verbose: bool = True) -> tuple[bool, str]:
     if dest_file.exists():
         size = dest_file.stat().st_size
         if size >= MIN_JAR_SIZE:
-            return True, f"Lavalink.jar already exists ({size // (1024*1024)}MB)"
+            needs_update, reason = _check_for_update(dest_file, verbose)
+            if needs_update:
+                dest_file.unlink()
+                # Fall through to download
+            elif reason:
+                return True, f"Lavalink.jar up to date ({size // (1024*1024)}MB)"
+            else:
+                return True, f"Lavalink.jar already exists ({size // (1024*1024)}MB)"
         else:
             if verbose:
                 print(f"Existing Lavalink.jar too small ({size} bytes), re-downloading...")
@@ -122,6 +130,58 @@ def _download_with_github_api(dest_file: Path, verbose: bool) -> tuple[bool, str
         return False, f"GitHub API error: {e.reason}"
     except Exception as e:
         return False, f"GitHub API error: {e}"
+
+
+def _check_for_update(dest_file: Path, verbose: bool) -> tuple[bool, str | None]:
+    """Check if a newer Lavalink version is available via GitHub API digest.
+
+    Compares local file's SHA-256 against the digest from GitHub's latest release.
+    Returns (False, None) on any failure so the caller can fall back gracefully.
+
+    Returns:
+        (True, "new version"): Update available
+        (False, "up to date"): No update needed
+        (False, None): Check failed (network, API, etc.)
+    """
+    if verbose:
+        print("Checking for Lavalink updates...")
+
+    try:
+        req = urllib.request.Request(
+            LAVALINK_API_URL,
+            headers={"User-Agent": "Jill-Setup"}
+        )
+        with urllib.request.urlopen(req, timeout=15) as response:
+            data = json.loads(response.read().decode())
+
+        for asset in data.get("assets", []):
+            if asset.get("name") == "Lavalink.jar":
+                digest = asset.get("digest", "")
+                if not digest.startswith("sha256:"):
+                    return False, None
+                remote_hash = digest.split(":", 1)[1]
+
+                local_hash = _compute_sha256(dest_file)
+                if not local_hash:
+                    return False, None
+
+                if local_hash == remote_hash:
+                    return False, "up to date"
+                return True, "new version"
+
+        return False, None
+
+    except Exception:
+        return False, None
+
+
+def _compute_sha256(file_path: Path) -> str | None:
+    """Compute SHA-256 hex digest of a file. Returns None on error."""
+    try:
+        with open(file_path, "rb") as f:
+            return hashlib.file_digest(f, "sha256").hexdigest()
+    except Exception:
+        return None
 
 
 def _do_download(url: str, dest_file: Path, verbose: bool) -> tuple[bool, str]:

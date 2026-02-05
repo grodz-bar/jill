@@ -129,6 +129,19 @@ Once Jill's running, here's how to control things:
 
 ---
 
+### Updating
+
+1. Download the latest [jill-windows.zip](https://github.com/grodz-bar/jill/releases/latest/download/jill-windows.zip)
+2. Extract over your existing Jill folder
+3. Run `setup-jill-win.bat` to update dependencies and Lavalink
+
+> [!TIP]
+> Jill will let you know in the console when a new version is available.
+
+> Your `config/`, `data/`, `music/`, and `.env` are preserved. New settings added in updates will show after a restart.
+
+---
+
 ### Configuration
 
 Config files in `config\` are auto-generated on first run. To edit `.env`, right-click it and choose **Open with** → **Notepad**. See [Settings Reference](../configuration/settings.md).

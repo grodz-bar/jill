@@ -165,6 +165,19 @@ sudo systemctl start jill
 
 ---
 
+### Updating
+
+1. Download the latest [jill-linux.zip](https://github.com/grodz-bar/jill/releases/latest/download/jill-linux.zip)
+2. Extract over your existing Jill folder: `unzip -o jill-linux.zip -d /path/to/jill`
+3. Run `./setup-jill-linux.sh` to update dependencies and Lavalink
+
+> [!TIP]
+> Jill will let you know in the console when a new version is available.
+
+> Your `config/`, `data/`, `music/`, and `.env` are preserved. New settings added in updates will show after a restart.
+
+---
+
 ### Next Steps
 
 - **Explore commands:** Type `/` in Discord to see all available commands

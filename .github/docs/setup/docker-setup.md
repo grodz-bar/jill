@@ -78,6 +78,9 @@ docker compose up -d
 docker compose logs -f jill  # Watch for: "time to mix drinks and change lives"
 ```
 
+> [!NOTE]
+> **Raspberry Pi:** You may see a "memory limit capabilities" warning, it's harmless.
+
 ---
 
 ### Managing Jill
@@ -141,13 +144,6 @@ Verify token is correct, check logs (`docker compose logs jill`), ensure no quot
 <summary><strong>Slash commands not appearing</strong></summary>
 
 If you didn't set your `GUILD_ID` it can take 1 hour.
-
-</details>
-
-<details>
-<summary><strong>"Memory limit capabilities" warning (Raspberry Pi)</strong></summary>
-
-Harmless. Your kernel doesn't support Docker memory limits, but Jill runs fine without them.
 
 </details>
 

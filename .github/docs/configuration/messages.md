@@ -1,6 +1,6 @@
 # Messages
 
-`/jill/config/messages.yaml`
+`/jill/config/messages.yaml` - created after first run
 
 Customize most messages Jill sends.
 

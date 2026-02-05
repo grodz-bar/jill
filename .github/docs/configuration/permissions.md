@@ -1,6 +1,6 @@
 # Permissions
 
-`/jill/config/permissions.yaml`
+`/jill/config/permissions.yaml` - created after first run
 
 Restrict playback control to specific users. By default, everyone can use all commands.
 

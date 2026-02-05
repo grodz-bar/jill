@@ -1,6 +1,6 @@
 # Settings
 
-`/jill/config/settings.yaml`
+`/jill/config/settings.yaml` - created after first run
 
 Customize Jill's panel appearance, playback behavior, and commands.
 

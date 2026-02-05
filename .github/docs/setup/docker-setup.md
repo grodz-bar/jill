@@ -76,6 +76,7 @@ Edit the music volume in `docker-compose.yml` to point to your library (pick one
 ```bash
 docker compose up -d
 docker compose logs -f jill  # Watch for: "time to mix drinks and change lives"
+# Ctrl+C to exit logs (Jill keeps running)
 ```
 
 > [!NOTE]

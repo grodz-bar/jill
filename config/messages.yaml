@@ -136,7 +136,7 @@ seek_to:
 cant_seek:
   text: "can't do that for this drink"
   enabled: true
-  
+
 # Previous track
 history_empty:
   text: "nothing before this"

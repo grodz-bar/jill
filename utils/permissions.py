@@ -20,13 +20,14 @@
 import asyncio
 import functools
 import os
-import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
 import discord
 import yaml
 from loguru import logger
+
+from utils.templates import PERMISSIONS_TEMPLATE, write_template
 
 
 # =============================================================================
@@ -136,57 +137,7 @@ class PermissionManager:
 
     async def _create_default(self) -> None:
         """Create default permissions file."""
-        self.config_path.parent.mkdir(parents=True, exist_ok=True)
-
-        content = """# Jill Permission System
-# Set enabled: true to activate role-based permissions
-
-enabled: false
-
-# Discord role ID for Bartender tier
-# Get this by enabling Developer Mode and right-clicking the role
-bartender_role_id: null
-
-# Command tier assignments (only these 3 tiers are supported)
-# customer: Available to everyone
-# bartender: Requires bartender role
-# owner: Requires admin/manage_guild permission
-# Move commands between tiers as needed
-tiers:
-  customer:
-    - queue
-    - playlists
-    - np
-  bartender:
-    - play
-    - pause
-    - skip
-    - previous
-    - stop
-    - seek
-    - shuffle
-    - loop
-    - playlist
-    - volume
-  owner:
-    - rescan
-"""
-        def write_atomic():
-            temp_fd, temp_path = tempfile.mkstemp(dir=self.config_path.parent, suffix='.tmp')
-            try:
-                f = os.fdopen(temp_fd, 'w', encoding='utf-8')
-            except Exception:
-                os.close(temp_fd)
-                raise
-            try:
-                with f:
-                    f.write(content)
-                Path(temp_path).replace(self.config_path)
-            except Exception:
-                Path(temp_path).unlink(missing_ok=True)
-                raise
-
-        await asyncio.to_thread(write_atomic)
+        await asyncio.to_thread(write_template, self.config_path, PERMISSIONS_TEMPLATE)
         logger.debug(f"generated {self.config_path.name}")
 
     def get_tier(self, command_name: str) -> str:

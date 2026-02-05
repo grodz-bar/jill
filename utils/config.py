@@ -20,7 +20,6 @@
 import asyncio
 import os
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
@@ -28,6 +27,7 @@ import yaml
 from loguru import logger
 
 from utils.holidays import get_active_holiday
+from utils.templates import MESSAGES_TEMPLATE, SETTINGS_TEMPLATE, write_template
 
 
 # =============================================================================
@@ -258,37 +258,6 @@ def load_yaml(path: Path, defaults: dict) -> dict:
         return defaults.copy()
 
 
-def save_yaml(path: Path, data: dict, header: str = "") -> None:
-    """Save YAML atomically with optional header comment.
-
-    Uses temp-file-then-rename pattern to prevent corruption if the bot
-    crashes mid-write. Creates parent directories if they don't exist.
-
-    Args:
-        path: Destination file path
-        data: Dict to serialize as YAML
-        header: Optional comment text to prepend (include # and newlines)
-    """
-    temp_path = None
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temp_fd, temp_path = tempfile.mkstemp(dir=path.parent, suffix='.tmp')
-        try:
-            f = os.fdopen(temp_fd, 'w', encoding='utf-8')
-        except Exception:
-            os.close(temp_fd)
-            raise
-        with f:
-            if header:
-                f.write(header)
-            yaml.dump(data, f, default_flow_style=False, sort_keys=False)
-        Path(temp_path).replace(path)
-    except Exception:
-        if temp_path:
-            Path(temp_path).unlink(missing_ok=True)
-        raise
-
-
 class ConfigManager:
     """Manages bot configuration from settings.yaml and messages.yaml.
 
@@ -320,7 +289,7 @@ class ConfigManager:
     async def load(self) -> None:
         """Load settings and messages from YAML, apply env overrides, validate.
 
-        Generates missing config files with default values and header comments.
+        Generates missing config files from templates with comments and formatting.
         """
         # Settings
         settings_path = self.config_path / "settings.yaml"
@@ -330,8 +299,7 @@ class ConfigManager:
 
         # Generate if missing
         if not settings_path.exists():
-            header = "# Jill Bot Settings\n# Edit these values to customize behavior\n\n"
-            await asyncio.to_thread(save_yaml, settings_path, DEFAULT_SETTINGS, header)
+            await asyncio.to_thread(write_template, settings_path, SETTINGS_TEMPLATE)
             logger.debug(f"generated {settings_path.name}")
 
         # Messages
@@ -341,8 +309,7 @@ class ConfigManager:
         )
 
         if not messages_path.exists():
-            header = "# Jill's Responses\n# Customize the bot's personality here\n\n"
-            await asyncio.to_thread(save_yaml, messages_path, DEFAULT_MESSAGES, header)
+            await asyncio.to_thread(write_template, messages_path, MESSAGES_TEMPLATE)
             logger.debug(f"generated {messages_path.name}")
 
         # Apply environment overrides and validate ranges

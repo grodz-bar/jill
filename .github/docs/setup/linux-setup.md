@@ -30,7 +30,7 @@ This guide walks you through setting up Jill on Linux.
 > This section is for experienced users who want to get running fast. If you're new to this, skip to [Step-by-Step Setup](#step-by-step-setup).
 
 1. Install Python 3.11+ and Java 17+ (see [Installing Dependencies](#installing-dependencies))
-2. Download [jill-linux.zip](https://github.com/grodz-bar/jill/releases/latest/download/jill-linux.zip): `unzip jill-linux.zip && cd jill`
+2. Download [jill-linux.zip](https://github.com/grodz-bar/jill/releases/latest/download/jill-linux.zip): `unzip jill-linux.zip -d jill && cd jill`
 3. Make scripts executable: `chmod +x setup-jill-linux.sh START-jill-linux.sh`
 4. Run setup: `./setup-jill-linux.sh`
 5. Add music to `music/` subfolders, or [link your existing library](../usage/music-library.md)
@@ -47,7 +47,7 @@ This guide walks you through setting up Jill on Linux.
 
 > **Terminal:** `curl -LO https://github.com/grodz-bar/jill/releases/latest/download/jill-linux.zip`
 
-- Extract it: `unzip jill-linux.zip && cd jill`
+- Extract it: `unzip jill-linux.zip -d jill && cd jill`
 
 <br>
 

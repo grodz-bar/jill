@@ -711,6 +711,15 @@ class ControlPanelLayout(discord.ui.LayoutView):
             except discord.HTTPException:
                 pass
             await self.respond(interaction, "panel_orphaned")
+
+            # Auto-recover: ensure a panel exists (creates one if tracked panel is also gone)
+            try:
+                music_cog = self.bot.get_cog("Music")
+                if music_cog:
+                    await music_cog.ensure_panel(interaction, interaction.guild_id)
+            except Exception:
+                logger.warning("failed to recover panel after orphan cleanup")
+
             return True
 
         # Repair panel.json if empty (orphaned panel scenario)

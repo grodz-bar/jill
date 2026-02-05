@@ -9,43 +9,6 @@
 # Stop: docker-compose down
 
 services:
-  lavalink:
-    image: ghcr.io/lavalink-devs/lavalink:4
-    container_name: lavalink
-    restart: unless-stopped
-    environment:
-      - _JAVA_OPTIONS=-Xmx512m -Xms256m -XX:+UseG1GC
-      - SERVER_PORT=2333
-      - SERVER_ADDRESS=0.0.0.0
-      - LAVALINK_SERVER_PASSWORD=timetomixdrinksandnotchangepasswords
-      - LAVALINK_SERVER_SOURCES_LOCAL=true
-      - LAVALINK_SERVER_SOURCES_HTTP=true
-      - LAVALINK_SERVER_SOURCES_YOUTUBE=false
-      - LAVALINK_SERVER_SOURCES_BANDCAMP=false
-      - LAVALINK_SERVER_SOURCES_SOUNDCLOUD=false
-      - LAVALINK_SERVER_SOURCES_TWITCH=false
-      - LAVALINK_SERVER_SOURCES_VIMEO=false
-    networks:
-      - jill-network
-    expose:
-      - "2333"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf -H \"Authorization: $${LAVALINK_SERVER_PASSWORD}\" http://localhost:2333/version || exit 1"]
-      interval: 30s
-      start_interval: 2s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-
   jill:
     image: ghcr.io/grodz-bar/jill:latest
     container_name: jill
@@ -111,6 +74,43 @@ services:
       resources:
         limits:
           memory: 512M
+
+  lavalink:
+    image: ghcr.io/lavalink-devs/lavalink:4
+    container_name: lavalink
+    restart: unless-stopped
+    environment:
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m -XX:+UseG1GC
+      - SERVER_PORT=2333
+      - SERVER_ADDRESS=0.0.0.0
+      - LAVALINK_SERVER_PASSWORD=timetomixdrinksandnotchangepasswords
+      - LAVALINK_SERVER_SOURCES_LOCAL=true
+      - LAVALINK_SERVER_SOURCES_HTTP=true
+      - LAVALINK_SERVER_SOURCES_YOUTUBE=false
+      - LAVALINK_SERVER_SOURCES_BANDCAMP=false
+      - LAVALINK_SERVER_SOURCES_SOUNDCLOUD=false
+      - LAVALINK_SERVER_SOURCES_TWITCH=false
+      - LAVALINK_SERVER_SOURCES_VIMEO=false
+    networks:
+      - jill-network
+    expose:
+      - "2333"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -H \"Authorization: $${LAVALINK_SERVER_PASSWORD}\" http://localhost:2333/version || exit 1"]
+      interval: 30s
+      start_interval: 2s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
 networks:
   jill-network:

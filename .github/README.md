@@ -56,6 +56,3 @@ Your local music library, on tap in Discord.
 | [![Windows](https://img.shields.io/badge/⠀⠀⠀⠀Windows⠀⠀⠀⠀-c77dff?style=flat-square)](docs/setup/windows-setup.md) | [![Permissions](https://img.shields.io/badge/⠀⠀⠀Permissions⠀⠀⠀-da7ee3?style=flat-square)](docs/configuration/permissions.md) | [![Troubleshooting](https://img.shields.io/badge/⠀Troubleshooting⠀-eb74be?style=flat-square)](docs/troubleshooting.md) |
 
 ---
-
-`Made with Claude. Mostly.`
-

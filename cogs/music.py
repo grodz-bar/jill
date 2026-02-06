@@ -494,10 +494,11 @@ class Music(ResponseMixin, commands.Cog):
                 await self._do_update_panel(guild_id)
         except asyncio.CancelledError:
             pass  # Superseded by a newer update
-        except aiohttp.ClientError:
-            pass  # Connection closed during shutdown
+        except aiohttp.ClientError as e:
+            logger.debug(f"panel update failed: {e}")
         finally:
-            self._panel_update_tasks.pop(guild_id, None)
+            if self._panel_update_tasks.get(guild_id) is asyncio.current_task():
+                self._panel_update_tasks.pop(guild_id, None)
 
     def _should_recreate_panel(self) -> bool:
         """Check if panel should be recreated based on age.
@@ -598,11 +599,14 @@ class Music(ResponseMixin, commands.Cog):
 
         except asyncio.CancelledError:
             pass  # Task was cancelled, clean exit
+        except aiohttp.ClientError as e:
+            logger.debug(f"progress update failed: {e}")
         except Exception as e:
             logger.warning(f"progress update error: {e}")
         finally:
-            # Clean up task reference
-            self.progress_update_tasks.pop(guild_id, None)
+            # Clean up task reference (identity check prevents race with replacement task)
+            if self.progress_update_tasks.get(guild_id) is asyncio.current_task():
+                self.progress_update_tasks.pop(guild_id, None)
 
     async def ensure_panel(self, interaction: discord.Interaction, guild_id: int) -> None:
         """Create control panel if it doesn't exist, or update it.
@@ -789,6 +793,9 @@ class Music(ResponseMixin, commands.Cog):
             if not player:
                 await self.respond(interaction, "voice_error")
                 return None
+            if not player.channel:
+                await self.respond(interaction, "voice_error")
+                return None
 
             # Check same channel
             if player.channel != user_channel:
@@ -831,6 +838,7 @@ class Music(ResponseMixin, commands.Cog):
             if tracks:
                 await player.play(tracks[0])
                 return True
+            logger.warning(f"lavalink returned no tracks for {track.name}")
         except aiohttp.ClientConnectionError as e:
             logger.error(f"playback failed for {track.name}: {e}")
             # Handler uses lock - safe to call from exception block
@@ -918,11 +926,11 @@ class Music(ResponseMixin, commands.Cog):
             await self.respond(interaction, "music_unavailable")
             return
 
+        await interaction.response.defer(ephemeral=True)
+
         player = await self.ensure_voice(interaction)
         if not player:
             return
-
-        await interaction.response.defer(ephemeral=True)
 
         # Resume if paused and no song specified
         if player.paused and not song:
@@ -1418,18 +1426,37 @@ class Music(ResponseMixin, commands.Cog):
             next_track = queue.advance_track()
 
             if next_track:
-                # Note: Panel update handled by on_track_start (which captures correct metadata)
-                if await self.play_track(event.player, next_track, queue.playlist_name):
-                    # Only increment drink emoji if not looping same song
-                    if not queue.song_loop:
-                        drinks.increment()
-                    self._cancel_inactivity_timer(guild_id)  # Activity resumed
-                # Error already logged by play_track()
+                # Try to play, skipping unplayable files
+                # Limit retries to playlist size (try each track once) capped at 5
+                max_skips = min(5, len(queue.active_tracks))
+                retries = 0
+                while next_track and retries < max_skips:
+                    if not event.player.connected:
+                        return  # Player disconnected during retries
+                    if await self.play_track(event.player, next_track, queue.playlist_name):
+                        if not queue.song_loop:
+                            drinks.increment()
+                        self._cancel_inactivity_timer(guild_id)
+                        break
+                    logger.warning(f"skipping unplayable track: {next_track.name}")
+                    retries += 1
+                    # Temporarily disable song_loop to advance past the broken track
+                    saved_loop = queue.song_loop
+                    queue.song_loop = False
+                    next_track = queue.advance_track()
+                    queue.song_loop = saved_loop
+                else:
+                    # Exhausted retries — all attempted tracks were unplayable
+                    logger.warning(f"stopping playback: {retries} consecutive unplayable tracks")
+                    self._stop_progress_update(guild_id)
+                    await self.bot.update_presence()
+                    await self.update_panel(guild_id)
             else:
+                # advance_track() returned None — no tracks loaded (playlist empty/removed)
                 logger.info("queue finished")
-                self._stop_progress_update(guild_id)  # Stop progress bar updates
-                await self.bot.update_presence()  # Clear presence
-                await self.update_panel(guild_id)  # Show "Nothing playing" state
+                self._stop_progress_update(guild_id)
+                await self.bot.update_presence()
+                await self.update_panel(guild_id)
 
     @commands.Cog.listener()
     async def on_track_start(self, event: mafic.TrackStartEvent) -> None:

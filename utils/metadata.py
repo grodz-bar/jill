@@ -40,6 +40,8 @@ from pathlib import Path
 
 from loguru import logger
 
+from utils.library import AUDIO_EXTENSIONS
+
 try:
     from mutagen import File, MutagenError
 except ImportError:
@@ -118,8 +120,8 @@ def extract_metadata_sync(filepath: Path) -> dict:
 
         result["track"] = track_num
 
-    except MutagenError:
-        logger.warning(f"error reading metadata from {filepath.name}")
+    except MutagenError as e:
+        logger.warning(f"error reading metadata from {filepath.name}: {e}")
 
     return result
 
@@ -247,7 +249,7 @@ async def scan_playlist_metadata(
     updated = False
     seen_keys: set[tuple] = set()  # Track duplicates by dedup key
     duplicates: list[str] = []  # Collect duplicate filenames for grouped logging
-    extensions = ['*.mp3', '*.flac', '*.ogg', '*.opus', '*.m4a', '*.wav', '*.aac']
+    extensions = AUDIO_EXTENSIONS
 
     for ext in extensions:
         for audio_file in playlist_path.glob(ext):
@@ -285,7 +287,7 @@ async def scan_playlist_metadata(
                 metadata.append(info)
 
             except Exception as e:
-                logger.warning(f"error processing {audio_file.name}")
+                logger.warning(f"error processing {audio_file.name}: {e}")
 
                 # Create minimal entry with filename fallback
                 # This ensures files with metadata errors still appear in playlist
@@ -333,7 +335,7 @@ async def scan_playlist_metadata(
         try:
             await asyncio.to_thread(_save_json, cache_file, cache)
         except Exception as e:
-            logger.warning("failed to save cache")
+            logger.warning(f"failed to save cache: {e}")
 
     # Build filtered file paths from metadata (non-duplicates only)
     filtered_paths = [Path(entry['path']) for entry in metadata]

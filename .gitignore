@@ -39,6 +39,7 @@ audiofiles/
 *.flac
 *.ogg
 *.m4a
+*.aac
 
 # Logs
 *.log

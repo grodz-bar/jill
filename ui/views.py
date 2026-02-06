@@ -58,6 +58,7 @@ class AutoDeleteView(discord.ui.View):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.message: discord.Message | None = None
+        self.bot = None
 
     async def _delete_response_after(self, interaction: discord.Interaction, delay: float) -> None:
         """Delete interaction's message after delay (fire-and-forget).
@@ -83,6 +84,17 @@ class AutoDeleteView(discord.ui.View):
                 pass
             except discord.HTTPException:
                 pass
+
+    def _user_in_bot_vc(self, interaction: discord.Interaction) -> bool:
+        """Check if user is in same VC as bot. Returns False if bot/guild unavailable, True if bot not in VC."""
+        if not self.bot or not interaction.guild:
+            return False
+        vc = interaction.guild.voice_client
+        if not vc:
+            return True  # Bot not in VC - allow
+        if not interaction.user.voice:
+            return False
+        return interaction.user.voice.channel == vc.channel
 
 
 class PaginationView(AutoDeleteView):
@@ -199,17 +211,6 @@ class SearchSelectionView(AutoDeleteView):
         )
         select.callback = self.select_callback
         self.add_item(select)
-
-    def _user_in_bot_vc(self, interaction: discord.Interaction) -> bool:
-        """Check if user is in same VC as bot. Returns False if bot/guild unavailable, True if bot not in VC."""
-        if not self.bot or not interaction.guild:
-            return False
-        vc = interaction.guild.voice_client
-        if not vc:
-            return True  # Bot not in VC - allow
-        if not interaction.user.voice:
-            return False
-        return interaction.user.voice.channel == vc.channel
 
     async def select_callback(self, interaction: discord.Interaction) -> None:
         """Handle track selection. Silently dismisses if user not in bot's VC. Shows track_selected message if enabled, auto-deletes."""

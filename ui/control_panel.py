@@ -219,17 +219,6 @@ class PlaylistSelectView(AutoDeleteView):
         select.callback = self.on_select
         self.add_item(select)
 
-    def _user_in_bot_vc(self, interaction: discord.Interaction) -> bool:
-        """Check if user is in same VC as bot. Returns False if bot/guild unavailable, True if bot not in VC."""
-        if not self.bot or not interaction.guild:
-            return False
-        vc = interaction.guild.voice_client
-        if not vc:
-            return True  # Bot not in VC - allow queue ops
-        if not interaction.user.voice:
-            return False
-        return interaction.user.voice.channel == vc.channel
-
     async def on_select(self, interaction: discord.Interaction) -> None:
         """Handle playlist selection from the dropdown.
 
@@ -717,8 +706,8 @@ class ControlPanelLayout(discord.ui.LayoutView):
                 music_cog = self.bot.get_cog("Music")
                 if music_cog:
                     await music_cog.ensure_panel(interaction, interaction.guild_id)
-            except Exception:
-                logger.warning("failed to recover panel after orphan cleanup")
+            except Exception as e:
+                logger.warning(f"failed to recover panel after orphan cleanup: {e}")
 
             return True
 
@@ -790,6 +779,8 @@ class ControlPanelLayout(discord.ui.LayoutView):
         if not interaction.user.voice:
             await self.respond(interaction, "not_in_vc")
             return False
+        if not player.channel:
+            return True  # Treat as not connected — standby bypass
         if interaction.user.voice.channel != player.channel:
             await self.respond(interaction, "wrong_vc", channel=player.channel.mention)
             return False

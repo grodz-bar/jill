@@ -163,7 +163,8 @@ def run_wizard(project_root: Path = None) -> bool:
             ok, msg = validate_token_format(token)
             if ok:
                 _print_status(True, "Token format valid")
-                _update_env_value(env_file, "DISCORD_TOKEN", token)
+                if not _update_env_value(env_file, "DISCORD_TOKEN", token):
+                    continue
                 break
             else:
                 print(f"\033[93m[!] {msg}\033[0m")
@@ -190,8 +191,8 @@ def run_wizard(project_root: Path = None) -> bool:
         if guild_id:
             # Discord snowflake IDs are 16-20 digits (16 for pre-2015, 19-20 for 2022+)
             if guild_id.isdigit() and 16 <= len(guild_id) <= 20:
-                _update_env_value(env_file, "GUILD_ID", guild_id)
-                _print_status(True, "Guild ID saved")
+                if _update_env_value(env_file, "GUILD_ID", guild_id):
+                    _print_status(True, "Guild ID saved")
             elif guild_id.isdigit():
                 _print_status(False, "Guild ID should be 16-20 digits, skipped", warning_only=True)
             else:
@@ -327,7 +328,7 @@ def _write_atomic(file_path: Path, content: str) -> None:
     Path(temp_path).replace(file_path)
 
 
-def _update_env_value(env_file: Path, key: str, value: str):
+def _update_env_value(env_file: Path, key: str, value: str) -> bool:
     """Update or add a value in .env file. Creates file if missing.
 
     Uncomments commented keys (strips leading '#' chars) or appends if not found.
@@ -336,11 +337,14 @@ def _update_env_value(env_file: Path, key: str, value: str):
         env_file: Path to .env file
         key: Environment variable name
         value: Value to set
+
+    Returns:
+        True if written successfully, False on failure.
     """
     try:
         if not env_file.exists():
             _write_atomic(env_file, f"{key}={value}\n")
-            return
+            return True
 
         lines = env_file.read_text(encoding='utf-8').splitlines()
         found = False
@@ -362,11 +366,12 @@ def _update_env_value(env_file: Path, key: str, value: str):
             lines.append(f"{key}={value}")
 
         _write_atomic(env_file, "\n".join(lines) + "\n")
+        return True
     except OSError as e:
         print(f"\033[91m[x] Failed to write to {env_file}: {e}\033[0m")
         print("    Check disk space and file permissions.")
-        print("    You may need to re-enter your credentials when you retry.")
-        sys.exit(1)
+        print("    Fix the issue and try again, or Ctrl+C to cancel.")
+        return False
 
 
 def _get_env_value(env_file: Path, key: str, default: str) -> str:

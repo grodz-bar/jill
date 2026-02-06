@@ -291,5 +291,4 @@ echo
 # Start the bot
 echo -e "${MAGENTA}[.] starting jill...${NC}"
 echo
-source venv/bin/activate
-python bot.py
+venv/bin/python bot.py

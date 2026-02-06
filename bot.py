@@ -96,7 +96,8 @@ warnings.filterwarnings("ignore", category=UnsupportedVersionWarning)
 # Suppress mafic's traceback.print_exc() calls during reconnection
 # Mafic has no config option for this - monkey-patch is the only solution
 from mafic import node as mafic_node
-mafic_node.print_exc = lambda: None
+if hasattr(mafic_node, 'print_exc'):
+    mafic_node.print_exc = lambda: None
 
 from ui.control_panel import ControlPanelLayout, PanelManager, DrinkCounter
 from utils.config import ConfigManager, validate_configuration
@@ -396,7 +397,7 @@ class MusicBot(commands.Bot):
         6. PermissionManager.load() - role-based access control
         7. aiohttp session - for HTTP client operations
         8. HTTP server - serves audio files to Lavalink
-        9. Panel setup - registers persistent view, loads panel.json, recovers existing panel
+        9. Panel setup - registers persistent view, loads panel.json
         10. Mafic pool creation (node connects in on_ready)
         11. Cogs - Music, Queue, Settings
         12. preload_playlist - loads last playlist into queue
@@ -443,6 +444,7 @@ class MusicBot(commands.Bot):
         self._lavalink_init_lock = asyncio.Lock()
         self._lavalink_disconnect_lock = asyncio.Lock()
         self._presence_task: asyncio.Task | None = None
+        self._update_check_task: asyncio.Task | None = None
         # Store config as instance attributes for cog access
         self.http_host = HTTP_HOST
         self.http_port = HTTP_PORT
@@ -616,23 +618,6 @@ class MusicBot(commands.Bot):
 
             # Load panel tracking
             await self.panel_manager.load()
-
-            # Re-attach to existing panel if it exists (for restart recovery)
-            existing_panel = await self.panel_manager.get_message(self)
-            if existing_panel:
-                logger.debug(f"found control panel in #{existing_panel.channel.name}")
-                # Refresh to idle state (no voice connection after restart)
-                layout = ControlPanelLayout(self)
-                layout.header_display.content = "### now serving:\n[nothing]"
-                layout.body_display.content = "press `▶️play` to start"
-                try:
-                    # CRITICAL: embed=None, content=None for transition from old embed
-                    await existing_panel.edit(view=layout, embed=None, content=None)
-                    logger.debug("refreshed control panel to idle")
-                except discord.HTTPException as e:
-                    logger.warning(f"failed to refresh control panel: {e}")
-            else:
-                logger.debug("no existing control panel found")
         else:
             logger.log("NOTICE", "control panel disabled")
 
@@ -663,6 +648,9 @@ class MusicBot(commands.Bot):
     async def close(self) -> None:
         """Cleanup on shutdown."""
         logger.info("cleaning up")
+
+        if self._update_check_task and not self._update_check_task.done():
+            self._update_check_task.cancel()
 
         # Unload cogs first - cancels pending tasks, removes event listeners
         # Must happen before voice disconnect (which triggers events)
@@ -826,8 +814,7 @@ class MusicBot(commands.Bot):
     async def _enable_session_resumption(self, node: mafic.Node, timeout: int = 300) -> None:
         """Enable Lavalink session resumption. Timeout (default 300s) is how long Lavalink preserves playback state during reconnection."""
         url = f"http://{node.host}:{node.port}/v4/sessions/{node.session_id}"
-        # Access internal password attribute (Python name-mangled as _Node__password)
-        headers = {"Authorization": node._Node__password}
+        headers = {"Authorization": LAVALINK_PASSWORD}
         payload = {"resuming": True, "timeout": timeout}
 
         try:
@@ -836,8 +823,8 @@ class MusicBot(commands.Bot):
                     logger.debug(f"lavalink session resume enabled ({timeout}s)")
                 else:
                     logger.error(f"lavalink session resumption failed: HTTP {resp.status}")
-        except Exception:
-            logger.debug("lavalink session resume failed")
+        except Exception as e:
+            logger.debug(f"lavalink session resume failed: {e}")
 
     async def on_node_unavailable(self, node: mafic.Node) -> None:
         """Handle Lavalink node disconnection.
@@ -845,15 +832,17 @@ class MusicBot(commands.Bot):
         Called by Mafic when the Lavalink connection drops. Disconnects voice
         clients so the panel returns to idle state. Mafic handles reconnection
         internally - we just need to clean up our side.
-
-        Note: We can't use player.disconnect() because Mafic tries to HTTP to
-        Lavalink first (to destroy the session), which fails when Lavalink is down.
-        Instead we use change_voice_state + cleanup (what Discord.py does internally).
         """
         logger.warning("lavalink disconnected")
+        await self._disconnect_all_voice()
 
-        # Disconnect from voice (gateway message + local cleanup)
-        # on_voice_state_update will handle state cleanup and panel update
+    async def _disconnect_all_voice(self) -> None:
+        """Disconnect all voice channels via gateway message + local cleanup.
+
+        Uses change_voice_state + cleanup instead of player.disconnect() because
+        Mafic's disconnect tries to HTTP to Lavalink first (to destroy the session),
+        which fails when Lavalink is down.
+        """
         for guild in self.guilds:
             vc = guild.voice_client
             if vc:
@@ -878,17 +867,8 @@ class MusicBot(commands.Bot):
                 return
             node = list(self.pool.nodes)[0]
 
-            # Voice cleanup (mirrors on_node_unavailable)
             logger.warning("lavalink disconnected")
-            for guild in self.guilds:
-                vc = guild.voice_client
-                if vc:
-                    try:
-                        await guild.change_voice_state(channel=None)
-                    except Exception as e:
-                        logger.debug(f"voice disconnect failed: {e}")
-                    finally:
-                        vc.cleanup()
+            await self._disconnect_all_voice()
 
             # Force reconnection (Mafic has built-in exponential backoff)
             try:
@@ -966,15 +946,26 @@ async def main() -> None:
     await validate_configuration()
 
     # Suppress harmless asyncio task exceptions (mafic internal errors during reconnection)
-    def _silence_library_exceptions(loop, context) -> None:
+    def _silence_mafic_exceptions(loop, context) -> None:
         if "exception" in context:
             exc = context["exception"]
-            # Silence mafic's internal errors: connection resets, websocket listener, player sync, orphaned reconnects
             if isinstance(exc, (ConnectionResetError, RuntimeError, KeyError, TimeoutError)):
-                return  # Silently ignore
+                future = context.get("future")
+                # Transport callbacks (no task) raising ConnectionResetError are
+                # harmless socket cleanup noise (Windows ProactorEventLoop)
+                if not future and isinstance(exc, ConnectionResetError):
+                    return
+                # Only silence task exceptions if they originate from mafic
+                if future and hasattr(future, "get_coro"):
+                    coro = future.get_coro()
+                    if coro is not None:
+                        filename = coro.cr_code.co_filename
+                        if "mafic" in filename:
+                            logger.debug(f"suppressed mafic exception: {type(exc).__name__}: {exc}")
+                            return
         loop.default_exception_handler(context)
 
-    asyncio.get_running_loop().set_exception_handler(_silence_library_exceptions)
+    asyncio.get_running_loop().set_exception_handler(_silence_mafic_exceptions)
 
     # Validated by validate_configuration() above - exits if missing
     token = os.getenv("DISCORD_TOKEN")

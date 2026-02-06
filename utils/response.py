@@ -184,6 +184,9 @@ class ResponseMixin:
         if not interaction.user.voice:
             await self.respond(interaction, "not_in_vc")
             return False
+        if not player.channel:
+            await self.respond(interaction, "not_in_vc")
+            return False
         if interaction.user.voice.channel != player.channel:
             await self.respond(interaction, "wrong_vc", channel=player.channel.mention)
             return False

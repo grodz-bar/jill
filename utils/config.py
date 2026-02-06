@@ -341,7 +341,13 @@ class ConfigManager:
         # Restore defaults for null values (YAML "key:" with no value)
         for key in list(self.settings):
             if self.settings[key] is None and key in DEFAULT_SETTINGS:
-                self.settings[key] = DEFAULT_SETTINGS[key]
+                val = DEFAULT_SETTINGS[key]
+                self.settings[key] = val.copy() if isinstance(val, dict) else val
+        # Restore defaults for non-dict sections (e.g., "panel: false")
+        for section in ("panel", "ui", "commands", "logging"):
+            if section in self.settings and not isinstance(self.settings[section], dict):
+                logger.warning(f"'{section}' invalid, using defaults")
+                self.settings[section] = DEFAULT_SETTINGS.get(section, {}).copy()
         for section in ("panel", "ui", "commands", "logging"):
             sect = self.settings.get(section)
             defaults = DEFAULT_SETTINGS.get(section, {})
@@ -355,7 +361,7 @@ class ConfigManager:
         if isinstance(panel, dict):
             emojis = panel.get("drink_emojis")
             if not isinstance(emojis, list) or not emojis:
-                panel["drink_emojis"] = DEFAULT_SETTINGS["panel"]["drink_emojis"]
+                panel["drink_emojis"] = DEFAULT_SETTINGS["panel"]["drink_emojis"].copy()
 
         # Validate and clamp ranged integers
         validations = {
@@ -682,7 +688,7 @@ async def validate_configuration() -> None:
         async with aiohttp.ClientSession() as session:
             url = f"http://{lavalink_host}:{lavalink_port}/version"
             headers = {"Authorization": lavalink_password}
-            async with session.get(url, headers=headers, timeout=30.0) as resp:
+            async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
                 if resp.status != 200:
                     errors.append(f"lavalink not responding at {url}")
                 else:

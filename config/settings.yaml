@@ -47,6 +47,7 @@ commands:
   shuffle_command: true
   loop_command: true
   rescan_command: true
+  panel_command: true
 
 # Queue/playlist display
 queue_display_size: 15      # 1-50: tracks shown per page in /queue

@@ -139,7 +139,7 @@ class Settings(ResponseMixin, commands.Cog):
                                 logger.warning(f"playlist '{old_name}' no longer exists, queue cleared")
 
                     # Refresh panel after rescan (debounced, cheap)
-                    await music_cog.update_panel(interaction.guild_id)
+                    await self.bot.panel_manager.notify(interaction.guild_id)
 
                 playlists = self.bot.library.playlists
                 total_tracks = sum(len(t) for t in playlists.values())
@@ -177,6 +177,31 @@ class Settings(ResponseMixin, commands.Cog):
 
         logger.info(f"{interaction.user.display_name} set volume to {level}")
         await self.respond(interaction, "volume_set", level=level)
+
+    @app_commands.command(name="panel", description="create or move the control panel")
+    @app_commands.guild_only()
+    @app_commands.describe(action="use 'remove' to delete the panel")
+    @app_commands.choices(action=[app_commands.Choice(name="remove", value="remove")])
+    @require_command_enabled("panel")
+    @require_permission("panel")
+    async def panel_cmd(self, interaction: discord.Interaction,
+                        action: app_commands.Choice[str] | None = None):
+        """Create, move, or remove the control panel."""
+        if not self.bot.panel_manager.panel_enabled():
+            await self.respond(interaction, "panel_disabled")
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        if action and action.value == "remove":
+            if not self.bot.panel_manager.has_panel():
+                await self.respond(interaction, "panel_not_active")
+                return
+            await self.bot.panel_manager.remove()
+            await self.respond(interaction, "panel_removed")
+        else:
+            await self.bot.panel_manager.create(interaction.channel, interaction.guild_id)
+            await self.respond(interaction, "panel_created", channel=interaction.channel.mention)
 
 
 async def setup(bot: commands.Bot) -> None:

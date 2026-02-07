@@ -82,6 +82,7 @@ commands:
   shuffle_command: true
   loop_command: true
   rescan_command: true
+  panel_command: true
 
 # Queue/playlist display
 queue_display_size: 15      # 1-50: tracks shown per page in /queue
@@ -270,6 +271,21 @@ panel_deleted:
 panel_orphaned:
   text: "that panel's outdated, check {channel}"
   enabled: true
+panel_created:
+  text: "panel's set up in {channel}"
+  enabled: true
+panel_removed:
+  text: "panel's been cleared"
+  enabled: true
+panel_not_found:
+  text: "that panel's outdated, use `/panel` to create a new one"
+  enabled: true
+panel_not_active:
+  text: "no active panel to remove"
+  enabled: true
+panel_disabled:
+  text: "the panel system is disabled in settings"
+  enabled: true
 library_unavailable:
   text: "music library's offline"
   enabled: true
@@ -337,6 +353,7 @@ tiers:
     - loop
     - playlist
     - volume
+    - panel
   owner:
     - rescan
 """

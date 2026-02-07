@@ -21,8 +21,10 @@ import asyncio
 import json
 import os
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
+import aiohttp
 import discord
 import mafic
 from discord.enums import SeparatorSpacing
@@ -330,7 +332,7 @@ class PlaylistSelectView(AutoDeleteView):
                 pass
 
         # Update the main panel
-        await music_cog.update_panel(guild_id)
+        await self.bot.panel_manager.notify(guild_id)
 
         self.stop()
 
@@ -687,38 +689,31 @@ class ControlPanelLayout(discord.ui.LayoutView):
         return INFO_LINE_WIDTH_LIMITS.get(self._button_count, 42)
 
     async def _check_panel_deleted(self, interaction: discord.Interaction) -> bool:
-        """Validate panel before button interaction. Returns True if caller should abort. Side effects: sends panel_deleted or panel_orphaned message, deletes orphaned panels (wrong ID), repairs panel.json (empty IDs)."""
+        """Validate panel before button interaction. Returns True if caller should abort."""
         if interaction.message is None:
             await self.respond(interaction, "panel_deleted")
             return True
 
-        # If clicked panel doesn't match tracked panel, delete the orphaned one
+        # Clicked panel doesn't match tracked panel — orphan
         if self.bot.panel_manager.message_id and interaction.message.id != self.bot.panel_manager.message_id:
+            await interaction.response.defer(ephemeral=True)
             try:
                 await interaction.message.delete()
-                logger.info("deleted orphaned panel")
             except discord.HTTPException:
                 pass
             channel_id = self.bot.panel_manager.channel_id
             await self.respond(interaction, "panel_orphaned", channel=f"<#{channel_id}>" if channel_id else "")
-
-            # Auto-recover: ensure a panel exists (creates one if tracked panel is also gone)
-            try:
-                music_cog = self.bot.get_cog("Music")
-                if music_cog:
-                    await music_cog.ensure_panel(interaction, interaction.guild_id)
-            except Exception as e:
-                logger.warning(f"failed to recover panel after orphan cleanup: {e}")
-
             return True
 
-        # Repair panel.json if empty (orphaned panel scenario)
-        # Set IDs directly (not set_message) so _panel_created_at stays 0 and triggers recreation
-        if not self.bot.panel_manager.channel_id or not self.bot.panel_manager.message_id:
-            self.bot.panel_manager.channel_id = interaction.message.channel.id
-            self.bot.panel_manager.message_id = interaction.message.id
-            await self.bot.panel_manager.save()
-            logger.info(f"recovered orphaned panel in #{interaction.message.channel.name}")
+        # No tracked panel — this panel is orphaned
+        if not self.bot.panel_manager.has_panel():
+            await interaction.response.defer(ephemeral=True)
+            try:
+                await interaction.message.delete()
+            except discord.HTTPException:
+                pass
+            await self.respond(interaction, "panel_not_found")
+            return True
 
         return False
 
@@ -727,13 +722,8 @@ class ControlPanelLayout(discord.ui.LayoutView):
         try:
             await interaction.response.edit_message(view=self)
             return True
-        except discord.HTTPException as e:
-            if e.code in (30046, 10008):
-                # Edit limit or message deleted - recreate panel
-                self.bot.panel_manager.invalidate_cache()
-                music_cog = self.bot.get_cog("Music")
-                if music_cog:
-                    await music_cog.update_panel(interaction.guild_id)
+        except discord.HTTPException:
+            await self.bot.panel_manager.notify(interaction.guild_id)
             return False
 
     def _user_in_bot_vc(self, interaction: discord.Interaction) -> bool:
@@ -1213,7 +1203,7 @@ class ControlPanelLayout(discord.ui.LayoutView):
                 state.was_paused_by_user = True
 
             # Schedule debounced panel update (coalesces with other updates)
-            await music_cog.update_panel(guild_id)
+            await self.bot.panel_manager.notify(guild_id)
 
     async def skip_button(self, interaction: discord.Interaction) -> None:
         """Skip to next track."""
@@ -1304,7 +1294,7 @@ class ControlPanelLayout(discord.ui.LayoutView):
         logger.info(f"shuffle {'enabled' if shuffle_state else 'disabled'} by {interaction.user.display_name}")
 
         # Schedule debounced panel update (coalesces with other updates)
-        await music_cog.update_panel(guild_id)
+        await self.bot.panel_manager.notify(guild_id)
 
         # Save state after responding (avoid blocking interaction)
         await self.bot.state_manager.save()
@@ -1336,7 +1326,7 @@ class ControlPanelLayout(discord.ui.LayoutView):
             logger.info(f"loop disabled by {interaction.user.display_name}")
 
         # Schedule debounced panel update (coalesces with other updates)
-        await music_cog.update_panel(guild_id)
+        await self.bot.panel_manager.notify(guild_id)
 
     async def playlist_button(self, interaction: discord.Interaction) -> None:
         """Show playlist selector dropdown."""
@@ -1374,32 +1364,30 @@ class ControlPanelLayout(discord.ui.LayoutView):
 
 # Panel tracking
 class PanelManager:
-    """Tracks the control panel message location and handles recreation.
+    """Manages the control panel lifecycle: creation, updates, recreation, persistence.
 
     The control panel is a persistent Discord message that shows playback status.
-    This manager tracks which channel/message it's in so the bot can find and
-    update it across restarts.
+    This manager owns ALL lifecycle operations — callers just provide content
+    (via layout builder callback) and trigger updates.
 
-    Persistence:
-    - panel.json stores channel_id and message_id
-    - Loaded on startup, saved when panel is created/moved
-    - If panel is deleted, IDs are cleared and panel stops updating
+    Public API:
+    - create(channel, guild_id): Create or move the panel to a channel
+    - notify(guild_id): Debounced update after state changes
+    - remove(): Delete the panel and go dormant
+    - has_panel(): Check if a panel is currently tracked
 
-    Message caching:
-    - _cached_message avoids repeated Discord API calls
-    - Cache is invalidated on error, deletion, or recreation
+    Dormant state:
+    - When the panel is deleted (externally or via remove()), IDs are cleared
+      and saved to disk. notify() becomes a no-op until create() is called.
 
     Recreation strategy:
-    - Discord has an edit limit on old messages (error 30046)
-    - When hit, delete old panel and create new one in same channel
+    - Discord progressively throttles edits on older messages
+    - Proactive recreation every N minutes keeps the panel responsive
     - _recreate_lock prevents concurrent recreations from button spam
     - 15-second cooldown prevents recreation loops
-    - _panel_created_at tracks age for proactive recreation
 
-    Locks:
-    - _recreate_lock: Serializes panel recreation (one at a time)
-    - _ensure_panel_lock: Prevents concurrent panel creation
-    - _save_lock: Prevents concurrent file writes
+    Lock ordering (never acquire in reverse):
+        _update_locks[guild_id] -> _panel_lock -> _recreate_lock
 
     Attributes:
         file_path: Path to panel.json
@@ -1409,14 +1397,31 @@ class PanelManager:
 
     def __init__(self, data_path: Path) -> None:
         self.file_path = data_path / "panel.json"
+        self.bot: commands.Bot | None = None
         self.channel_id: int | None = None
         self.message_id: int | None = None
         self._cached_message: discord.PartialMessage | None = None
         self._recreate_lock = asyncio.Lock()
         self._last_recreate: float = 0
         self._panel_created_at: float = 0
-        self._ensure_panel_lock = asyncio.Lock()
+        self._panel_lock = asyncio.Lock()
         self._save_lock = asyncio.Lock()
+        # Debounce infrastructure (moved from Music cog)
+        self._update_tasks: dict[int, asyncio.Task] = {}
+        self._update_locks: dict[int, asyncio.Lock] = {}
+        self._layout_builder: Callable[[int], ControlPanelLayout] | None = None
+
+    def setup(self, bot: commands.Bot) -> None:
+        """Store bot reference. Called from setup_hook() before load()."""
+        self.bot = bot
+
+    def set_layout_builder(self, builder: Callable[[int], ControlPanelLayout] | None) -> None:
+        """Register or unregister the layout builder callback.
+
+        The Music cog registers this on load so PanelManager can build
+        fresh layouts without knowing about music domain objects.
+        """
+        self._layout_builder = builder
 
     async def load(self) -> None:
         """Load panel location from panel.json on startup.
@@ -1475,8 +1480,8 @@ class PanelManager:
             }, f, indent=2)
         Path(temp_path).replace(self.file_path)
 
-    async def get_message(self, bot: commands.Bot) -> discord.PartialMessage | None:
-        """Get the panel message (cached for performance). Returns a PartialMessage for edit/delete without READ_MESSAGE_HISTORY. Uses local object construction (no API call)."""
+    def _get_message(self) -> discord.PartialMessage | None:
+        """Get the panel message (cached). Returns a PartialMessage for edit/delete without READ_MESSAGE_HISTORY. Uses local object construction (no API call)."""
         if not self.channel_id or not self.message_id:
             return None
 
@@ -1488,7 +1493,7 @@ class PanelManager:
 
         # Create PartialMessage (no API call, no READ_MESSAGE_HISTORY needed)
         try:
-            channel = bot.get_channel(self.channel_id)
+            channel = self.bot.get_channel(self.channel_id)
             if channel:
                 self._cached_message = channel.get_partial_message(self.message_id)
                 return self._cached_message
@@ -1498,15 +1503,15 @@ class PanelManager:
 
         return None
 
-    def invalidate_cache(self) -> None:
+    def _invalidate_cache(self) -> None:
         """Clear cached message (call after recreate or on error)."""
         self._cached_message = None
 
-    async def set_message(self, message: discord.Message) -> None:
+    async def _register(self, message: discord.Message) -> None:
         """Register a new panel message and persist to panel.json.
 
-        Called when creating a new panel. Stores IDs, caches message object,
-        records creation time (for age-based recreation), and saves to disk.
+        Stores IDs, caches message object, records creation time
+        (for age-based recreation), and saves to disk.
         """
         self.channel_id = message.channel.id
         self.message_id = message.id
@@ -1514,24 +1519,52 @@ class PanelManager:
         self._panel_created_at = asyncio.get_running_loop().time()  # Track creation time
         await self.save()
 
-    async def recreate_panel(self, bot: commands.Bot, view: discord.ui.LayoutView) -> discord.Message | None:
-        """Delete old panel and create new one in the same channel. Used when hitting Discord's old-message edit limit (error 30046). Returns the new message, or None if recreation failed. Uses lock to serialize recreations and 15-second cooldown to prevent loops."""
+    # --- State management ---
+
+    def has_panel(self) -> bool:
+        """Check if a panel is currently tracked (both IDs set)."""
+        return bool(self.channel_id and self.message_id)
+
+    def _clear_state(self) -> None:
+        """Zero out all panel tracking state (in-memory only)."""
+        self.channel_id = None
+        self.message_id = None
+        self._cached_message = None
+        self._panel_created_at = 0
+
+    async def _go_dormant(self) -> None:
+        """Clear panel state and persist — panel is gone."""
+        self._clear_state()
+        await self.save()
+
+    # --- Recreation ---
+
+    async def _recreate(self, view: discord.ui.LayoutView) -> None:
+        """Delete old panel and create new one in the same channel.
+
+        Used when hitting Discord's edit limit (30046) or when the panel
+        is too old (proactive recreation). Uses lock + 15-second cooldown
+        to prevent recreation loops from queued tasks.
+
+        On failure (channel deleted, send error), goes dormant rather than
+        leaving stale IDs.
+        """
         async with self._recreate_lock:
-            # Check cooldown to prevent recreation loop (queued tasks deleting each other's work)
             now = asyncio.get_running_loop().time()
             if now - self._last_recreate < 15.0:
-                # Recently recreated - return current panel instead
-                return await self.get_message(bot)
+                return  # Recently recreated, skip
 
             if not self.channel_id:
-                return None
+                return
 
-            channel = bot.get_channel(self.channel_id)
+            channel = self.bot.get_channel(self.channel_id)
             if not channel:
-                return None
+                # Channel was deleted — go dormant
+                await self._go_dormant()
+                logger.debug("panel channel no longer exists, going dormant")
+                return
 
             # Delete old message (best effort, may already be gone)
-            # Use PartialMessage - no API call, no READ_MESSAGE_HISTORY needed
             if self.message_id:
                 try:
                     old_msg = channel.get_partial_message(self.message_id)
@@ -1544,15 +1577,185 @@ class PanelManager:
                 except Exception as e:
                     logger.warning(f"unexpected error deleting old panel: {e}")
 
-            self.invalidate_cache()  # Clear cache after deletion attempt
+            self._invalidate_cache()
 
-            # Create new panel in same channel (LayoutView only, no embed)
+            # Create new panel in same channel
             try:
                 new_msg = await channel.send(view=view)
-                await self.set_message(new_msg)
-                self._last_recreate = now  # Update cooldown timestamp
+                await self._register(new_msg)
+                self._last_recreate = now
                 logger.info(f"recreated panel in #{channel.name}")
-                return new_msg
             except discord.HTTPException as e:
+                # Send failed after old message was deleted — go dormant
+                await self._go_dormant()
                 logger.error(f"failed to recreate panel: {e}")
-                return None
+
+    # --- Lifecycle helpers ---
+
+    def panel_enabled(self) -> bool:
+        """Check if control panel is enabled in config."""
+        panel_config = self.bot.config_manager.get("panel", {})
+        return panel_config.get("enabled", True)
+
+    def _should_recreate(self) -> bool:
+        """Check if panel should be recreated based on age.
+
+        Returns True if panel is older than configured interval, or on restart
+        (when _panel_created_at is 0).
+        """
+        panel_config = self.bot.config_manager.get("panel", {})
+        interval = panel_config.get("recreate_interval", 30)
+        if interval <= 0:
+            return False  # Recreation disabled
+
+        age = asyncio.get_running_loop().time() - self._panel_created_at
+        return age > (interval * 60)
+
+    # --- Public API ---
+
+    async def create(self, channel: discord.abc.Messageable, guild_id: int) -> None:
+        """Create or move the panel to a channel.
+
+        If a panel already exists, deletes the old one first (best effort).
+        Builds a fresh layout and sends it to the target channel.
+        """
+        if not self.panel_enabled():
+            return
+        if not self._layout_builder:
+            return
+
+        async with self._panel_lock:
+            # Delete old panel if exists (best effort)
+            if self.message_id:
+                old_msg = self._get_message()
+                if old_msg:
+                    try:
+                        await old_msg.delete()
+                    except discord.HTTPException:
+                        pass
+                self._invalidate_cache()
+
+            layout = self._layout_builder(guild_id)
+            if not layout:
+                return
+
+            try:
+                new_msg = await channel.send(view=layout)
+                await self._register(new_msg)
+                logger.info(f"created panel in #{channel.name}")
+            except discord.HTTPException as e:
+                logger.error(f"failed to create panel: {e}")
+
+    async def remove(self) -> None:
+        """Delete the panel message and go dormant."""
+        async with self._panel_lock:
+            msg = self._get_message()
+            if msg:
+                try:
+                    await msg.delete()
+                except discord.HTTPException:
+                    pass
+            await self._go_dormant()
+
+    async def notify(self, guild_id: int) -> None:
+        """Signal that state changed — schedule a debounced panel update.
+
+        No-op if panel is disabled or dormant (no panel tracked).
+        Coalesces rapid updates into a single edit.
+        """
+        if not self.panel_enabled():
+            return
+        if not self.has_panel():
+            return
+
+        # Cancel existing pending update for this guild (task cleanup pattern)
+        if guild_id in self._update_tasks:
+            task = self._update_tasks[guild_id]
+            if not task.done():
+                task.cancel()
+
+        # Schedule update with debounce delay
+        self._update_tasks[guild_id] = asyncio.create_task(
+            self._debounced_update(guild_id)
+        )
+
+    async def _debounced_update(self, guild_id: int) -> None:
+        """Debounced panel update — coalesces rapid updates into one.
+
+        Waits for configured debounce period (default 500ms), then acquires
+        a lock and performs the actual update. If a newer update is triggered
+        during the wait, this task is cancelled (preventing stale updates).
+        """
+        try:
+            panel_config = self.bot.config_manager.get("panel", {})
+            debounce_ms = panel_config.get("update_debounce_ms", 500)
+            await asyncio.sleep(debounce_ms / 1000.0)
+
+            # Get or create lock for this guild
+            if guild_id not in self._update_locks:
+                self._update_locks[guild_id] = asyncio.Lock()
+
+            # Only one update can execute at a time per guild (prevents out-of-order edits)
+            async with self._update_locks[guild_id]:
+                await self._update(guild_id)
+        except asyncio.CancelledError:
+            pass  # Superseded by a newer update
+        except aiohttp.ClientError as e:
+            logger.debug(f"panel update failed: {e}")
+        finally:
+            if self._update_tasks.get(guild_id) is asyncio.current_task():
+                self._update_tasks.pop(guild_id, None)
+
+    async def _update(self, guild_id: int) -> None:
+        """Edit the panel message, recreating if old or on error.
+
+        Handles age-based proactive recreation, per-code error recovery
+        (10008 → dormant, 30046 → recreate), and channel deletion detection.
+        """
+        if not self._layout_builder:
+            return
+
+        async with self._panel_lock:
+            msg = self._get_message()
+            if not msg:
+                # IDs set but can't resolve → channel likely deleted
+                if self.channel_id and self.message_id:
+                    await self._go_dormant()
+                    logger.debug("panel channel no longer available, going dormant")
+                return  # Truly dormant (no IDs) — no-op
+
+            layout = self._layout_builder(guild_id)
+            if not layout:
+                return
+
+            # Recreate panel if too old (proactive, keeps panel responsive)
+            if self._should_recreate():
+                age_minutes = int((asyncio.get_running_loop().time() - self._panel_created_at) / 60)
+                logger.debug(f"panel is {age_minutes}m old, recreating")
+                await asyncio.shield(self._recreate(layout))
+                return
+
+            try:
+                # CRITICAL: embed=None, content=None for transition from old embed
+                await msg.edit(view=layout, embed=None, content=None)
+            except discord.HTTPException as e:
+                if e.code == 10008:
+                    # Message deleted externally — go dormant
+                    await self._go_dormant()
+                    logger.debug("panel message was deleted externally")
+                elif e.code == 30046:
+                    # Edit limit — recreate in same channel
+                    self._invalidate_cache()
+                    await asyncio.shield(self._recreate(layout))
+                else:
+                    self._invalidate_cache()
+                    logger.warning(f"panel update failed: {e}")
+
+    def shutdown(self) -> None:
+        """Cancel pending update tasks. Called from Music cog_unload."""
+        for task in self._update_tasks.values():
+            if not task.done():
+                task.cancel()
+        self._update_tasks.clear()
+        self._update_locks.clear()
+        self._layout_builder = None

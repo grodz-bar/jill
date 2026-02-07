@@ -610,6 +610,7 @@ class MusicBot(commands.Bot):
         logger.debug(f"http server started on {HTTP_HOST}:{HTTP_PORT}")
 
         # Control panel initialization (skip if disabled)
+        self.panel_manager.setup(self)
         panel_config = self.config_manager.get("panel", {})
         if panel_config.get("enabled", True):
             # Register persistent view FIRST (before loading panel)

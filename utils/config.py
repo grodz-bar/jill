@@ -106,6 +106,7 @@ DEFAULT_SETTINGS = {
         "shuffle_command": True,
         "loop_command": True,
         "rescan_command": True,
+        "panel_command": True,
     },
     # UI behavior
     "ui": {
@@ -194,6 +195,11 @@ DEFAULT_MESSAGES = {
     "error_generic": {"text": "something broke, try again", "enabled": True},
     "panel_deleted": {"text": "panel's gone", "enabled": True},
     "panel_orphaned": {"text": "that panel's outdated, check {channel}", "enabled": True},
+    "panel_created": {"text": "panel's set up in {channel}", "enabled": True},
+    "panel_removed": {"text": "panel's been cleared", "enabled": True},
+    "panel_not_found": {"text": "that panel's outdated, use `/panel` to create a new one", "enabled": True},
+    "panel_not_active": {"text": "no active panel to remove", "enabled": True},
+    "panel_disabled": {"text": "the panel system is disabled in settings", "enabled": True},
     "library_unavailable": {"text": "music library's offline", "enabled": True},
     "select_playlist": {"text": "pick a playlist:", "enabled": True},
 
@@ -501,6 +507,7 @@ class ConfigManager:
             "SHUFFLE_COMMAND": ("commands.shuffle_command", lambda x: x.lower() == "true"),
             "LOOP_COMMAND": ("commands.loop_command", lambda x: x.lower() == "true"),
             "RESCAN_COMMAND": ("commands.rescan_command", lambda x: x.lower() == "true"),
+            "PANEL_COMMAND": ("commands.panel_command", lambda x: x.lower() == "true"),
             # UI timeouts
             "EXTENDED_AUTO_DELETE": ("ui.extended_auto_delete", non_negative("EXTENDED_AUTO_DELETE")),
             "BRIEF_AUTO_DELETE": ("ui.brief_auto_delete", non_negative("BRIEF_AUTO_DELETE")),

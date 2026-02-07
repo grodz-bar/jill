@@ -307,11 +307,6 @@ class Music(ResponseMixin, commands.Cog):
         # Progress bar update task
         self.progress_update_tasks: dict[int, asyncio.Task] = {}
 
-        # Panel update debounce tasks (prevents rapid concurrent edits)
-        self._panel_update_tasks: dict[int, asyncio.Task] = {}
-        # Panel update lock (prevents out-of-order execution)
-        self._panel_update_lock: dict[int, asyncio.Lock] = {}
-
         # Playback operation lock (prevents concurrent skip/previous/play races)
         self._playback_locks: dict[int, asyncio.Lock] = {}
 
@@ -326,15 +321,18 @@ class Music(ResponseMixin, commands.Cog):
             self._playback_locks[guild_id] = asyncio.Lock()
         return self._playback_locks[guild_id]
 
+    async def cog_load(self) -> None:
+        """Register layout builder when cog loads."""
+        self.bot.panel_manager.set_layout_builder(self._build_panel_layout)
+
     async def cog_unload(self) -> None:
         """Cleanup when cog is unloaded."""
+        self.bot.panel_manager.shutdown()
+
         for task in self.inactivity_tasks.values():
             if not task.done():
                 task.cancel()
         for task in self.progress_update_tasks.values():
-            if not task.done():
-                task.cancel()
-        for task in self._panel_update_tasks.values():
             if not task.done():
                 task.cancel()
 
@@ -343,8 +341,6 @@ class Music(ResponseMixin, commands.Cog):
         self.inactivity_tasks.clear()
         self.pause_states.clear()
         self.progress_update_tasks.clear()
-        self._panel_update_tasks.clear()
-        self._panel_update_lock.clear()
         self._playback_locks.clear()
 
     def get_queue(self, guild_id: int) -> GuildQueue:
@@ -441,10 +437,16 @@ class Music(ResponseMixin, commands.Cog):
         self.bot.drink_counters[guild_id] = counter
         return counter
 
-    def _panel_enabled(self) -> bool:
-        """Check if control panel is enabled in config."""
-        panel_config = self.bot.config_manager.get("panel", {})
-        return panel_config.get("enabled", True)
+    def _build_panel_layout(self, guild_id: int) -> ControlPanelLayout:
+        """Build a fresh panel layout with current state. Registered as PanelManager callback."""
+        player = self._get_player_by_guild_id(guild_id)
+        layout = ControlPanelLayout(self.bot, guild_id)
+        layout.update_button_states(guild_id)
+        layout.header_display.content = layout.build_header_content(guild_id)
+        layout.progress_display.content = layout.build_progress_content(guild_id, player)
+        layout.body_display.content = layout.build_body_content(guild_id, player)
+        layout.info_display.content = layout.build_info_content(guild_id)
+        return layout
 
     async def reload_metadata(self, guild_id: int) -> None:
         """Reload metadata cache for guild's queue from disk."""
@@ -457,121 +459,11 @@ class Music(ResponseMixin, commands.Cog):
             await queue.load_metadata_cache(self.bot.metadata_cache_path, queue.playlist_name)
         except Exception as e:
             logger.warning(f"failed to reload cache for '{queue.playlist_name}': {e}")
-        await self.update_panel(guild_id)
-
-    async def update_panel(self, guild_id: int) -> None:
-        """Update the control panel if it exists (debounced).
-
-        Follows the task cleanup pattern: cancel existing before creating new.
-        This coalesces rapid updates into a single edit, preventing the race
-        condition that causes multiple panel recreations.
-        """
-        if not self._panel_enabled():
-            return
-
-        # Cancel existing pending update for this guild (task cleanup pattern)
-        if guild_id in self._panel_update_tasks:
-            task = self._panel_update_tasks[guild_id]
-            if not task.done():
-                task.cancel()
-
-        # Schedule update with debounce delay
-        self._panel_update_tasks[guild_id] = asyncio.create_task(
-            self._debounced_panel_update(guild_id)
-        )
-
-    async def _debounced_panel_update(self, guild_id: int) -> None:
-        """Debounced panel update - coalesces rapid updates into one.
-
-        Waits for configured debounce period (default 500ms), then acquires
-        a lock and performs the actual update. If a newer update is triggered
-        during the wait, this task is cancelled (preventing stale updates).
-
-        This pattern batches rapid-fire events (button clicks, track changes)
-        into a single Discord API call.
-        """
-        try:
-            panel_config = self.bot.config_manager.get("panel", {})
-            debounce_ms = panel_config.get("update_debounce_ms", 500)
-            await asyncio.sleep(debounce_ms / 1000.0)
-
-            # Get or create lock for this guild
-            if guild_id not in self._panel_update_lock:
-                self._panel_update_lock[guild_id] = asyncio.Lock()
-
-            # Only one update can execute at a time per guild (prevents out-of-order edits)
-            async with self._panel_update_lock[guild_id]:
-                await self._do_update_panel(guild_id)
-        except asyncio.CancelledError:
-            pass  # Superseded by a newer update
-        except aiohttp.ClientError as e:
-            logger.debug(f"panel update failed: {e}")
-        finally:
-            if self._panel_update_tasks.get(guild_id) is asyncio.current_task():
-                self._panel_update_tasks.pop(guild_id, None)
-
-    def _should_recreate_panel(self) -> bool:
-        """Check if panel should be recreated based on age.
-
-        Returns True if panel is older than configured interval, or on restart
-        (when _panel_created_at is 0).
-        """
-        panel_config = self.bot.config_manager.get("panel", {})
-        interval = panel_config.get("recreate_interval", 30)
-        if interval <= 0:
-            return False  # Recreation disabled
-
-        age = asyncio.get_running_loop().time() - self.bot.panel_manager._panel_created_at
-        return age > (interval * 60)
-
-    async def _do_update_panel(self, guild_id: int) -> None:
-        """Actually perform the panel update."""
-        async with self.bot.panel_manager._ensure_panel_lock:
-            player = self._get_player_by_guild_id(guild_id)
-
-            # Build layout first (needed for both update and recreation)
-            layout = ControlPanelLayout(self.bot, guild_id)
-            layout.update_button_states(guild_id)
-            layout.header_display.content = layout.build_header_content(guild_id)
-            layout.progress_display.content = layout.build_progress_content(guild_id, player)
-            layout.body_display.content = layout.build_body_content(guild_id, player)
-            layout.info_display.content = layout.build_info_content(guild_id)
-
-            # Try to get existing panel for update
-            panel_msg = await self.bot.panel_manager.get_message(self.bot)
-            if not panel_msg:
-                return  # IDs None or deleted - already logged in get_message()
-
-            # Recreate panel if too old (only if panel exists)
-            if self._should_recreate_panel():
-                age_minutes = int((asyncio.get_running_loop().time() - self.bot.panel_manager._panel_created_at) / 60)
-                logger.debug(f"panel is {age_minutes}m old, recreating")
-                # Shield from CancelledError to prevent partial recreation (delete without create)
-                await asyncio.shield(self.bot.panel_manager.recreate_panel(self.bot, layout))
-                return
-
-            try:
-                # CRITICAL: embed=None, content=None for transition from old embed
-                await panel_msg.edit(view=layout, embed=None, content=None)
-            except discord.HTTPException as e:
-                if e.code == 10008:
-                    # Message deleted - clear state and skip update
-                    # Only user commands should create panels
-                    self.bot.panel_manager.invalidate_cache()
-                    self.bot.panel_manager.channel_id = None
-                    self.bot.panel_manager.message_id = None
-                    logger.debug("skipping panel update, message was deleted")
-                elif e.code == 30046:
-                    # Edit limit - recreate in same channel
-                    self.bot.panel_manager.invalidate_cache()
-                    await asyncio.shield(self.bot.panel_manager.recreate_panel(self.bot, layout))
-                else:
-                    self.bot.panel_manager.invalidate_cache()
-                    logger.warning(f"panel update failed: {e}")
+        await self.bot.panel_manager.notify(guild_id)
 
     def _start_progress_update(self, guild_id: int) -> None:
         """Start periodic progress bar update task."""
-        if not self._panel_enabled():
+        if not self.bot.panel_manager.panel_enabled():
             return
 
         self._stop_progress_update(guild_id)  # Cancel existing first
@@ -605,7 +497,7 @@ class Music(ResponseMixin, commands.Cog):
                     # Stop updating if not playing
                     break
 
-                await self.update_panel(guild_id)
+                await self.bot.panel_manager.notify(guild_id)
 
         except asyncio.CancelledError:
             pass  # Task was cancelled, clean exit
@@ -617,67 +509,6 @@ class Music(ResponseMixin, commands.Cog):
             # Clean up task reference (identity check prevents race with replacement task)
             if self.progress_update_tasks.get(guild_id) is asyncio.current_task():
                 self.progress_update_tasks.pop(guild_id, None)
-
-    async def ensure_panel(self, interaction: discord.Interaction, guild_id: int) -> None:
-        """Create control panel if it doesn't exist, or update it.
-
-        Uses lock to prevent concurrent recreation races.
-        Proactively recreates panel if it exceeds configured age threshold.
-        """
-        if not self._panel_enabled():
-            return
-
-        async with self.bot.panel_manager._ensure_panel_lock:
-            player = self._get_player_by_guild_id(guild_id)
-
-            # Build layout once
-            layout = ControlPanelLayout(self.bot, guild_id)
-            layout.update_button_states(guild_id)
-            layout.header_display.content = layout.build_header_content(guild_id)
-            layout.progress_display.content = layout.build_progress_content(guild_id, player)
-            layout.body_display.content = layout.build_body_content(guild_id, player)
-            layout.info_display.content = layout.build_info_content(guild_id)
-
-            # Try to get existing panel first
-            panel_msg = await self.bot.panel_manager.get_message(self.bot)
-
-            if panel_msg:
-                # Panel exists - check if too old
-                if self._should_recreate_panel():
-                    # Shield from CancelledError to prevent partial recreation
-                    await asyncio.shield(self.bot.panel_manager.recreate_panel(self.bot, layout))
-                    return
-
-                # Update existing panel
-                try:
-                    # CRITICAL: embed=None, content=None for transition from old embed
-                    await panel_msg.edit(view=layout, embed=None, content=None)
-                except discord.HTTPException as e:
-                    if e.code == 10008:
-                        # Message deleted - clear stale state and create in interaction.channel
-                        self.bot.panel_manager.invalidate_cache()
-                        self.bot.panel_manager.channel_id = None
-                        self.bot.panel_manager.message_id = None
-                        try:
-                            panel_msg = await interaction.channel.send(view=layout)
-                            await self.bot.panel_manager.set_message(panel_msg)
-                            logger.info(f"created panel in #{interaction.channel.name}")
-                        except discord.HTTPException as create_err:
-                            logger.error(f"failed to create panel: {create_err}")
-                    elif e.code == 30046:
-                        # Edit limit - recreate in same channel is OK
-                        self.bot.panel_manager.invalidate_cache()
-                        await asyncio.shield(self.bot.panel_manager.recreate_panel(self.bot, layout))
-                    else:
-                        logger.warning(f"panel update failed: {e}")
-            else:
-                # No panel exists - create in interaction channel
-                try:
-                    panel_msg = await interaction.channel.send(view=layout)
-                    await self.bot.panel_manager.set_message(panel_msg)
-                    logger.info(f"created panel in #{interaction.channel.name}")
-                except discord.HTTPException as e:
-                    logger.error(f"failed to create panel: {e}")
 
     def _get_player_by_guild_id(self, guild_id: int) -> mafic.Player | None:
         """Get player by guild ID for background tasks."""
@@ -738,7 +569,7 @@ class Music(ResponseMixin, commands.Cog):
             state = self.pause_states.setdefault(guild_id, VoiceSessionState())
             state.was_auto_paused = True
             await player.pause()
-            await self.update_panel(guild_id)
+            await self.bot.panel_manager.notify(guild_id)
             logger.info("auto-paused, channel empty")
 
     async def _handle_not_alone(self, guild_id: int, player: mafic.Player) -> None:
@@ -756,7 +587,7 @@ class Music(ResponseMixin, commands.Cog):
                 await player.resume()
                 state.was_auto_paused = False
                 self._start_progress_update(guild_id)
-                await self.update_panel(guild_id)
+                await self.bot.panel_manager.notify(guild_id)
                 logger.info("auto-resumed, listener joined")
 
     async def _inactivity_countdown(self, guild_id: int) -> None:
@@ -950,7 +781,9 @@ class Music(ResponseMixin, commands.Cog):
                 state.was_paused_by_user = False
             logger.info(f"resumed by {interaction.user.display_name}")
             await self.respond(interaction, "resumed")
-            await self.ensure_panel(interaction, interaction.guild_id)
+            if not self.bot.panel_manager.has_panel():
+                await self.bot.panel_manager.create(interaction.channel, interaction.guild_id)
+            await self.bot.panel_manager.notify(interaction.guild_id)
             return
 
         # If song specified, skip to search (even if already playing)
@@ -960,7 +793,9 @@ class Music(ResponseMixin, commands.Cog):
         elif player.current:
             # No song specified and already playing
             await self.respond(interaction, "already_playing")
-            await self.ensure_panel(interaction, interaction.guild_id)
+            if not self.bot.panel_manager.has_panel():
+                await self.bot.panel_manager.create(interaction.channel, interaction.guild_id)
+            await self.bot.panel_manager.notify(interaction.guild_id)
             return
 
         # Get current playlist
@@ -1032,7 +867,8 @@ class Music(ResponseMixin, commands.Cog):
                 if success:
                     title, _ = queue.get_current_display()
                     await self.respond(interaction, "now_playing", title=escape_markdown(title))
-                    await self.ensure_panel(interaction, guild_id)
+                    if not self.bot.panel_manager.has_panel():
+                        await self.bot.panel_manager.create(interaction.channel, guild_id)
                 else:
                     await self.respond(interaction, "track_play_error")
                 return
@@ -1043,7 +879,8 @@ class Music(ResponseMixin, commands.Cog):
                 if success:
                     title, _ = queue.get_current_display()
                     await self.respond(interaction, "now_playing", title=escape_markdown(title))
-                    await self.ensure_panel(interaction, guild_id)
+                    if not self.bot.panel_manager.has_panel():
+                        await self.bot.panel_manager.create(interaction.channel, guild_id)
                 else:
                     await self.respond(interaction, "track_play_error")
             return
@@ -1086,7 +923,8 @@ class Music(ResponseMixin, commands.Cog):
             if success:
                 logger.info(f"{interaction.user.display_name} started \"{best['title']}\"")
                 await self.respond(interaction, "track_selected", title=escape_markdown(best['title']))
-                await self.ensure_panel(interaction, guild_id)
+                if not self.bot.panel_manager.has_panel():
+                    await self.bot.panel_manager.create(interaction.channel, guild_id)
             else:
                 await self.respond(interaction, "track_play_error")
                 return
@@ -1129,7 +967,8 @@ class Music(ResponseMixin, commands.Cog):
                 if success:
                     logger.info(f"{interaction.user.display_name} started \"{view.selected['title']}\"")
                     # Callback already showed track_selected via edit_message
-                    await self.ensure_panel(interaction, guild_id)
+                    if not self.bot.panel_manager.has_panel():
+                        await self.bot.panel_manager.create(interaction.channel, guild_id)
                 else:
                     await self.respond(interaction, "track_play_error")
 
@@ -1156,7 +995,7 @@ class Music(ResponseMixin, commands.Cog):
         await player.pause()
         logger.info(f"paused by {interaction.user.display_name}")
         await self.respond(interaction, "paused")
-        await self.update_panel(interaction.guild_id)
+        await self.bot.panel_manager.notify(interaction.guild_id)
 
     @app_commands.command(name="seek", description="seek to a position in the track")
     @app_commands.guild_only()
@@ -1187,7 +1026,7 @@ class Music(ResponseMixin, commands.Cog):
         position_ms = int((position / 100.0) * player.current.length)
 
         await player.seek(position_ms)
-        await self.update_panel(interaction.guild_id)
+        await self.bot.panel_manager.notify(interaction.guild_id)
 
         logger.info(f"{interaction.user.display_name} seeked to {position}%")
         queue = self.get_queue(interaction.guild_id)
@@ -1398,7 +1237,7 @@ class Music(ResponseMixin, commands.Cog):
             self.guild_queues[guild_id].clear()
 
         # Update panel to show "Nothing playing" state
-        await self.update_panel(guild_id)
+        await self.bot.panel_manager.notify(guild_id)
 
         # Clear pause state (fresh state for next session)
         self.pause_states.pop(guild_id, None)
@@ -1460,13 +1299,13 @@ class Music(ResponseMixin, commands.Cog):
                     logger.warning(f"stopping playback: {retries} consecutive unplayable tracks")
                     self._stop_progress_update(guild_id)
                     await self.bot.update_presence()
-                    await self.update_panel(guild_id)
+                    await self.bot.panel_manager.notify(guild_id)
             else:
                 # advance_track() returned None — no tracks loaded (playlist empty/removed)
                 logger.info("queue finished")
                 self._stop_progress_update(guild_id)
                 await self.bot.update_presence()
-                await self.update_panel(guild_id)
+                await self.bot.panel_manager.notify(guild_id)
 
     @commands.Cog.listener()
     async def on_track_start(self, event: mafic.TrackStartEvent) -> None:
@@ -1496,7 +1335,7 @@ class Music(ResponseMixin, commands.Cog):
         title, artist = queue.get_current_display()
         await self.bot.update_presence(title=title, artist=artist)
 
-        await self.update_panel(guild_id)
+        await self.bot.panel_manager.notify(guild_id)
 
         self._cancel_inactivity_timer(guild_id)
 
@@ -1551,7 +1390,7 @@ class Music(ResponseMixin, commands.Cog):
                 queue.current = None
                 queue.current_metadata = None
                 await self.bot.update_presence()  # Clear presence
-                await self.update_panel(guild_id)
+                await self.bot.panel_manager.notify(guild_id)
                 await self.bot.state_manager.save()
             elif before.channel != after.channel and after.channel:
                 # Bot was moved to a different channel

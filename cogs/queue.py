@@ -306,7 +306,7 @@ class Queue(ResponseMixin, commands.Cog):
         await self.respond(interaction, "playlist_switched", playlist=escape_markdown(matched))
 
         # Update panel to show new upcoming tracks
-        await music_cog.update_panel(guild_id)
+        await self.bot.panel_manager.notify(guild_id)
 
     @app_commands.command(name="shuffle", description="toggle shuffle mode")
     @app_commands.guild_only()
@@ -356,7 +356,7 @@ class Queue(ResponseMixin, commands.Cog):
         await self.bot.state_manager.save()
 
         # Update panel to reflect shuffle state
-        await music_cog.update_panel(guild_id)
+        await self.bot.panel_manager.notify(guild_id)
 
     @app_commands.command(name="loop", description="toggle song repeat")
     @app_commands.guild_only()
@@ -392,7 +392,7 @@ class Queue(ResponseMixin, commands.Cog):
 
         # Note: song_loop not persisted (intentional - resets on restart)
         # Update panel to reflect loop state
-        await music_cog.update_panel(guild_id)
+        await self.bot.panel_manager.notify(guild_id)
 
 
 async def setup(bot: commands.Bot) -> None:

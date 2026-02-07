@@ -193,7 +193,7 @@ DEFAULT_MESSAGES = {
     # Errors
     "error_generic": {"text": "something broke, try again", "enabled": True},
     "panel_deleted": {"text": "panel's gone", "enabled": True},
-    "panel_orphaned": {"text": "that panel's outdated", "enabled": True},
+    "panel_orphaned": {"text": "that panel's outdated, check {channel}", "enabled": True},
     "library_unavailable": {"text": "music library's offline", "enabled": True},
     "select_playlist": {"text": "pick a playlist:", "enabled": True},
 

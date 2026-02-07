@@ -268,7 +268,7 @@ panel_deleted:
   text: "panel's gone"
   enabled: true
 panel_orphaned:
-  text: "that panel's outdated"
+  text: "that panel's outdated, check {channel}"
   enabled: true
 library_unavailable:
   text: "music library's offline"

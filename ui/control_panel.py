@@ -699,7 +699,8 @@ class ControlPanelLayout(discord.ui.LayoutView):
                 logger.info("deleted orphaned panel")
             except discord.HTTPException:
                 pass
-            await self.respond(interaction, "panel_orphaned")
+            channel_id = self.bot.panel_manager.channel_id
+            await self.respond(interaction, "panel_orphaned", channel=f"<#{channel_id}>" if channel_id else "")
 
             # Auto-recover: ensure a panel exists (creates one if tracked panel is also gone)
             try:

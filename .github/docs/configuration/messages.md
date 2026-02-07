@@ -118,7 +118,7 @@ not_in_vc:
 | | | | |
 | **Control Panel** |  |  |  |
 | `panel_deleted` | "panel's gone" | Panel message was deleted | enabled |
-| `panel_orphaned` | "that panel's outdated" | Interacted with an old panel | enabled |
+| `panel_orphaned` | "that panel's outdated, check {channel}" | Interacted with an old panel | enabled |
 | `library_unavailable` | "music library's offline" | Library not loaded | enabled |
 | `select_playlist` | "pick a playlist:" | Prompt for playlist picker | enabled |
 | | | | |

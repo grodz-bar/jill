@@ -37,6 +37,7 @@ class StateManager:
     - volume: Current playback volume (0-100), applied when joining voice
     - last_playlist: Name of last loaded playlist, restored on startup
     - shuffle: Whether shuffle mode is enabled (persisted across restarts)
+    - last_track: Filename of last played track, restored to current_index on startup
 
     Usage:
         state_manager.get("volume", 50)     # Read with default
@@ -58,10 +59,12 @@ class StateManager:
     # - volume: Playback volume percentage (restored when joining voice)
     # - last_playlist: Most recently loaded playlist (restored on startup)
     # - shuffle: Shuffle mode enabled (persisted and restored on startup)
+    # - last_track: Filename of last played track (restored to current_index on startup)
     DEFAULT_STATE = {
         "volume": 50,
         "last_playlist": None,
         "shuffle": False,
+        "last_track": None,
     }
 
     def __init__(self, data_path: Path) -> None:
@@ -93,7 +96,9 @@ class StateManager:
                 self.state = {**self.DEFAULT_STATE, **loaded}
                 vol = self.state.get('volume', 50)
                 shuffle = 'on' if self.state.get('shuffle', False) else 'off'
-                logger.info(f"restored state: volume {vol}%, shuffle {shuffle}")
+                last_track = self.state.get('last_track')
+                track_info = f", track '{last_track}'" if last_track else ""
+                logger.info(f"restored state: volume {vol}%, shuffle {shuffle}{track_info}")
             except (json.JSONDecodeError, IOError) as e:
                 # Preserve corrupted file for debugging
                 backup = self.state_file.with_suffix('.json.bak')

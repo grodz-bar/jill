@@ -401,6 +401,16 @@ class Music(ResponseMixin, commands.Cog):
         tracks = self.bot.library.get_playlist(playlist_name)
         queue.set_playlist(playlist_name, tracks)
         await queue.load_metadata_cache(self.bot.metadata_cache_path, playlist_name)
+
+        # Restore last track position from saved state
+        saved_track = self.bot.state_manager.get("last_track")
+        if saved_track:
+            for i, track in enumerate(queue.active_tracks):
+                if track.name == saved_track:
+                    queue.current_index = i
+                    logger.debug(f"restored track position: '{saved_track}'")
+                    break
+
         logger.debug(f"preloaded '{playlist_name}'")
 
     def get_drink_counter(self, guild_id: int) -> DrinkCounter:
@@ -1478,6 +1488,10 @@ class Music(ResponseMixin, commands.Cog):
         # This survives playlist switches - panel/np will show correct metadata
         queue.capture_current_metadata()
 
+        # Track last played for cross-reboot restore (flushed to disk on disconnect)
+        if queue.current:
+            self.bot.state_manager.set("last_track", queue.current.name)
+
         # Update bot presence with current song
         title, artist = queue.get_current_display()
         await self.bot.update_presence(title=title, artist=artist)
@@ -1538,6 +1552,7 @@ class Music(ResponseMixin, commands.Cog):
                 queue.current_metadata = None
                 await self.bot.update_presence()  # Clear presence
                 await self.update_panel(guild_id)
+                await self.bot.state_manager.save()
             elif before.channel != after.channel and after.channel:
                 # Bot was moved to a different channel
                 logger.info(f"moved to #{after.channel.name}")

@@ -44,7 +44,7 @@ from utils.templates import PERMISSIONS_TEMPLATE, write_template
 #   bartender_role_id - Discord role ID (get via Developer Mode > right-click role)
 #   tiers            - Maps tier name to list of command names
 #
-# Commands not listed in any tier default to "customer" (most permissive).
+# Commands not listed in any tier default to "bartender" (restricted).
 # Admins always have access to all tiers.
 # =============================================================================
 
@@ -70,7 +70,7 @@ class PermissionManager:
     to everyone. When enabled, commands are restricted based on tier assignments.
 
     Tier hierarchy:
-    - customer: No restrictions (default for unlisted commands)
+    - customer: No restrictions
     - bartender: Requires configured role OR admin permissions
     - owner: Requires manage_guild or administrator permission
 
@@ -149,12 +149,12 @@ class PermissionManager:
 
         Returns:
             Tier name: "customer", "bartender", or "owner".
-            Returns "customer" if command not found in any tier.
+            Returns "bartender" if command not found in any tier.
         """
         for tier, commands in self.tiers.items():
             if command_name in commands:
                 return tier
-        return "customer"  # Default to most permissive
+        return "bartender"  # Default to restricted
 
     def check_permission(
         self,

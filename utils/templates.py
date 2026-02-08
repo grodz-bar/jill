@@ -340,6 +340,7 @@ bartender_role_id:
 # bartender: Requires bartender role
 # owner: Requires admin/manage_guild permission
 # Move commands between tiers as needed
+# Commands not listed default to bartender
 tiers:
   customer:
     - queue

@@ -278,7 +278,7 @@ panel_create_failed:
   text: "couldn't set up the panel here"
   enabled: true
 panel_removed:
-  text: "panel's been cleared"
+  text: "panel's been removed"
   enabled: true
 panel_not_found:
   text: "that panel's outdated, use `/panel` to create a new one"
@@ -287,7 +287,7 @@ panel_not_active:
   text: "no active panel to remove"
   enabled: true
 panel_disabled:
-  text: "the panel system is disabled in settings"
+  text: "boss says no panels"
   enabled: true
 library_unavailable:
   text: "music library's offline"

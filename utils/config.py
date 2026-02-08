@@ -197,10 +197,10 @@ DEFAULT_MESSAGES = {
     "panel_orphaned": {"text": "that panel's outdated, check {channel}", "enabled": True},
     "panel_created": {"text": "panel's set up in {channel}", "enabled": True},
     "panel_create_failed": {"text": "couldn't set up the panel here", "enabled": True},
-    "panel_removed": {"text": "panel's been cleared", "enabled": True},
+    "panel_removed": {"text": "panel's been removed", "enabled": True},
     "panel_not_found": {"text": "that panel's outdated, use `/panel` to create a new one", "enabled": True},
     "panel_not_active": {"text": "no active panel to remove", "enabled": True},
-    "panel_disabled": {"text": "the panel system is disabled in settings", "enabled": True},
+    "panel_disabled": {"text": "boss says no panels", "enabled": True},
     "library_unavailable": {"text": "music library's offline", "enabled": True},
     "select_playlist": {"text": "pick a playlist:", "enabled": True},
 

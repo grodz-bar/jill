@@ -114,8 +114,8 @@ class PaginationView(AutoDeleteView):
     def __init__(
         self,
         items: list,
+        format_page: Callable[[list, int, int], discord.Embed],
         page_size: int = 15,
-        format_page: Callable[[list, int, int], discord.Embed] = None,
         timeout: float = None,
         bot = None  # Pass bot for config access
     ) -> None:

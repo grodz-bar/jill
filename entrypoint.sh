@@ -5,6 +5,14 @@ set -e
 PUID=${PUID:-1000}
 PGID=${PGID:-1000}
 
+# Validate PUID/PGID are numeric
+case "$PUID" in
+    ''|*[!0-9]*) echo "Error: PUID must be a number, got: $PUID"; exit 1 ;;
+esac
+case "$PGID" in
+    ''|*[!0-9]*) echo "Error: PGID must be a number, got: $PGID"; exit 1 ;;
+esac
+
 # Guard against running as root (PUID=0)
 if [ "$PUID" -eq 0 ]; then
     echo "Warning: Running as root (PUID=0) is not recommended"

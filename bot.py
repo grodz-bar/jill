@@ -786,6 +786,9 @@ class MusicBot(commands.Bot):
                 headers={"User-Agent": "Jill-Discord-Bot"},
                 timeout=aiohttp.ClientTimeout(total=15)
             ) as resp:
+                if resp.status != 200:
+                    logger.debug(f"update check: HTTP {resp.status}")
+                    return
                 data = await resp.json()
 
             tag = data["tag_name"]

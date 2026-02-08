@@ -59,8 +59,7 @@ def download_lavalink(dest_dir: Path, verbose: bool = True) -> tuple[bool, str]:
         if size >= MIN_JAR_SIZE:
             needs_update, reason = _check_for_update(dest_file, verbose)
             if needs_update:
-                dest_file.unlink()
-                # Fall through to download
+                pass  # Fall through to download (old jar preserved until new one succeeds)
             elif reason:
                 return True, f"Lavalink.jar up to date ({size // (1024*1024)}MB)"
             else:
@@ -230,7 +229,7 @@ def _do_download(url: str, dest_file: Path, verbose: bool) -> tuple[bool, str]:
             return False, f"Downloaded file too small ({size} bytes), may be corrupted"
 
         # Atomic rename to final destination
-        temp_file.rename(dest_file)
+        temp_file.replace(dest_file)
         return True, f"Downloaded Lavalink.jar ({size // (1024*1024)}MB)"
 
     except urllib.error.URLError as e:

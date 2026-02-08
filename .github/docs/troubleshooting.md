@@ -109,15 +109,15 @@
 
 ### Panel
 
-- **"panel's gone"**: Message was deleted. Run `/play` to create a new one.
+- **"panel's gone"**: Message was deleted. Run `/panel` (or `/play`) to create a new one.
 
-- **"that panel's outdated"**: You clicked an old panel. Scroll down or run `/play`.
+- **"that panel's outdated"**: You clicked an old panel. Scroll down or run `/panel`.
 
 - **Buttons not responding**: You're not in the same voice channel as Jill, you lack the required role (check `permissions.yaml`), Lavalink isn't connected, or [Discord is having issues](https://discordstatus.com).
 
-- **Panel not updating**: Check Jill has "Send Messages" and "Embed Links" permissions. Run `/stop` then `/play` to recreate.
+- **Panel not updating**: Check Jill has "Send Messages" and "Embed Links" permissions. Run `/panel` to recreate.
 
-- **Panel laggy**: Discord limits edits. Panel auto-recreates periodically. Manual fix: `/stop` then `/play`.
+- **Panel laggy**: Discord limits edits. Panel auto-recreates periodically. Manual fix: run `/panel`.
 
 - **Everything is lowercase!**: It sure is. Jill lowercases text so the control panel doesn't look goofy when songs have inconsistent capitalization. Plus, it fits her vibe.
 

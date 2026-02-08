@@ -120,6 +120,11 @@ not_in_vc:
 | `panel_deleted` | "panel's gone" | Panel message was deleted | enabled |
 | `panel_orphaned` | "that panel's outdated, check {channel}" | Interacted with an old panel | enabled |
 | `library_unavailable` | "music library's offline" | Library not loaded | enabled |
+| `panel_created` | "panel's set up in {channel}" | /panel created or moved the panel | enabled |
+| `panel_create_failed` | "couldn't set up the panel here" | /panel failed to create | enabled |
+| `panel_removed` | "panel's been removed" | /panel remove used | enabled |
+| `panel_not_active` | "no active panel to remove" | /panel remove with no panel | enabled |
+| `panel_disabled` | "boss says no panels" | /panel used when panel.enabled is false | enabled |
 | `select_playlist` | "pick a playlist:" | Prompt for playlist picker | enabled |
 | | | | |
 | **Hints** |  |  |  |

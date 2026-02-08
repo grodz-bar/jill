@@ -38,6 +38,7 @@ Docker configuration reference. Set these in the `environment:` section.
 | `RECREATE_INTERVAL` | 30 | Minutes before panel recreate (0 = never) |
 | `SHUFFLE_COMMAND` | true | Enable /shuffle command |
 | `LOOP_COMMAND` | true | Enable /loop command |
+| `PANEL_COMMAND` | true | Enable /panel command |
 | `RESCAN_COMMAND` | true | Enable /rescan command |
 | `EXTENDED_AUTO_DELETE` | 90 | Seconds for /queue, /np messages (0 = never) |
 | `BRIEF_AUTO_DELETE` | 10 | Seconds for feedback messages (0 = never) |

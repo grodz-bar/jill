@@ -17,6 +17,7 @@ Type `/` in Discord to see all available commands.
 | `/queue` | Show current queue | customer |
 | `/playlists` | List available playlists | customer |
 | `/np` | Show now playing info | customer |
+| `/panel [remove]` | Create or move the control panel. `remove` deletes it | bartender |
 | `/rescan` | Fully rebuilds metadata cache | owner |
 
 > [!IMPORTANT]
@@ -43,6 +44,7 @@ Type `/` in Discord to see all available commands.
 ```yaml
 - SHUFFLE_COMMAND=false
 - LOOP_COMMAND=false
+- PANEL_COMMAND=false
 ```
 
 **Windows/Linux** (in [`settings.yaml`](../configuration/settings.md#commands)):
@@ -51,6 +53,7 @@ Type `/` in Discord to see all available commands.
 commands:
   shuffle_command: false
   loop_command: false
+  panel_command: false
 ```
 
 > Disabled commands still appear in Discord but respond with "command disabled" when used.

@@ -49,6 +49,8 @@ except ImportError:
     MutagenError = Exception
     logger.warning("mutagen not installed, metadata extraction disabled")
 
+GENERIC_ALBUMARTISTS = frozenset({"various artists", "various", "va", "soundtrack", "ost"})
+
 
 def extract_metadata_sync(filepath: Path) -> dict:
     """Extract metadata from audio file (synchronous).
@@ -84,12 +86,26 @@ def extract_metadata_sync(filepath: Path) -> dict:
             filepath.stem
         )
 
-        result["artist"] = (
+        # Prefer album artist (primary artist) over track artist (all performers)
+        albumartist = (
+            _get_first(audio, "albumartist") or
+            _get_first(audio, "album artist") or  # Some taggers use space
+            _get_first(audio, "TPE2") or
+            _get_first(audio, "aART")
+        )
+
+        track_artist = (
             _get_first(audio, "artist") or
             _get_first(audio, "TPE1") or
-            _get_first(audio, "\xa9ART") or
-            None
+            _get_first(audio, "\xa9ART")
         )
+
+        if albumartist and albumartist.lower() not in GENERIC_ALBUMARTISTS:
+            result["artist"] = albumartist
+        elif track_artist:
+            result["artist"] = track_artist
+        else:
+            result["artist"] = albumartist  # even "Various Artists" beats None
 
         # Album (support multiple formats)
         result["album"] = (

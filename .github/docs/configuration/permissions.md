@@ -14,7 +14,7 @@ Restrict playback control to specific users. By default, everyone can use all co
 | Tier | Requirement | Commands |
 |------|-------------|----------|
 | **customer** | None | `/queue`, `/playlists`, `/np` |
-| **bartender** | Specific Discord role | `/play`, `/pause`, `/skip`, `/previous`,<br>`/stop`, `/seek`, `/shuffle`, `/loop`,<br>`/playlist`, `/volume` |
+| **bartender** | Specific Discord role | `/play`, `/pause`, `/skip`, `/previous`,<br>`/stop`, `/seek`, `/shuffle`, `/loop`,<br>`/playlist`, `/volume`, `/panel` |
 | **owner** | Manage Guild permission | `/rescan` |
 
 ### Enabling Permissions
@@ -60,6 +60,7 @@ tiers:
     - loop
     - playlist
     - volume
+    - panel
   owner:
     - rescan
 ```

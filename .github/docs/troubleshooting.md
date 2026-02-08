@@ -53,7 +53,7 @@
   > Jill can't restart Lavalink on her own. If you're not sure how to fix it, try restarting Jill - the start script should bring Lavalink back too.
 
 - **Lavalink closes when Jill stops**: This is intentional - Jill manages Lavalink by default (kills stale on startup, kills on shutdown). To keep Lavalink running, add to `.env`:
-  ```
+  ```env
   MANAGE_LAVALINK=false
   ```
   > Docker: Add `MANAGE_LAVALINK=false` to environment variables in docker-compose.yml

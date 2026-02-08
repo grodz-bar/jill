@@ -63,76 +63,77 @@ not_in_vc:
 | Key | Message | When Used | Default |
 |-----|---------|-----------|---------|
 | **Voice Channel Errors** |  |  |  |
-| `not_in_vc` | "hey, come sit at the bar first" | User isn't in any voice channel | enabled |
-| `wrong_vc` | "wrong bar, i'm at {channel}" | User is in a different channel than Jill | enabled |
-| `voice_error` | "voice hiccup, hit me again" | Generic voice connection issue | enabled |
-| `need_vc_permissions` | "don't have access to that channel" | Jill lacks Connect/Speak permissions | enabled |
-| `failed_join_vc` | "can't get in there" | Failed to join voice channel | enabled |
+| `not_in_vc` | "hey, come sit at the bar first" | User isn't in a voice channel | enabled |
+| `wrong_vc` | "wrong bar, i'm at {channel}" | User is in a different channel | enabled |
+| `voice_error` | "voice hiccup, hit me again" | Voice connection failed | enabled |
+| `need_vc_permissions` | "don't have access to that channel" | Jill can't join or speak | enabled |
+| `failed_join_vc` | "can't get in there" | Couldn't join the channel | enabled |
 | | | | |
 | **Permission Errors** |  |  |  |
-| `no_permission` | "sorry, that's for staff only" | User lacks role for restricted command | enabled |
-| `command_disabled` | "`/{command}` isn't available" | Command disabled in settings | enabled |
+| `no_permission` | "sorry, that's for staff only" | User doesn't have the role | enabled |
+| `command_disabled` | "`/{command}` isn't available" | Command is turned off | enabled |
 | | | | |
 | **Playback** |  |  |  |
-| `nothing_playing` | "bar's quiet right now" | Tried to control playback with nothing queued | enabled |
+| `nothing_playing` | "bar's quiet right now" | Nothing is queued | enabled |
 | `now_playing` | "now serving: **{title}**" | Track starts playing | disabled |
 | `paused` | "taking a break" | Playback paused | disabled |
 | `resumed` | "back at it" | Playback resumed | disabled |
-| `stopped` | "shift's over, heading out" | Playback stopped, Jill leaves voice | disabled |
-| `already_playing` | "already serving that" | Tried to play a track already playing | disabled |
+| `stopped` | "shift's over, heading out" | Jill stops and leaves voice | disabled |
+| `already_playing` | "already serving that" | That song is already on | disabled |
 | | | | |
 | **Search and Tracks** |  |  |  |
-| `song_not_found` | "don't have that one in stock" | Search returned no results | enabled |
-| `track_load_failed` | "can't load that" | Failed to load audio file | enabled |
-| `track_play_error` | "that broke, try again" | Playback error mid-track | enabled |
+| `song_not_found` | "don't have that one in stock" | No search results | enabled |
+| `track_load_failed` | "can't load that" | Audio file won't load | enabled |
+| `track_play_error` | "that broke, try again" | Song broke mid-playback | enabled |
 | | | | |
 | **Queue and Playlists** |  |  |  |
 | `queue_empty` | "nothing in the queue" | Queue is empty | enabled |
-| `no_playlists` | "shelves are empty" | No playlists in music library | enabled |
-| `playlist_empty` | "that one's empty" | Selected playlist has no tracks | enabled |
-| `no_playlist_loaded` | "no menu set" | No playlist currently selected | disabled |
-| `playlist_not_found` | "can't find '{name}'" | Playlist name doesn't exist | enabled |
-| `playlist_not_found_pick` | "can't find '{name}', pick from available:" | Partial match, showing alternatives | enabled |
+| `no_playlists` | "shelves are empty" | No playlists found | enabled |
+| `playlist_empty` | "that one's empty" | Playlist has no tracks | enabled |
+| `no_playlist_loaded` | "no menu set" | No playlist selected | disabled |
+| `playlist_not_found` | "can't find '{name}'" | Playlist doesn't exist | enabled |
+| `playlist_not_found_pick` | "can't find '{name}', pick from available:" | Close match, showing options | enabled |
 | `playlist_switched` | "switching to **{playlist}** menu" | Playlist changed | disabled |
 | | | | |
 | **Settings** |  |  |  |
 | `volume_set` | "volume set to {level}%" | Volume changed | disabled |
-| `shuffle_on` | "mixing it up" | Shuffle enabled | disabled |
-| `shuffle_off` | "keeping it neat" | Shuffle disabled | disabled |
-| `loop_on` | "i'll keep this one going" | Loop enabled | disabled |
-| `loop_off` | "last pour for this one" | Loop disabled | disabled |
+| `shuffle_on` | "mixing it up" | Shuffle turned on | disabled |
+| `shuffle_off` | "keeping it neat" | Shuffle turned off | disabled |
+| `loop_on` | "i'll keep this one going" | Loop turned on | disabled |
+| `loop_off` | "last pour for this one" | Loop turned off | disabled |
 | | | | |
 | **Seek and Navigation** |  |  |  |
-| `seek_to` | "jumped to {position}% of **{title}**" | Seeked to position | disabled |
+| `seek_to` | "jumped to {position}% of **{title}**" | Jumped to a position | disabled |
 | `cant_seek` | "can't do that for this drink" | Track doesn't support seeking | enabled |
-| `history_empty` | "nothing before this" | Tried to go back with no history | disabled |
+| `history_empty` | "nothing before this" | No previous track | disabled |
 | | | | |
 | **Admin** |  |  |  |
-| `rescan_complete` | "found {playlists} playlists and {tracks} songs" | Library rescan finished | enabled |
-| `rescan_in_progress` | "a rescan is already running, please wait" | Rescan attempted while one is running | enabled |
-| `rescan_failed` | "rescan failed, check the logs" | Library rescan failed | enabled |
-| `music_unavailable` | "music system's down" | Lavalink not connected | enabled |
+| `rescan_complete` | "found {playlists} playlists and {tracks} songs" | Rescan finished | enabled |
+| `rescan_in_progress` | "a rescan is already running, please wait" | Rescan already running | enabled |
+| `rescan_failed` | "rescan failed, check the logs" | Rescan failed | enabled |
 | | | | |
 | **Errors** |  |  |  |
-| `error_generic` | "something broke, try again" | Unexpected error occurred | enabled |
+| `error_generic` | "something broke, try again" | Something went wrong | enabled |
+| `music_unavailable` | "music system's down" | Lavalink not connected | enabled |
+| `library_unavailable` | "music library's offline" | Music library not loaded | enabled |
 | | | | |
 | **Control Panel** |  |  |  |
-| `panel_deleted` | "panel's gone" | Panel message was deleted | enabled |
-| `panel_orphaned` | "that panel's outdated, check {channel}" | Interacted with an old panel | enabled |
-| `library_unavailable` | "music library's offline" | Library not loaded | enabled |
-| `panel_created` | "panel's set up in {channel}" | /panel created or moved the panel | enabled |
-| `panel_create_failed` | "couldn't set up the panel here" | /panel failed to create | enabled |
+| `panel_deleted` | "panel's gone" | Panel was deleted | enabled |
+| `panel_orphaned` | "that panel's outdated, check {channel}" | Clicked an old panel | enabled |
+| `panel_not_found` | "that panel's outdated, use `/panel` to create a new one" | Panel lost its state | enabled |
+| `panel_created` | "panel's set up in {channel}" | Panel created or moved | enabled |
+| `panel_create_failed` | "couldn't set up the panel here" | /panel failed | enabled |
 | `panel_removed` | "panel's been removed" | /panel remove used | enabled |
-| `panel_not_active` | "no active panel to remove" | /panel remove with no panel | enabled |
-| `panel_disabled` | "boss says no panels" | /panel used when panel.enabled is false | enabled |
-| `select_playlist` | "pick a playlist:" | Prompt for playlist picker | enabled |
+| `panel_not_active` | "no active panel to remove" | No panel to remove | enabled |
+| `panel_disabled` | "boss says no panels" | Panel is disabled in settings | enabled |
+| `select_playlist` | "pick a playlist:" | Playlist picker label | enabled |
 | | | | |
 | **Hints** |  |  |  |
-| `shuffle_hint` | "try `/shuffle on` or `/shuffle off`" | Hint about shuffle command | disabled |
-| `loop_hint` | "try `/loop on` or `/loop off`" | Hint about loop command | disabled |
+| `shuffle_hint` | "try `/shuffle on` or `/shuffle off`" | Shuffle hint | disabled |
+| `loop_hint` | "try `/loop on` or `/loop off`" | Loop hint | disabled |
 | | | | |
 | **Search UI** |  |  |  |
-| `track_selected` | "got it, **{title}** coming up" | User selected a track | disabled |
+| `track_selected` | "got it, **{title}** coming up" | User picked a track | disabled |
 
 ### Tips
 

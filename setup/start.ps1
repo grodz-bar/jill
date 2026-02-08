@@ -241,7 +241,7 @@ try:
         print(f'\033[91m[x] port mismatch: LAVALINK_PORT={env_port} but application.yml has port: {yml_port}\033[0m')
         print('    fix in .env or lavalink/application.yml')
         sys.exit(1)
-    if yml_pass is not None and yml_pass.strip() != env_pass:
+    if yml_pass is not None and str(yml_pass).strip() != env_pass:
         print('\033[91m[x] password mismatch: LAVALINK_PASSWORD does not match application.yml\033[0m')
         print('    fix in .env or lavalink/application.yml')
         sys.exit(1)

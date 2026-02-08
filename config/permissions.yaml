@@ -38,5 +38,6 @@ tiers:
     - loop
     - playlist
     - volume
+    - panel
   owner:
     - rescan

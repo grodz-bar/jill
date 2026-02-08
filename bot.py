@@ -62,7 +62,8 @@ def _sanitize_env_vars() -> None:
         "AUTO_RESCAN", "PANEL_ENABLED", "PROGRESS_BAR_ENABLED",
         "SHUFFLE_BUTTON", "LOOP_BUTTON", "PLAYLIST_BUTTON",
         "DRINK_EMOJIS_ENABLED", "SHUFFLE_COMMAND", "LOOP_COMMAND",
-        "RESCAN_COMMAND", "MANAGE_LAVALINK",
+        "RESCAN_COMMAND", "PANEL_COMMAND", "PRESENCE_ENABLED",
+        "MANAGE_LAVALINK",
         # Config overrides (strings - strip for consistency)
         "DEFAULT_PLAYLIST", "LOG_LEVEL", "INFO_FALLBACK_MESSAGE",
         "PROGRESS_BAR_FILLED", "PROGRESS_BAR_EMPTY", "PANEL_COLOR",
@@ -610,6 +611,7 @@ class MusicBot(commands.Bot):
         logger.debug(f"http server started on {HTTP_HOST}:{HTTP_PORT}")
 
         # Control panel initialization (skip if disabled)
+        self.panel_manager.setup(self)
         panel_config = self.config_manager.get("panel", {})
         if panel_config.get("enabled", True):
             # Register persistent view FIRST (before loading panel)
@@ -784,6 +786,9 @@ class MusicBot(commands.Bot):
                 headers={"User-Agent": "Jill-Discord-Bot"},
                 timeout=aiohttp.ClientTimeout(total=15)
             ) as resp:
+                if resp.status != 200:
+                    logger.debug(f"update check: HTTP {resp.status}")
+                    return
                 data = await resp.json()
 
             tag = data["tag_name"]

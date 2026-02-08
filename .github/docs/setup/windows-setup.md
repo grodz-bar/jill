@@ -48,7 +48,7 @@ py --version
 
 Jill uses Lavalink for audio streaming, which requires Java 17 or newer.
 
-1. Go to [Adoptium Temurin releases](https://adoptium.net/temurin/releases/?version=21&os=windows&arch=x64)
+1. Go to [Adoptium Temurin releases](https://adoptium.net/temurin/releases/?version=25&os=windows&arch=x64)
 2. Select **JRE** (not JDK - you only need the runtime)
 3. Download the `.msi` installer
 4. Run the installer with default options

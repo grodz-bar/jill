@@ -322,10 +322,15 @@ def _write_atomic(file_path: Path, content: str) -> None:
         f = os.fdopen(temp_fd, 'w', encoding='utf-8')
     except Exception:
         os.close(temp_fd)
+        Path(temp_path).unlink(missing_ok=True)
         raise
-    with f:
-        f.write(content)
-    Path(temp_path).replace(file_path)
+    try:
+        with f:
+            f.write(content)
+        Path(temp_path).replace(file_path)
+    except Exception:
+        Path(temp_path).unlink(missing_ok=True)
+        raise
 
 
 def _update_env_value(env_file: Path, key: str, value: str) -> bool:

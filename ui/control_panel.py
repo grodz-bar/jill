@@ -1613,16 +1613,17 @@ class PanelManager:
 
     # --- Public API ---
 
-    async def create(self, channel: discord.abc.Messageable, guild_id: int) -> None:
+    async def create(self, channel: discord.abc.Messageable, guild_id: int) -> bool:
         """Create or move the panel to a channel.
 
         If a panel already exists, deletes the old one first (best effort).
         Builds a fresh layout and sends it to the target channel.
+        Returns True on success, False on failure or early exit.
         """
         if not self.panel_enabled():
-            return
+            return False
         if not self._layout_builder:
-            return
+            return False
 
         async with self._panel_lock:
             # Delete old panel if exists (best effort)
@@ -1637,14 +1638,16 @@ class PanelManager:
 
             layout = self._layout_builder(guild_id)
             if not layout:
-                return
+                return False
 
             try:
                 new_msg = await channel.send(view=layout)
                 await self._register(new_msg)
                 logger.info(f"created panel in #{channel.name}")
+                return True
             except discord.HTTPException as e:
                 logger.error(f"failed to create panel: {e}")
+                return False
 
     async def remove(self) -> None:
         """Delete the panel message and go dormant."""

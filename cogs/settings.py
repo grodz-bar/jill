@@ -200,8 +200,11 @@ class Settings(ResponseMixin, commands.Cog):
             await self.bot.panel_manager.remove()
             await self.respond(interaction, "panel_removed")
         else:
-            await self.bot.panel_manager.create(interaction.channel, interaction.guild_id)
-            await self.respond(interaction, "panel_created", channel=interaction.channel.mention)
+            success = await self.bot.panel_manager.create(interaction.channel, interaction.guild_id)
+            if success:
+                await self.respond(interaction, "panel_created", channel=interaction.channel.mention)
+            else:
+                await self.respond(interaction, "panel_create_failed")
 
 
 async def setup(bot: commands.Bot) -> None:

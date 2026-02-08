@@ -196,6 +196,7 @@ DEFAULT_MESSAGES = {
     "panel_deleted": {"text": "panel's gone", "enabled": True},
     "panel_orphaned": {"text": "that panel's outdated, check {channel}", "enabled": True},
     "panel_created": {"text": "panel's set up in {channel}", "enabled": True},
+    "panel_create_failed": {"text": "couldn't set up the panel here", "enabled": True},
     "panel_removed": {"text": "panel's been cleared", "enabled": True},
     "panel_not_found": {"text": "that panel's outdated, use `/panel` to create a new one", "enabled": True},
     "panel_not_active": {"text": "no active panel to remove", "enabled": True},

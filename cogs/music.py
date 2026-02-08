@@ -783,7 +783,8 @@ class Music(ResponseMixin, commands.Cog):
             await self.respond(interaction, "resumed")
             if not self.bot.panel_manager.has_panel():
                 await self.bot.panel_manager.create(interaction.channel, interaction.guild_id)
-            await self.bot.panel_manager.notify(interaction.guild_id)
+            else:
+                await self.bot.panel_manager.notify(interaction.guild_id)
             return
 
         # If song specified, skip to search (even if already playing)
@@ -795,7 +796,8 @@ class Music(ResponseMixin, commands.Cog):
             await self.respond(interaction, "already_playing")
             if not self.bot.panel_manager.has_panel():
                 await self.bot.panel_manager.create(interaction.channel, interaction.guild_id)
-            await self.bot.panel_manager.notify(interaction.guild_id)
+            else:
+                await self.bot.panel_manager.notify(interaction.guild_id)
             return
 
         # Get current playlist

@@ -171,6 +171,9 @@ panel_orphaned:
 panel_created:
   text: "panel's set up in {channel}"
   enabled: true
+panel_create_failed:
+  text: "couldn't set up the panel here"
+  enabled: true
 panel_removed:
   text: "panel's been cleared"
   enabled: true

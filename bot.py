@@ -17,7 +17,7 @@
 
 """Jill Discord Music Bot - Main Entry Point."""
 
-__version__ = "2.0.4"
+__version__ = "2.1.0"
 
 import asyncio
 import colorsys

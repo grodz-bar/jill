@@ -1682,9 +1682,11 @@ class PanelManager:
     async def _debounced_update(self, guild_id: int) -> None:
         """Debounced panel update — coalesces rapid updates into one.
 
-        Waits for configured debounce period (default 500ms), then acquires
-        a lock and performs the actual update. If a newer update is triggered
-        during the wait, this task is cancelled (preventing stale updates).
+        Waits for configured debounce period (default 500ms), then shields
+        the lock acquisition + update as a unit. Cancellation during the
+        sleep phase discards stale updates (coalescing). Cancellation during
+        the execution phase is blocked by the shield, keeping all locks held
+        through _recreate() completion.
         """
         try:
             panel_config = self.bot.config_manager.get("panel", {})
@@ -1695,16 +1697,32 @@ class PanelManager:
             if guild_id not in self._update_locks:
                 self._update_locks[guild_id] = asyncio.Lock()
 
-            # Only one update can execute at a time per guild (prevents out-of-order edits)
-            async with self._update_locks[guild_id]:
-                await self._update(guild_id)
+            # Shield execution phase: once past debounce, run to completion.
+            # Cancellation during sleep (above) still works for coalescing.
+            # Shield here keeps _panel_lock held through _recreate() inside
+            # _update(), preventing the race where a cancelled task releases
+            # locks while _recreate() continues running.
+            await asyncio.shield(self._locked_update(guild_id))
         except asyncio.CancelledError:
             pass  # Superseded by a newer update
-        except aiohttp.ClientError as e:
-            logger.debug(f"panel update failed: {e}")
         finally:
             if self._update_tasks.get(guild_id) is asyncio.current_task():
                 self._update_tasks.pop(guild_id, None)
+
+    async def _locked_update(self, guild_id: int) -> None:
+        """Acquire the update lock and run _update().
+
+        Separated from _debounced_update so the lock-acquisition + update
+        can be shielded as a unit, keeping _panel_lock held through any
+        _recreate() calls inside _update().
+        """
+        try:
+            async with self._update_locks[guild_id]:
+                await self._update(guild_id)
+        except aiohttp.ClientError as e:
+            logger.debug(f"panel update failed: {e}")
+        except Exception:
+            logger.opt(exception=True).warning("unexpected error during panel update")
 
     async def _update(self, guild_id: int) -> None:
         """Edit the panel message, recreating if old or on error.
@@ -1732,7 +1750,7 @@ class PanelManager:
             if self._should_recreate():
                 age_minutes = int((asyncio.get_running_loop().time() - self._panel_created_at) / 60)
                 logger.debug(f"panel is {age_minutes}m old, recreating")
-                await asyncio.shield(self._recreate(layout))
+                await self._recreate(layout)
                 return
 
             try:
@@ -1746,7 +1764,7 @@ class PanelManager:
                 elif e.code == 30046:
                     # Edit limit — recreate in same channel
                     self._invalidate_cache()
-                    await asyncio.shield(self._recreate(layout))
+                    await self._recreate(layout)
                 else:
                     self._invalidate_cache()
                     logger.warning(f"panel update failed: {e}")

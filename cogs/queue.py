@@ -34,6 +34,7 @@ from utils.response import (
     CHOICE_NAME_MAX,
     EMBED_TITLE_MAX,
 )
+from utils.search import playlist_search
 
 
 class Queue(ResponseMixin, commands.Cog):
@@ -68,7 +69,7 @@ class Queue(ResponseMixin, commands.Cog):
         interaction: discord.Interaction,
         current: str
     ) -> list[app_commands.Choice[str]]:
-        """Autocomplete for playlist names (substring match)."""
+        """Autocomplete for playlist names (fuzzy match)."""
         available = self.bot.library.get_playlist_names()
 
         # No autocomplete when <=1 playlist (includes root-only mode)
@@ -85,22 +86,18 @@ class Queue(ResponseMixin, commands.Cog):
                 for name in available[:25]
             ]
 
-        # Filter by current input (case-insensitive)
-        current_lower = current.lower()
-        matches = [
-            name for name in available
-            if current_lower in name.lower()
-        ]
+        # Fuzzy match by current input
+        matches = playlist_search(current, available, max_results=25, score_cutoff=55)
 
         return [
             app_commands.Choice(
                 name=truncate_for_display(name, CHOICE_NAME_MAX),
                 value=name
             )
-            for name in matches[:25]
+            for name, score in matches
         ]
 
-    @app_commands.command(name="playlists", description="list available playlists")
+    @app_commands.command(name="playlists", description="list all available playlists")
     @app_commands.guild_only()
     async def playlists(self, interaction: discord.Interaction) -> None:
         """Show available playlists with pagination. Disabled when one or fewer playlists exist."""
@@ -238,10 +235,10 @@ class Queue(ResponseMixin, commands.Cog):
 
     @app_commands.command(name="playlist", description="switch to a playlist")
     @app_commands.guild_only()
-    @app_commands.describe(name="playlist name")
+    @app_commands.describe(name="search for a playlist (use /playlists to see all)")
     @app_commands.autocomplete(name=playlist_autocomplete)
     @require_permission("playlist")
-    async def playlist(self, interaction: discord.Interaction, name: str) -> None:
+    async def playlist(self, interaction: discord.Interaction, name: str | None = None) -> None:
         """Switch to a different playlist.
 
         Acquires playback lock before calling set_playlist() and loading metadata
@@ -266,12 +263,31 @@ class Queue(ResponseMixin, commands.Cog):
         if player and not await self._check_same_vc(interaction, player):
             return
 
-        # Find playlist (case-insensitive)
+        # No name provided — show picker directly
+        if not name:
+            queue = music_cog.get_queue(interaction.guild_id)
+            current_playlist = queue.playlist_name
+            view = PlaylistSelectView(self.bot, available, current_playlist)
+            await interaction.response.send_message(
+                "select a playlist:",
+                view=view,
+                ephemeral=True
+            )
+            view.message = await interaction.original_response()
+            return
+
+        # Find playlist (case-insensitive exact, then fuzzy fallback)
         matched = None
         for pname in available:
             if pname == name.lower():
                 matched = pname
                 break
+
+        # Fuzzy fallback if no exact match
+        if not matched:
+            fuzzy_results = playlist_search(name, available, max_results=1, score_cutoff=70)
+            if fuzzy_results:
+                matched = fuzzy_results[0][0]
 
         if not matched:
             # Show playlist picker instead of just an error
@@ -281,7 +297,7 @@ class Queue(ResponseMixin, commands.Cog):
             view = PlaylistSelectView(self.bot, available, current_playlist)
             display_name = name[:50] + "..." if len(name) > 50 else name
             await interaction.response.send_message(
-                self.msg("playlist_not_found_pick", name=escape_markdown(display_name)),
+                f"can't find '{escape_markdown(display_name)}', try these:",
                 view=view,
                 ephemeral=True
             )
@@ -308,7 +324,7 @@ class Queue(ResponseMixin, commands.Cog):
         # Update panel to show new upcoming tracks
         await self.bot.panel_manager.notify(guild_id)
 
-    @app_commands.command(name="shuffle", description="toggle shuffle mode")
+    @app_commands.command(name="shuffle", description="toggle shuffle on or off")
     @app_commands.guild_only()
     @app_commands.describe(mode="on or off")
     @app_commands.choices(mode=[
@@ -358,7 +374,7 @@ class Queue(ResponseMixin, commands.Cog):
         # Update panel to reflect shuffle state
         await self.bot.panel_manager.notify(guild_id)
 
-    @app_commands.command(name="loop", description="toggle song repeat")
+    @app_commands.command(name="loop", description="toggle track loop on or off")
     @app_commands.guild_only()
     @app_commands.describe(mode="on or off")
     @app_commands.choices(mode=[

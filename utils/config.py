@@ -168,7 +168,6 @@ DEFAULT_MESSAGES = {
     "playlist_empty": {"text": "that one's empty", "enabled": True},
     "no_playlist_loaded": {"text": "no menu set", "enabled": False},
     "playlist_not_found": {"text": "can't find '{name}'", "enabled": True},
-    "playlist_not_found_pick": {"text": "can't find '{name}', pick from available:", "enabled": True},
     "playlist_switched": {"text": "switching to **{playlist}** menu", "enabled": False},
 
     # Settings
@@ -202,7 +201,6 @@ DEFAULT_MESSAGES = {
     "panel_not_active": {"text": "no active panel to remove", "enabled": True},
     "panel_disabled": {"text": "boss says no panels", "enabled": True},
     "library_unavailable": {"text": "music library's offline", "enabled": True},
-    "select_playlist": {"text": "pick a playlist:", "enabled": True},
 
     # Hints
     "shuffle_hint": {"text": "try `/shuffle on` or `/shuffle off`", "enabled": False},

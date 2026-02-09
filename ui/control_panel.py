@@ -1356,7 +1356,7 @@ class ControlPanelLayout(discord.ui.LayoutView):
         view = PlaylistSelectView(self.bot, names, current_playlist)
         await interaction.response.defer(ephemeral=True)
         view.message = await interaction.followup.send(
-            self.msg("select_playlist"),
+            "select a playlist:",
             view=view,
             ephemeral=True
         )

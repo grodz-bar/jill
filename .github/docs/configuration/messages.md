@@ -92,7 +92,6 @@ not_in_vc:
 | `playlist_empty` | "that one's empty" | Playlist has no tracks | enabled |
 | `no_playlist_loaded` | "no menu set" | No playlist selected | disabled |
 | `playlist_not_found` | "can't find '{name}'" | Playlist doesn't exist | enabled |
-| `playlist_not_found_pick` | "can't find '{name}', pick from available:" | Close match, showing options | enabled |
 | `playlist_switched` | "switching to **{playlist}** menu" | Playlist changed | disabled |
 | | | | |
 | **Settings** |  |  |  |
@@ -126,7 +125,6 @@ not_in_vc:
 | `panel_removed` | "panel's been removed" | /panel remove used | enabled |
 | `panel_not_active` | "no active panel to remove" | No panel to remove | enabled |
 | `panel_disabled` | "boss says no panels" | Panel is disabled in settings | enabled |
-| `select_playlist` | "pick a playlist:" | Playlist picker label | enabled |
 | | | | |
 | **Hints** |  |  |  |
 | `shuffle_hint` | "try `/shuffle on` or `/shuffle off`" | Shuffle hint | disabled |

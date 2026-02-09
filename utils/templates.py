@@ -208,9 +208,6 @@ no_playlist_loaded:
 playlist_not_found:
   text: "can't find '{name}'"
   enabled: true
-playlist_not_found_pick:
-  text: "can't find '{name}', pick from available:"
-  enabled: true
 playlist_switched:
   text: "switching to **{playlist}** menu"
   enabled: false
@@ -291,9 +288,6 @@ panel_disabled:
   enabled: true
 library_unavailable:
   text: "music library's offline"
-  enabled: true
-select_playlist:
-  text: "pick a playlist:"
   enabled: true
 
 # Hints

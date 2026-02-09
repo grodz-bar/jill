@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-"""Fuzzy search for music tracks using RapidFuzz.
+"""Fuzzy search for music tracks and playlists using RapidFuzz.
 
 Best practices from:
 - RapidFuzz: WRatio for general-purpose, token_set_ratio for word order independence
@@ -23,7 +23,7 @@ Best practices from:
 - Thresholds: 75% for auto-play, 51% for picker, 61% for autocomplete
 """
 
-from rapidfuzz import fuzz
+from rapidfuzz import fuzz, process
 from rapidfuzz.utils import default_process
 
 
@@ -161,3 +161,26 @@ def autocomplete_search(query: str, tracks: list[dict], max_results: int = 25) -
     """
     results = fuzzy_search(query, tracks, max_results=max_results)
     return [(t, s) for t, s in results if s >= 61]
+
+
+def playlist_search(query: str, names: list[str], max_results: int = 25,
+                    score_cutoff: float = 0) -> list[tuple[str, float]]:
+    """Fuzzy search for playlist names using WRatio.
+
+    Args:
+        query: Search string
+        names: List of playlist names
+        max_results: Maximum results to return
+        score_cutoff: Minimum score threshold (0-100)
+
+    Returns:
+        List of (name, score) tuples sorted by score descending.
+    """
+    if not query or not names:
+        return []
+
+    query = query[:100]
+
+    results = process.extract(query, names, scorer=fuzz.WRatio,
+                              limit=max_results, score_cutoff=score_cutoff)
+    return [(name, score) for name, score, idx in results]

@@ -4,19 +4,19 @@ Type `/` in Discord to see all available commands.
 
 | Command | What it does | Permission |
 |---------|--------------|------------|
-| `/play [song]` | Play a song, or resume if no song specified | bartender |
+| `/play [song]` | Search for a song or resume | bartender |
 | `/pause` | Pause playback | bartender |
 | `/skip` | Next track (with loop on, replays current track) | bartender |
 | `/previous` | Previous track (with loop on, replays current track) | bartender |
 | `/stop` | Stop and disconnect | bartender |
 | `/seek <position>` | Jump to position in track (0-100%) | bartender |
-| `/playlist <name>` | Switch playlist (has autocomplete) | bartender |
-| `/shuffle <on/off>` | Toggle shuffle mode | bartender |
-| `/loop <on/off>` | Toggle single-track repeat | bartender |
-| `/volume <0-100>` | Set volume | bartender |
+| `/playlist [name]` | Switch to a playlist (has autocomplete) | bartender |
+| `/shuffle <on/off>` | Toggle shuffle on or off | bartender |
+| `/loop <on/off>` | Toggle track loop on or off | bartender |
+| `/volume <0-100>` | Adjust music volume | bartender |
 | `/queue` | Show current queue | customer |
-| `/playlists` | List available playlists | customer |
-| `/np` | Show now playing info | customer |
+| `/playlists` | List all available playlists | customer |
+| `/np` | Show current song details | customer |
 | `/panel [remove]` | Create or move the control panel. `remove` deletes it | bartender |
 | `/rescan` | Fully rebuilds metadata cache | owner |
 

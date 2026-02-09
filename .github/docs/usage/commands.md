@@ -6,19 +6,21 @@ Type `/` in Discord to see all available commands.
 |---------|--------------|------------|
 | `/play [song]` | Search for a song or resume | bartender |
 | `/pause` | Pause playback | bartender |
-| `/skip` | Next track (with loop on, replays current track) | bartender |
-| `/previous` | Previous track (with loop on, replays current track) | bartender |
+| `/skip` | Next track (restarts if looping) | bartender |
+| `/previous` | Previous track (restarts if looping) | bartender |
 | `/stop` | Stop and disconnect | bartender |
 | `/seek <position>` | Jump to position in track (0-100%) | bartender |
 | `/playlist [name]` | Switch to a playlist (has autocomplete) | bartender |
 | `/shuffle <on/off>` | Toggle shuffle on or off | bartender |
 | `/loop <on/off>` | Toggle track loop on or off | bartender |
 | `/volume <0-100>` | Adjust music volume | bartender |
+| `/panel [remove]` | Create, move, or remove the control panel | bartender |
 | `/queue` | Show current queue | customer |
 | `/playlists` | List all available playlists | customer |
 | `/np` | Show current song details | customer |
-| `/panel [remove]` | Create or move the control panel. `remove` deletes it | bartender |
 | `/rescan` | Fully rebuilds metadata cache | owner |
+
+> `[brackets]` = optional, `<brackets>` = required.
 
 > [!IMPORTANT]
 > By default, everyone can use all commands. The "Permission" column only applies if you [enable permissions](../configuration/permissions.md).

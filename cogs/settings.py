@@ -36,7 +36,7 @@ class Settings(ResponseMixin, commands.Cog):
         self.bot = bot
         self._rescan_lock = asyncio.Lock()
 
-    @app_commands.command(name="rescan", description="force full rebuild of metadata cache (re-reads all file tags)")
+    @app_commands.command(name="rescan", description="force full rebuild of metadata cache")
     @app_commands.guild_only()
     @require_command_enabled("rescan")
     @require_permission("rescan")
@@ -150,7 +150,7 @@ class Settings(ResponseMixin, commands.Cog):
                 logger.opt(exception=True).error("rescan failed")
                 await self.respond(interaction, "rescan_failed")
 
-    @app_commands.command(name="volume", description="set playback volume")
+    @app_commands.command(name="volume", description="adjust music volume")
     @app_commands.guild_only()
     @app_commands.describe(level="volume level from 0 to 100")
     @require_permission("volume")

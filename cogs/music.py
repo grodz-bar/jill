@@ -750,7 +750,7 @@ class Music(ResponseMixin, commands.Cog):
 
         return choices[:25]
 
-    @app_commands.command(name="play", description="play a song or resume playback")
+    @app_commands.command(name="play", description="search for a song or resume")
     @app_commands.guild_only()
     @app_commands.describe(song="type to search (/queue shows all tracks)")
     @app_commands.autocomplete(song=song_autocomplete)
@@ -936,7 +936,7 @@ class Music(ResponseMixin, commands.Cog):
             from ui.views import SearchSelectionView
             view = SearchSelectionView(alternatives, bot=self.bot)
             msg = await interaction.followup.send(
-                "which one?",
+                "try one of these:",
                 view=view,
                 ephemeral=True
             )
@@ -1035,7 +1035,7 @@ class Music(ResponseMixin, commands.Cog):
         title, _ = queue.get_current_display()
         await self.respond(interaction, "seek_to", position=position, title=escape_markdown(title))
 
-    @app_commands.command(name="np", description="show now playing details")
+    @app_commands.command(name="np", description="show current song details")
     @app_commands.guild_only()
     async def now_playing(self, interaction: discord.Interaction) -> None:
         """Show detailed current track info."""

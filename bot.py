@@ -17,7 +17,7 @@
 
 """Jill Discord Music Bot - Main Entry Point."""
 
-__version__ = "2.1.0"
+__version__ = "2.1.1"
 
 import asyncio
 import colorsys
@@ -797,7 +797,7 @@ class MusicBot(commands.Bot):
 
             if remote > local:
                 remote_str = ".".join(str(x) for x in remote)
-                logger.log("NOTICE", f"update available: v{remote_str}")
+                logger.log("NOTICE", f"update available: v{remote_str} - github.com/grodz-bar/jill")
         except Exception:
             logger.debug("update check failed")
 

@@ -68,7 +68,7 @@
 
 - **"shelves are empty"**: No playlists found. See [Music Library](usage/music-library.md) for folder structure.
 
-- **Songs not appearing**: Run `/rescan`. Check format is supported (MP3, FLAC, OGG, OPUS, M4A, WAV, AAC) and file isn't corrupted.
+- **Songs not appearing**: Run `/rescan`. Check format is supported (MP3, FLAC, OGG, OPUS, M4A, M4B, WAV, AAC, WebM, MKA) and file isn't corrupted. File extensions are case-insensitive.
 
 - **Wrong track order**: Tracks sort by track number tag, then alphabetically. Check your files have track numbers set.
 

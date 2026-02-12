@@ -246,7 +246,7 @@ Files directly in `music/` are ignored when subfolders exist.
 
 **If not using playlists**, put files directly in `music/` with no subfolders.
 
-Supported formats: MP3, FLAC, OGG, OPUS, M4A, WAV, AAC
+Supported formats: MP3, FLAC, OGG, OPUS, M4A, M4B, WAV, AAC, WebM, MKA
 
 </details>
 

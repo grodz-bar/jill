@@ -65,7 +65,7 @@ Edit the music volume in `docker-compose.yml` to point to your library (pick one
 - ./music:/music:ro             # new folder (default)
 ```
 
-> Subfolders become playlists. Supported formats: MP3, FLAC, OGG, OPUS, M4A, WAV, AAC.
+> Subfolders become playlists. Supported formats: MP3, FLAC, OGG, OPUS, M4A, M4B, WAV, AAC, WebM, MKA.
 >
 > See [Music Library](../usage/music-library.md) for details.
 

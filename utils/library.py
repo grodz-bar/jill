@@ -18,14 +18,13 @@
 """Music library and playlist management."""
 
 import asyncio
-from itertools import chain
 from pathlib import Path
 
 from loguru import logger
 
 
-# Glob patterns for supported audio formats (Lavalink-compatible)
-AUDIO_EXTENSIONS = ['*.mp3', '*.flac', '*.ogg', '*.opus', '*.m4a', '*.wav', '*.aac']
+# Supported audio file suffixes — case-insensitive matching (Lavalink-compatible)
+AUDIO_EXTENSIONS = {'.mp3', '.flac', '.ogg', '.opus', '.m4a', '.m4b', '.wav', '.aac', '.webm', '.mka'}
 
 # Maximum tracks per playlist to prevent memory issues with very large libraries
 MAX_PLAYLIST_SIZE = 1000
@@ -125,9 +124,8 @@ class MusicLibrary:
             if playlist_dir.name.startswith('.'):
                 continue  # Skip hidden folders
 
-            audio_files = list(chain.from_iterable(
-                playlist_dir.glob(ext) for ext in AUDIO_EXTENSIONS
-            ))
+            audio_files = [f for f in playlist_dir.iterdir()
+                          if f.is_file() and f.suffix.lower() in AUDIO_EXTENSIONS]
 
             if audio_files:
                 # Sort by filename (canonical order for now)
@@ -147,9 +145,8 @@ class MusicLibrary:
                 logger.warning(f"playlist '{playlist_dir.name}' is empty")
 
         # Check for audio files in root
-        root_audio = list(chain.from_iterable(
-            self.music_path.glob(ext) for ext in AUDIO_EXTENSIONS
-        ))
+        root_audio = [f for f in self.music_path.iterdir()
+                      if f.is_file() and f.suffix.lower() in AUDIO_EXTENSIONS]
 
         if root_audio:
             if playlists:

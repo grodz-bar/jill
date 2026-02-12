@@ -265,75 +265,75 @@ async def scan_playlist_metadata(
     updated = False
     seen_keys: set[tuple] = set()  # Track duplicates by dedup key
     duplicates: list[str] = []  # Collect duplicate filenames for grouped logging
-    extensions = AUDIO_EXTENSIONS
+    for audio_file in playlist_path.iterdir():
+        if not (audio_file.is_file() and audio_file.suffix.lower() in AUDIO_EXTENSIONS):
+            continue
 
-    for ext in extensions:
-        for audio_file in playlist_path.glob(ext):
+        try:
+            stat = audio_file.stat()
+            file_id = f"{audio_file.name}_{stat.st_mtime}"
+
+            if file_id in cache:
+                info = cache[file_id]
+            else:
+                # Extract new
+                info = await extract_metadata(audio_file)
+                info['file_id'] = file_id
+                info['path'] = str(audio_file)
+
+                # Apply lowercase
+                if info.get("title"):
+                    info["title"] = info["title"].lower()
+                if info.get("artist"):
+                    info["artist"] = info["artist"].lower()
+                if info.get("album"):
+                    info["album"] = info["album"].lower()
+
+                cache[file_id] = info
+                updated = True
+
+            # Duplicate detection using tiered key strategy
+            dup_key = _get_dedup_key(info, audio_file.name)
+
+            if dup_key in seen_keys:
+                duplicates.append(audio_file.name)
+                continue
+
+            seen_keys.add(dup_key)
+            metadata.append(info)
+
+        except Exception as e:
+            logger.warning(f"error processing {audio_file.name}: {e}")
+
+            # Create minimal entry with filename fallback
+            # This ensures files with metadata errors still appear in playlist
+            # Use filename-only file_id (stat() could fail if file deleted)
             try:
                 stat = audio_file.stat()
                 file_id = f"{audio_file.name}_{stat.st_mtime}"
+            except OSError:
+                # File deleted or inaccessible - use filename only
+                file_id = audio_file.name
+            info = {
+                'filename': audio_file.name,
+                'title': audio_file.stem,  # Fallback to filename stem
+                'artist': None,
+                'album': None,
+                'track': 0,
+                'file_id': file_id,
+                'path': str(audio_file)
+            }
 
-                if file_id in cache:
-                    info = cache[file_id]
-                else:
-                    # Extract new
-                    info = await extract_metadata(audio_file)
-                    info['file_id'] = file_id
-                    info['path'] = str(audio_file)
+            # Apply lowercase to fallback title
+            info["title"] = info["title"].lower()
 
-                    # Apply lowercase
-                    if info.get("title"):
-                        info["title"] = info["title"].lower()
-                    if info.get("artist"):
-                        info["artist"] = info["artist"].lower()
-                    if info.get("album"):
-                        info["album"] = info["album"].lower()
+            # Don't add to cache (it's corrupt), but do add to metadata for playlist inclusion
+            # Duplicate check using same tiered key strategy
+            dup_key = _get_dedup_key(info, audio_file.name)
 
-                    cache[file_id] = info
-                    updated = True
-
-                # Duplicate detection using tiered key strategy
-                dup_key = _get_dedup_key(info, audio_file.name)
-
-                if dup_key in seen_keys:
-                    duplicates.append(audio_file.name)
-                    continue
-
+            if dup_key not in seen_keys:
                 seen_keys.add(dup_key)
                 metadata.append(info)
-
-            except Exception as e:
-                logger.warning(f"error processing {audio_file.name}: {e}")
-
-                # Create minimal entry with filename fallback
-                # This ensures files with metadata errors still appear in playlist
-                # Use filename-only file_id (stat() could fail if file deleted)
-                try:
-                    stat = audio_file.stat()
-                    file_id = f"{audio_file.name}_{stat.st_mtime}"
-                except OSError:
-                    # File deleted or inaccessible - use filename only
-                    file_id = audio_file.name
-                info = {
-                    'filename': audio_file.name,
-                    'title': audio_file.stem,  # Fallback to filename stem
-                    'artist': None,
-                    'album': None,
-                    'track': 0,
-                    'file_id': file_id,
-                    'path': str(audio_file)
-                }
-
-                # Apply lowercase to fallback title
-                info["title"] = info["title"].lower()
-
-                # Don't add to cache (it's corrupt), but do add to metadata for playlist inclusion
-                # Duplicate check using same tiered key strategy
-                dup_key = _get_dedup_key(info, audio_file.name)
-
-                if dup_key not in seen_keys:
-                    seen_keys.add(dup_key)
-                    metadata.append(info)
 
     # Sort by track number, then filename
     metadata.sort(key=lambda m: (m.get('track', 0), m.get('filename', '')))

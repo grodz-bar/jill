@@ -16,10 +16,10 @@ Your local music library, on tap in Discord.
 
 ### Features
 
-- **Control panel** - like a real music player
-- **Your music** - put songs in folders, get playlists
-- **Clean bar** - messages auto-delete, keeps things tidy
-- **Configurable** - permissions, colors, emojis, messages
+- **Control panel** - just like a real CD player
+- **Your music** - your folders, your playlists
+- **Fast search** - browse your songs by typing
+- **Clean bar** - messages disappear on their own
 
 ---
 

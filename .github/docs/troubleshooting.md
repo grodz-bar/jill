@@ -80,7 +80,7 @@
 
 - **Duplicates appearing**: Files have slightly different metadata. Check title/artist spelling matches exactly.
 
-- **Slow startup**: First run scans all files. Later startups use cache. For large libraries that rarely change:
+- **Slow startup**: First run reads metadata from all files. Later startups only check new or changed files. For large libraries that rarely change:
   ```yaml
   # settings.yaml
   auto_rescan: false

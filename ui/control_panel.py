@@ -300,7 +300,7 @@ class PlaylistSelectView(AutoDeleteView):
 
         async with music_cog._get_playback_lock(guild_id):
             queue = music_cog.get_queue(guild_id)
-            queue.set_playlist(selected_name, tracks)
+            queue.set_playlist(selected_name, tracks, self.bot.library.get_playlist_path(selected_name))
             await queue.load_metadata_cache(self.bot.metadata_cache_path, selected_name)
 
         # Save last playlist for restore on restart (outside lock - has own atomic save)
@@ -1122,7 +1122,7 @@ class ControlPanelLayout(discord.ui.LayoutView):
                 if not tracks:
                     await self.respond(interaction, "playlist_empty")
                     return
-                queue.set_playlist(playlist_name, tracks)
+                queue.set_playlist(playlist_name, tracks, self.bot.library.get_playlist_path(playlist_name))
                 await queue.load_metadata_cache(self.bot.metadata_cache_path, playlist_name)
 
             # Restore track from preserved position (after /stop or disconnect)

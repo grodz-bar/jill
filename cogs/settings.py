@@ -80,6 +80,7 @@ class Settings(ResponseMixin, commands.Cog):
                         self.bot.library.get_playlist(name) or [],
                         self.bot.metadata_cache_path,
                         name,
+                        self.bot.library.get_playlist_path(name),
                         force_rebuild=True
                     ) for name in playlist_names],
                     return_exceptions=True
@@ -106,6 +107,7 @@ class Settings(ResponseMixin, commands.Cog):
                             updated_tracks = self.bot.library.get_playlist(queue.playlist_name)
                             if updated_tracks is not None:
                                 queue.tracks = updated_tracks.copy()
+                                queue.playlist_path = self.bot.library.get_playlist_path(queue.playlist_name)
                                 if queue.shuffle:
                                     queue._regenerate_shuffle(exclude_last=queue.current)
 
@@ -129,6 +131,7 @@ class Settings(ResponseMixin, commands.Cog):
                                 queue.shuffled_tracks = None
                                 queue.shuffle = False
                                 queue.song_loop = False
+                                queue.playlist_path = None
                                 self.bot.state_manager.set("shuffle", False)
                                 await self.bot.state_manager.save()
 

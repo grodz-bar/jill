@@ -26,7 +26,7 @@ Key functions:
 
 Caching:
 - Caches stored in data/metadata/<playlist_name>.json
-- Cache keyed by "filename_mtime" to detect modified files
+- Cache keyed by "rel_path_mtime" to detect modified files (rel_path = relative POSIX path from playlist root)
 - Duplicates are detected and excluded from playback
 
 All metadata is lowercased for consistent display and search.
@@ -159,14 +159,18 @@ def _get_first(audio, key: str) -> str | None:
 
 
 def _normalize_filename(name: str) -> str:
-    """Normalize filename for duplicate detection.
+    """Normalize filename (or relative path) for duplicate detection.
 
     Handles OS duplicate suffixes like "song (1).mp3" → "song".
+    Preserves parent directory for subfolder-aware dedup.
     Per guidelines: helper functions must never raise.
     """
+    p = Path(name)
     try:
-        stem = Path(name).stem.lower()
-        return re.sub(r'\s*\(\d+\)\s*$', '', stem)
+        stem = p.stem.lower()
+        normalized = re.sub(r'\s*\(\d+\)\s*$', '', stem)
+        parent = p.parent.as_posix()
+        return f"{parent}/{normalized}" if parent != "." else normalized
     except Exception:
         return name.lower()
 
@@ -233,7 +237,8 @@ def _make_fallback(audio_file: Path, file_id: str) -> dict:
 
 def _collect_file_info(
     file_list: list[Path],
-    cache: dict
+    cache: dict,
+    playlist_root: Path
 ) -> list[tuple[Path, str | None, dict | None]]:
     """Phase 1: stat files and check cache (blocking I/O, run in thread).
 
@@ -246,11 +251,13 @@ def _collect_file_info(
     for audio_file in file_list:
         try:
             stat = audio_file.stat()
-            file_id = f"{audio_file.name}_{stat.st_mtime}"
+            rel = audio_file.relative_to(playlist_root).as_posix()
+            file_id = f"{rel}_{stat.st_mtime}"
             cached = cache.get(file_id)
             entries.append((audio_file, file_id, cached))
         except OSError as e:
-            logger.warning(f"error accessing {audio_file.name}: {e}")
+            rel = audio_file.relative_to(playlist_root).as_posix()
+            logger.warning(f"error accessing {rel}: {e}")
             fallback = _make_fallback(audio_file, audio_file.name)
             entries.append((audio_file, None, fallback))
     return entries
@@ -282,6 +289,7 @@ async def scan_playlist_metadata(
     file_list: list[Path],
     cache_dir: Path,
     playlist_name: str,
+    playlist_root: Path,
     force_rebuild: bool = False
 ) -> tuple[list[dict], int, list[Path], list[str]]:
     """Scan playlist files, extract metadata, and update cache.
@@ -295,6 +303,7 @@ async def scan_playlist_metadata(
         file_list: Pre-filtered audio file paths from library
         cache_dir: Directory for cache files (data/metadata/)
         playlist_name: Name of the playlist (used for cache filename)
+        playlist_root: Filesystem path for the playlist directory
         force_rebuild: If True, ignore existing cache and rescan everything
 
     Returns:
@@ -326,7 +335,7 @@ async def scan_playlist_metadata(
     original_cache = set(cache.keys())
 
     # Phase 1: stat files and check cache (threaded to avoid blocking event loop)
-    entries = await asyncio.to_thread(_collect_file_info, file_list, cache)
+    entries = await asyncio.to_thread(_collect_file_info, file_list, cache, playlist_root)
 
     # Phase 2: extract metadata for uncached files in parallel
     uncached = [(f, fid) for f, fid, cached in entries if fid is not None and cached is None]
@@ -361,18 +370,25 @@ async def scan_playlist_metadata(
             # Phase 2 extraction failed — create fallback (don't cache)
             info = _make_fallback(audio_file, file_id)
 
+        # Set rel_path on every entry (overwrites stale values from old caches)
+        info['rel_path'] = audio_file.relative_to(playlist_root).as_posix()
+
         # Duplicate detection using tiered key strategy
-        dup_key = _get_dedup_key(info, audio_file.name)
+        dup_key = _get_dedup_key(info, info['rel_path'])
 
         if dup_key in seen_keys:
-            duplicates.append(audio_file.name)
+            duplicates.append(info['rel_path'])
             continue
 
         seen_keys.add(dup_key)
         metadata.append(info)
 
-    # Sort by track number, then filename
-    metadata.sort(key=lambda m: (m.get('track', 0), m.get('filename', '')))
+    # Sort by subfolder, then track number, then filename
+    metadata.sort(key=lambda m: (
+        str(Path(m.get('rel_path', m.get('filename', ''))).parent),
+        m.get('track', 0),
+        m.get('filename', '')
+    ))
 
     # Count new unique songs (in final metadata list, not in original cache)
     new_count = sum(1 for m in metadata if m['file_id'] not in original_cache)

@@ -59,7 +59,7 @@ class GuildQueue:
     bot, there will only ever be one instance, but the pattern remains correct.
 
     Metadata Architecture:
-    - metadata_cache: Loaded from data/metadata/<playlist>.json on playlist switch (dict keyed by filename)
+    - metadata_cache: Loaded from data/metadata/<playlist>.json on playlist switch (dict keyed by rel_path)
     - current_metadata: Captured when track starts playing (survives playlist switches)
     - Display uses current_metadata for "now playing", metadata_cache for queue tracks
     """
@@ -69,13 +69,14 @@ class GuildQueue:
     current_index: int | None = None  # Position in active playlist (None = orphaned/no position)
 
     # Metadata (Mutagen cache - single source of truth)
-    metadata_cache: dict[str, dict] = field(default_factory=dict)  # filename -> metadata
+    metadata_cache: dict[str, dict] = field(default_factory=dict)  # rel_path -> metadata
     current_metadata: dict | None = None  # Frozen on track start, survives playlist switches
 
     # Playback modes
     shuffle: bool = False
     shuffled_tracks: list[Path] | None = None  # Stable shuffled order (None when shuffle OFF)
     song_loop: bool = False  # Loop current song (playlist always loops)
+    playlist_path: Path | None = None  # Filesystem path for current playlist root
 
     @property
     def display_playlist_name(self) -> str | None:
@@ -89,10 +90,19 @@ class GuildQueue:
         """Get the active playlist (shuffled if shuffle=True, else canonical)."""
         return self.shuffled_tracks if (self.shuffle and self.shuffled_tracks) else self.tracks
 
+    def _track_key(self, track: Path) -> str:
+        """Relative POSIX path from playlist root. Falls back to filename."""
+        if self.playlist_path:
+            try:
+                return track.relative_to(self.playlist_path).as_posix()
+            except ValueError:
+                return track.name
+        return track.name
+
     async def load_metadata_cache(self, cache_dir: Path, playlist_name: str) -> None:
         """Load metadata cache from JSON file into memory.
 
-        Called on playlist switch. Cache is keyed by filename for O(1) lookup.
+        Called on playlist switch. Cache is keyed by rel_path for O(1) lookup.
         """
         cache_file = cache_dir / f'{playlist_name}.json'
 
@@ -102,11 +112,11 @@ class GuildQueue:
 
         try:
             data = await asyncio.to_thread(_load_json, cache_file)
-            # Convert from {file_id: metadata} to {filename: metadata}
+            # Convert from {file_id: metadata} to {rel_path: metadata}
             self.metadata_cache = {
-                entry.get("filename", ""): entry
+                entry.get("rel_path", ""): entry
                 for entry in data.values()
-                if entry.get("filename")
+                if entry.get("rel_path")
             }
         except (json.JSONDecodeError, UnicodeDecodeError, OSError) as e:
             logger.warning(f"failed to load cache for '{playlist_name}': {e}")
@@ -118,8 +128,8 @@ class GuildQueue:
         This freezes the metadata so it survives playlist switches.
         """
         if self.current:
-            filename = self.current.name
-            self.current_metadata = self.metadata_cache.get(filename, {
+            key = self._track_key(self.current)
+            self.current_metadata = self.metadata_cache.get(key, {
                 "title": self.current.stem,
                 "artist": None
             })
@@ -146,7 +156,7 @@ class GuildQueue:
         Uses metadata_cache for upcoming/history tracks.
         Returns None for artist if missing.
         """
-        metadata = self.metadata_cache.get(track.name, {})
+        metadata = self.metadata_cache.get(self._track_key(track), {})
         title = metadata.get("title", track.stem)
         artist = metadata.get("artist")
         return (title, artist)
@@ -169,10 +179,11 @@ class GuildQueue:
             self.current = self.active_tracks[0]
             logger.warning(f"invalid track index {index}, reset to 0")
 
-    def set_playlist(self, name: str, tracks: list[Path]) -> None:
+    def set_playlist(self, name: str, tracks: list[Path], playlist_path: Path) -> None:
         """Load a new playlist (sync part - call load_metadata_cache separately)."""
         self.playlist_name = name
         self.tracks = tracks.copy()
+        self.playlist_path = playlist_path
         self.current_index = None  # Orphaned - current track not in new playlist
         logger.debug(f"loaded {len(self.tracks)} tracks from {self.playlist_name!r}")
 
@@ -395,14 +406,14 @@ class Music(ResponseMixin, commands.Cog):
         playlist_name = self._resolve_playlist(names, warn_invalid=True)
 
         tracks = self.bot.library.get_playlist(playlist_name)
-        queue.set_playlist(playlist_name, tracks)
+        queue.set_playlist(playlist_name, tracks, self.bot.library.get_playlist_path(playlist_name))
         await queue.load_metadata_cache(self.bot.metadata_cache_path, playlist_name)
 
         # Restore last track position from saved state
         saved_track = self.bot.state_manager.get("last_track")
         if saved_track:
             for i, track in enumerate(queue.active_tracks):
-                if track.name == saved_track:
+                if queue._track_key(track) == saved_track:
                     queue.current_index = i
                     logger.debug(f"restored track position: '{saved_track}'")
                     break
@@ -673,19 +684,20 @@ class Music(ResponseMixin, commands.Cog):
             folder_name = ROOT_PLAYLIST_NAME
         else:
             folder_name = self.bot.library.get_playlist_path(playlist_name).name
-        http_url = f"http://{self.bot.http_url_host}:{self.bot.http_port}/files/{quote(folder_name, safe='')}/{quote(track.name, safe='')}"
+        track_key = self.bot.library.track_key(track, playlist_name)
+        http_url = f"http://{self.bot.http_url_host}:{self.bot.http_port}/files/{quote(folder_name, safe='')}/{quote(track_key, safe='/')}"
         try:
             tracks = await player.fetch_tracks(http_url)
             if tracks:
                 await player.play(tracks[0])
                 return True
-            logger.warning(f"lavalink returned no tracks for {track.name}")
+            logger.warning(f"lavalink returned no tracks for {track_key}")
         except aiohttp.ClientConnectionError as e:
-            logger.error(f"playback failed for {track.name}: {e}")
+            logger.error(f"playback failed for {track_key}: {e}")
             # Handler uses lock - safe to call from exception block
             await self.bot.handle_lavalink_connection_error()
         except Exception as e:
-            logger.error(f"playback failed for {track.name}: {e}")
+            logger.error(f"playback failed for {track_key}: {e}")
 
         return False
 
@@ -816,7 +828,7 @@ class Music(ResponseMixin, commands.Cog):
             if not tracks:
                 await self.respond(interaction, "playlist_empty")
                 return
-            queue.set_playlist(playlist_name, tracks)
+            queue.set_playlist(playlist_name, tracks, self.bot.library.get_playlist_path(playlist_name))
 
             # Validate and apply restored current_index (if shuffle is enabled, it was already applied by enable_shuffle)
             if queue.current_index is not None:
@@ -835,13 +847,14 @@ class Music(ResponseMixin, commands.Cog):
             metadata_list, _, _, _ = await scan_playlist_metadata(
                 self.bot.library.get_playlist(queue.playlist_name) or [],
                 self.bot.metadata_cache_path,
-                queue.playlist_name
+                queue.playlist_name,
+                self.bot.library.get_playlist_path(queue.playlist_name)
             )
             # Use scan result directly instead of re-reading from disk
             queue.metadata_cache = {
-                entry.get("filename", ""): entry
+                entry.get("rel_path", ""): entry
                 for entry in metadata_list
-                if entry.get("filename")
+                if entry.get("rel_path")
             }
 
         # Convert to list for search function
@@ -1329,7 +1342,7 @@ class Music(ResponseMixin, commands.Cog):
 
         # Track last played for cross-reboot restore (flushed to disk on disconnect)
         if queue.current:
-            self.bot.state_manager.set("last_track", queue.current.name)
+            self.bot.state_manager.set("last_track", queue._track_key(queue.current))
 
         # Update bot presence with current song
         title, artist = queue.get_current_display()

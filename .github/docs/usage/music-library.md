@@ -14,6 +14,21 @@ music/
     └── 02-shine-spark.flac
 ```
 
+You can also organize files within a playlist using subfolders:
+
+```
+music/
+└── ost-collection/
+    ├── Disc 1/
+    │   ├── 01-opening.flac
+    │   └── 02-theme.flac
+    └── Disc 2/
+        ├── 01-finale.flac
+        └── 02-credits.flac
+```
+
+All files in subfolders are included in the playlist, up to 5 levels deep. Tracks are grouped by subfolder, then sorted by track number.
+
 > [!TIP]
 > Don't need playlists? Put files directly in `music/` with no subfolders.
 >
@@ -55,7 +70,7 @@ mklink /d "music\rock" "C:\Users\You\Music\Rock"
 
 ### Metadata
 
-Jill reads **title**, **artist**, **album**, and **track number** from your files. Missing title falls back to filename. Tracks sort by track number, then alphabetically.
+Jill reads **title**, **artist**, **album**, and **track number** from your files. Missing title falls back to filename. Tracks are sorted by subfolder first, then track number, then alphabetically.
 
 ### Duplicates
 

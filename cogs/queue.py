@@ -310,7 +310,7 @@ class Queue(ResponseMixin, commands.Cog):
 
         async with music_cog._get_playback_lock(guild_id):
             queue = music_cog.get_queue(guild_id)
-            queue.set_playlist(matched, tracks)
+            queue.set_playlist(matched, tracks, self.bot.library.get_playlist_path(matched))
             # Load metadata cache for this playlist (O(1) lookups during playback)
             await queue.load_metadata_cache(self.bot.metadata_cache_path, matched)
 

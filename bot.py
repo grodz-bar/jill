@@ -469,18 +469,18 @@ class MusicBot(commands.Bot):
     async def serve_file(self, request: web.Request) -> web.Response:
         """Serve audio files to Lavalink. Validates path is within music directory."""
         playlist = request.match_info['playlist']
-        filename = request.match_info['filename']
+        filepart = request.match_info['filepath']
 
         # Security: Reject path traversal
-        if '..' in playlist or '..' in filename:
+        if '..' in playlist or '..' in filepart:
             logger.debug("blocked path traversal attempt")
             raise web.HTTPForbidden()
 
         # Handle root playlist (files directly in music folder)
         if playlist == ROOT_PLAYLIST_NAME:
-            filepath = (MUSIC_PATH / filename).resolve()
+            filepath = (MUSIC_PATH / filepart).resolve()
         else:
-            filepath = (MUSIC_PATH / playlist / filename).resolve()
+            filepath = (MUSIC_PATH / playlist / filepart).resolve()
 
         music_root = MUSIC_PATH.resolve()
 
@@ -524,13 +524,15 @@ class MusicBot(commands.Bot):
         # Auto-rescan if enabled (handles first-run implicitly via cache creation)
         all_duplicates: list[str] = []
         if self.config_manager.get("auto_rescan", True):  # default changed to True
+            logger.info("reading metadata...")
             from utils.metadata import scan_playlist_metadata
             playlist_names = self.library.get_playlist_names()
             results = await asyncio.gather(
                 *[scan_playlist_metadata(
                     self.library.get_playlist(name) or [],
                     self.metadata_cache_path,
-                    name
+                    name,
+                    self.library.get_playlist_path(name)
                 ) for name in playlist_names],
                 return_exceptions=True
             )
@@ -554,17 +556,10 @@ class MusicBot(commands.Bot):
                     track_word = "track" if len(tracks) == 1 else "tracks"
                     logger.debug(f"playlist '{name}' has {len(tracks)} {track_word}")
 
-            # Summary at INFO level
-            total_tracks = sum(len(tracks) for tracks in self.library.playlists.values())
-            track_word = "track" if total_tracks == 1 else "tracks"
-            playlist_word = "playlist" if len(self.library.playlists) == 1 else "playlists"
-            logger.info(f"found {total_tracks} {track_word} in {len(self.library.playlists)} {playlist_word}")
-
             # New songs logging
             if total_new > 0:
                 song_word = "song" if total_new == 1 else "songs"
-                playlist_word = "playlist" if len(playlist_names) == 1 else "playlists"
-                logger.info(f"found {total_new} new {song_word} in {len(playlist_names)} {playlist_word}")
+                logger.info(f"read {total_new} new {song_word}")
             elif total_new == 0:
                 logger.debug("no new songs")
 
@@ -595,7 +590,7 @@ class MusicBot(commands.Bot):
 
         # HTTP Server
         self.web_app = web.Application(middlewares=[logging_middleware])
-        self.web_app.router.add_get('/files/{playlist}/{filename}', self.serve_file)
+        self.web_app.router.add_get('/files/{playlist}/{filepath:.*}', self.serve_file)
         self.web_app.router.add_get('/health', self.health_check)
 
         self.runner = web.AppRunner(self.web_app)

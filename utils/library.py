@@ -30,12 +30,16 @@ AUDIO_EXTENSIONS = {'.mp3', '.flac', '.ogg', '.opus', '.m4a', '.m4b', '.wav', '.
 # (used when no subdirectory playlists exist). Users see "root" in the UI.
 ROOT_PLAYLIST_NAME = "_root"
 
+# Maximum subdirectory depth for recursive playlist scanning
+MAX_SCAN_DEPTH = 5
+
 
 class MusicLibrary:
     """Manages playlists and music file discovery.
 
     Scans the music directory for playlists (subdirectories containing audio files).
-    Each subdirectory becomes a playlist named after the folder.
+    Each subdirectory becomes a playlist named after the folder. Subfolders within
+    playlists are scanned recursively (up to MAX_SCAN_DEPTH levels).
 
     Directory structure:
         music/
@@ -43,26 +47,30 @@ class MusicLibrary:
         │   ├── track1.mp3
         │   └── track2.flac
         ├── Rock/           -> "rock" playlist
-        │   └── song.ogg
+        │   ├── song.ogg
+        │   └── Disc 2/     -> files included in "rock" playlist
+        │       └── bonus.mp3
         └── loose.mp3       -> Ignored if playlists exist, or "_root" playlist
 
     Scanning behavior:
     - Hidden folders (starting with .) are skipped
     - Playlist names are lowercased for case-insensitive lookups
-    - Tracks sorted alphabetically by filename
+    - Tracks sorted by relative path from playlist root (groups by subfolder)
     - Loose files in root: warned and ignored if playlists exist,
-      otherwise become "_root" playlist
+      otherwise become "_root" playlist (stays flat, not recursive)
 
     The library is scanned once on startup. Use /rescan to detect new files.
 
     Attributes:
         music_path: Root directory containing playlist subdirectories
         _playlists: Cached scan results (None until scan() is called)
+        _playlist_paths: Maps lowercase playlist name to original-casing directory Path
     """
 
     def __init__(self, music_path: Path) -> None:
         self.music_path = music_path
         self._playlists: dict[str, list[Path]] | None = None
+        self._playlist_paths: dict[str, Path] = {}
 
     async def scan(self) -> dict[str, list[Path]]:
         """Scan music directory for playlists.
@@ -73,9 +81,10 @@ class MusicLibrary:
         Returns:
             Playlists dict mapping name to list of file paths
         """
-        logger.info("library scan started")
+        logger.info("loading library...")
 
-        playlists, loose_files = await asyncio.to_thread(self._scan_sync)
+        playlists, loose_files, playlist_paths = await asyncio.to_thread(self._scan_sync)
+        self._playlist_paths = playlist_paths
 
         # Warn about loose files in root (when playlists exist)
         if loose_files:
@@ -92,46 +101,64 @@ class MusicLibrary:
             logger.warning("no playlists found")
         else:
             file_count = sum(len(tracks) for tracks in playlists.values())
-            folder_count = len(playlists)
+            playlist_count = len(playlists)
             file_word = "file" if file_count == 1 else "files"
-            folder_word = "folder" if folder_count == 1 else "folders"
-            logger.info(f"scanned {file_count} {file_word} in {folder_count} {folder_word}")
+            playlist_word = "playlist" if playlist_count == 1 else "playlists"
+            logger.info(f"found {file_count} {file_word} in {playlist_count} {playlist_word}")
 
         self._playlists = playlists
         return playlists
 
-    def _scan_sync(self) -> tuple[dict[str, list[Path]], list[str]]:
+    def _scan_audio_files(self, directory: Path, max_depth: int = MAX_SCAN_DEPTH) -> list[Path]:
+        """Recursively find audio files up to max_depth. Skips hidden dirs."""
+        if max_depth < 0:
+            return []
+        result = []
+        try:
+            children = list(directory.iterdir())
+        except PermissionError:
+            logger.warning(f"permission denied: {directory}")
+            return []
+        for entry in children:
+            if entry.is_file() and entry.suffix.lower() in AUDIO_EXTENSIONS:
+                result.append(entry)
+            elif entry.is_dir() and not entry.name.startswith('.'):
+                result.extend(self._scan_audio_files(entry, max_depth - 1))
+        return result
+
+    def _scan_sync(self) -> tuple[dict[str, list[Path]], list[str], dict[str, Path]]:
         """Synchronous directory scanning.
 
         Returns:
-            Tuple of (playlists dict, list of loose filenames in root)
+            Tuple of (playlists dict, list of loose filenames in root, playlist paths dict)
         """
         playlists = {}
         loose_files = []
+        playlist_paths = {}
 
         if not self.music_path.exists():
             logger.warning(f"music path does not exist: {self.music_path}")
-            return playlists, loose_files
+            return playlists, loose_files, playlist_paths
 
-        # Scan subdirectories for playlists
+        # Scan subdirectories for playlists (recursive into subfolders)
         for playlist_dir in self.music_path.iterdir():
             if not playlist_dir.is_dir():
                 continue
             if playlist_dir.name.startswith('.'):
                 continue  # Skip hidden folders
 
-            audio_files = [f for f in playlist_dir.iterdir()
-                          if f.is_file() and f.suffix.lower() in AUDIO_EXTENSIONS]
+            audio_files = self._scan_audio_files(playlist_dir)
 
             if audio_files:
-                # Sort by filename (canonical order for now)
-                sorted_files = sorted(audio_files, key=lambda p: p.name.lower())
+                # Sort by relative path (groups files by subfolder)
+                sorted_files = sorted(audio_files, key=lambda p: p.relative_to(playlist_dir).as_posix().lower())
 
                 playlists[playlist_dir.name.lower()] = sorted_files
+                playlist_paths[playlist_dir.name.lower()] = playlist_dir
             else:
                 logger.warning(f"playlist '{playlist_dir.name}' is empty")
 
-        # Check for audio files in root
+        # Check for audio files in root (stays flat — not recursive)
         root_audio = [f for f in self.music_path.iterdir()
                       if f.is_file() and f.suffix.lower() in AUDIO_EXTENSIONS]
 
@@ -144,7 +171,7 @@ class MusicLibrary:
                 sorted_files = sorted(root_audio, key=lambda p: p.name.lower())
                 playlists[ROOT_PLAYLIST_NAME] = sorted_files
 
-        return playlists, loose_files
+        return playlists, loose_files, playlist_paths
 
     @property
     def playlists(self) -> dict[str, list[Path]]:
@@ -186,13 +213,21 @@ class MusicLibrary:
         Handles root playlist specially - returns music_path directly
         instead of music_path / "_root".
 
-        Derives path from first track's parent to preserve filesystem casing
+        Uses _playlist_paths cache (built during scan) to preserve filesystem casing
         (playlist names are lowercase but directories may have mixed case).
         Returns constructed path as fallback if playlist not found.
         """
         if playlist_name == ROOT_PLAYLIST_NAME:
             return self.music_path
-        tracks = self.get_playlist(playlist_name)
-        if tracks:
-            return tracks[0].parent
+        path = self._playlist_paths.get(playlist_name)
+        if path:
+            return path
         return self.music_path / playlist_name  # fallback (shouldn't happen)
+
+    def track_key(self, track: Path, playlist_name: str) -> str:
+        """Relative POSIX path from playlist root."""
+        playlist_path = self.get_playlist_path(playlist_name)
+        try:
+            return track.relative_to(playlist_path).as_posix()
+        except ValueError:
+            return track.name

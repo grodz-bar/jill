@@ -40,8 +40,6 @@ from pathlib import Path
 
 from loguru import logger
 
-from utils.library import AUDIO_EXTENSIONS
-
 try:
     from mutagen import File, MutagenError
 except ImportError:
@@ -50,6 +48,10 @@ except ImportError:
     logger.warning("mutagen not installed, metadata extraction disabled")
 
 GENERIC_ALBUMARTISTS = frozenset({"various artists", "various", "va", "soundtrack", "ost"})
+
+# Shared across all concurrent scan_playlist_metadata calls.
+# Limits total extraction concurrency to match thread pool capacity.
+_extraction_semaphore = asyncio.Semaphore(16)
 
 
 def extract_metadata_sync(filepath: Path) -> dict:
@@ -216,20 +218,81 @@ async def extract_metadata(filepath: Path, timeout: float = 15.0) -> dict:
         }
 
 
+def _make_fallback(audio_file: Path, file_id: str) -> dict:
+    """Create minimal metadata entry for files that failed extraction or stat."""
+    return {
+        'filename': audio_file.name,
+        'title': audio_file.stem.lower(),
+        'artist': None,
+        'album': None,
+        'track': 0,
+        'file_id': file_id,
+        'path': str(audio_file)
+    }
+
+
+def _collect_file_info(
+    file_list: list[Path],
+    cache: dict
+) -> list[tuple[Path, str | None, dict | None]]:
+    """Phase 1: stat files and check cache (blocking I/O, run in thread).
+
+    Returns ordered list of (audio_file, file_id, info_or_None):
+    - stat success + cache hit: (file, file_id, cached_info)
+    - stat success + cache miss: (file, file_id, None)
+    - stat failure: (file, None, fallback_info) — file_id=None is the sentinel
+    """
+    entries = []
+    for audio_file in file_list:
+        try:
+            stat = audio_file.stat()
+            file_id = f"{audio_file.name}_{stat.st_mtime}"
+            cached = cache.get(file_id)
+            entries.append((audio_file, file_id, cached))
+        except OSError as e:
+            logger.warning(f"error accessing {audio_file.name}: {e}")
+            fallback = _make_fallback(audio_file, audio_file.name)
+            entries.append((audio_file, None, fallback))
+    return entries
+
+
+async def _extract_one(audio_file: Path, file_id: str) -> tuple[str, dict | None]:
+    """Extract metadata for a single file with semaphore throttling."""
+    async with _extraction_semaphore:
+        try:
+            info = await extract_metadata(audio_file)
+            info['file_id'] = file_id
+            info['path'] = str(audio_file)
+
+            # Apply lowercase normalization
+            if info.get("title"):
+                info["title"] = info["title"].lower()
+            if info.get("artist"):
+                info["artist"] = info["artist"].lower()
+            if info.get("album"):
+                info["album"] = info["album"].lower()
+
+            return (file_id, info)
+        except Exception as e:
+            logger.warning(f"error extracting {audio_file.name}: {e}")
+            return (file_id, None)
+
+
 async def scan_playlist_metadata(
-    playlist_path: Path,
+    file_list: list[Path],
     cache_dir: Path,
     playlist_name: str,
     force_rebuild: bool = False
 ) -> tuple[list[dict], int, list[Path], list[str]]:
-    """Scan playlist directory, extract metadata, and update cache.
+    """Scan playlist files, extract metadata, and update cache.
 
-    Reads existing cache from cache_dir/<playlist_name>.json if available,
-    extracts metadata from new/modified files, removes duplicates, and saves
-    updated cache.
+    Three-phase design for parallel extraction:
+    1. Collect: stat files and check cache (threaded, non-blocking)
+    2. Extract: parallel metadata extraction for uncached files
+    3. Merge: sequential dedup and cache update
 
     Args:
-        playlist_path: Directory containing audio files
+        file_list: Pre-filtered audio file paths from library
         cache_dir: Directory for cache files (data/metadata/)
         playlist_name: Name of the playlist (used for cache filename)
         force_rebuild: If True, ignore existing cache and rescan everything
@@ -256,84 +319,57 @@ async def scan_playlist_metadata(
             except OSError:
                 # File locked by another process (Windows) - continue without delete
                 pass
-        except (UnicodeDecodeError, OSError) as e:
+        except (UnicodeDecodeError, OSError):
             # Encoding or I/O error - regenerate
             logger.warning("cache read error, regenerating")
 
     original_cache = set(cache.keys())
+
+    # Phase 1: stat files and check cache (threaded to avoid blocking event loop)
+    entries = await asyncio.to_thread(_collect_file_info, file_list, cache)
+
+    # Phase 2: extract metadata for uncached files in parallel
+    uncached = [(f, fid) for f, fid, cached in entries if fid is not None and cached is None]
+
+    if uncached:
+        extract_results = await asyncio.gather(
+            *[_extract_one(f, fid) for f, fid in uncached]
+        )
+        extracted = dict(extract_results)
+    else:
+        extracted = {}
+
+    # Phase 3: merge results and deduplicate
     metadata = []
     updated = False
-    seen_keys: set[tuple] = set()  # Track duplicates by dedup key
-    duplicates: list[str] = []  # Collect duplicate filenames for grouped logging
-    for audio_file in playlist_path.iterdir():
-        if not (audio_file.is_file() and audio_file.suffix.lower() in AUDIO_EXTENSIONS):
+    seen_keys: set[tuple] = set()
+    duplicates: list[str] = []
+
+    for audio_file, file_id, cached_info in entries:
+        if file_id is None:
+            # stat-failed fallback from Phase 1
+            info = cached_info
+        elif cached_info is not None:
+            # Cache hit from Phase 1
+            info = cached_info
+        elif file_id in extracted and extracted[file_id] is not None:
+            # Phase 2 extraction succeeded
+            info = extracted[file_id]
+            cache[file_id] = info
+            updated = True
+        else:
+            # Phase 2 extraction failed — create fallback (don't cache)
+            info = _make_fallback(audio_file, file_id)
+
+        # Duplicate detection using tiered key strategy
+        dup_key = _get_dedup_key(info, audio_file.name)
+
+        if dup_key in seen_keys:
+            duplicates.append(audio_file.name)
             continue
 
-        try:
-            stat = audio_file.stat()
-            file_id = f"{audio_file.name}_{stat.st_mtime}"
-
-            if file_id in cache:
-                info = cache[file_id]
-            else:
-                # Extract new
-                info = await extract_metadata(audio_file)
-                info['file_id'] = file_id
-                info['path'] = str(audio_file)
-
-                # Apply lowercase
-                if info.get("title"):
-                    info["title"] = info["title"].lower()
-                if info.get("artist"):
-                    info["artist"] = info["artist"].lower()
-                if info.get("album"):
-                    info["album"] = info["album"].lower()
-
-                cache[file_id] = info
-                updated = True
-
-            # Duplicate detection using tiered key strategy
-            dup_key = _get_dedup_key(info, audio_file.name)
-
-            if dup_key in seen_keys:
-                duplicates.append(audio_file.name)
-                continue
-
-            seen_keys.add(dup_key)
-            metadata.append(info)
-
-        except Exception as e:
-            logger.warning(f"error processing {audio_file.name}: {e}")
-
-            # Create minimal entry with filename fallback
-            # This ensures files with metadata errors still appear in playlist
-            # Use filename-only file_id (stat() could fail if file deleted)
-            try:
-                stat = audio_file.stat()
-                file_id = f"{audio_file.name}_{stat.st_mtime}"
-            except OSError:
-                # File deleted or inaccessible - use filename only
-                file_id = audio_file.name
-            info = {
-                'filename': audio_file.name,
-                'title': audio_file.stem,  # Fallback to filename stem
-                'artist': None,
-                'album': None,
-                'track': 0,
-                'file_id': file_id,
-                'path': str(audio_file)
-            }
-
-            # Apply lowercase to fallback title
-            info["title"] = info["title"].lower()
-
-            # Don't add to cache (it's corrupt), but do add to metadata for playlist inclusion
-            # Duplicate check using same tiered key strategy
-            dup_key = _get_dedup_key(info, audio_file.name)
-
-            if dup_key not in seen_keys:
-                seen_keys.add(dup_key)
-                metadata.append(info)
+        seen_keys.add(dup_key)
+        metadata.append(info)
 
     # Sort by track number, then filename
     metadata.sort(key=lambda m: (m.get('track', 0), m.get('filename', '')))

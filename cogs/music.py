@@ -825,8 +825,6 @@ class Music(ResponseMixin, commands.Cog):
                     queue.set_current_track(0)
 
         # Get metadata for search (use in-memory cache if loaded, otherwise scan)
-        playlist_path = self.bot.library.get_playlist_path(queue.playlist_name)
-
         # Ensure metadata cache is loaded
         if not queue.metadata_cache:
             await queue.load_metadata_cache(self.bot.metadata_cache_path, queue.playlist_name)
@@ -835,7 +833,7 @@ class Music(ResponseMixin, commands.Cog):
         if not queue.metadata_cache:
             from utils.metadata import scan_playlist_metadata
             metadata_list, _, _, _ = await scan_playlist_metadata(
-                playlist_path,
+                self.bot.library.get_playlist(queue.playlist_name) or [],
                 self.bot.metadata_cache_path,
                 queue.playlist_name
             )

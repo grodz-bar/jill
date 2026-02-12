@@ -528,7 +528,7 @@ class MusicBot(commands.Bot):
             playlist_names = self.library.get_playlist_names()
             results = await asyncio.gather(
                 *[scan_playlist_metadata(
-                    self.library.get_playlist_path(name),
+                    self.library.get_playlist(name) or [],
                     self.metadata_cache_path,
                     name
                 ) for name in playlist_names],

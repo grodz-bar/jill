@@ -77,7 +77,7 @@ class Settings(ResponseMixin, commands.Cog):
                 playlist_names = self.bot.library.get_playlist_names()
                 results = await asyncio.gather(
                     *[scan_playlist_metadata(
-                        self.bot.library.get_playlist_path(name),
+                        self.bot.library.get_playlist(name) or [],
                         self.bot.metadata_cache_path,
                         name,
                         force_rebuild=True

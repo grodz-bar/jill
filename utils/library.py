@@ -26,9 +26,6 @@ from loguru import logger
 # Supported audio file suffixes — case-insensitive matching (Lavalink-compatible)
 AUDIO_EXTENSIONS = {'.mp3', '.flac', '.ogg', '.opus', '.m4a', '.m4b', '.wav', '.aac', '.webm', '.mka'}
 
-# Maximum tracks per playlist to prevent memory issues with very large libraries
-MAX_PLAYLIST_SIZE = 1000
-
 # Internal playlist name for audio files placed directly in the music root directory
 # (used when no subdirectory playlists exist). Users see "root" in the UI.
 ROOT_PLAYLIST_NAME = "_root"
@@ -53,7 +50,6 @@ class MusicLibrary:
     - Hidden folders (starting with .) are skipped
     - Playlist names are lowercased for case-insensitive lookups
     - Tracks sorted alphabetically by filename
-    - Playlists capped at MAX_PLAYLIST_SIZE tracks
     - Loose files in root: warned and ignored if playlists exist,
       otherwise become "_root" playlist
 
@@ -131,15 +127,6 @@ class MusicLibrary:
                 # Sort by filename (canonical order for now)
                 sorted_files = sorted(audio_files, key=lambda p: p.name.lower())
 
-                # Enforce playlist size limit
-                if len(sorted_files) > MAX_PLAYLIST_SIZE:
-                    track_word = "track" if len(sorted_files) == 1 else "tracks"
-                    logger.warning(
-                        f"playlist '{playlist_dir.name}' has {len(sorted_files)} {track_word}, "
-                        f"truncating to {MAX_PLAYLIST_SIZE}"
-                    )
-                    sorted_files = sorted_files[:MAX_PLAYLIST_SIZE]
-
                 playlists[playlist_dir.name.lower()] = sorted_files
             else:
                 logger.warning(f"playlist '{playlist_dir.name}' is empty")
@@ -155,15 +142,6 @@ class MusicLibrary:
             else:
                 # NO playlists but root has files: treat as root playlist
                 sorted_files = sorted(root_audio, key=lambda p: p.name.lower())
-
-                if len(sorted_files) > MAX_PLAYLIST_SIZE:
-                    track_word = "track" if len(sorted_files) == 1 else "tracks"
-                    logger.warning(
-                        f"library: root folder has {len(sorted_files)} {track_word}, "
-                        f"truncating to {MAX_PLAYLIST_SIZE}"
-                    )
-                    sorted_files = sorted_files[:MAX_PLAYLIST_SIZE]
-
                 playlists[ROOT_PLAYLIST_NAME] = sorted_files
 
         return playlists, loose_files

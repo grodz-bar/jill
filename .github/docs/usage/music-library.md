@@ -1,7 +1,7 @@
 # Music Library
 
-Jill plays from the `music/` folder. Subfolders become playlists.
-
+Jill plays from the `music/` folder. Top-level subfolders become playlists.
+> Supported formats: MP3, FLAC, OGG, OPUS, M4A, M4B, WAV, AAC, WebM, MKA
 ```
 music/
 ├── chill-beats/           → "chill-beats" playlist
@@ -37,8 +37,6 @@ All files in subfolders are included in the playlist, up to 5 levels deep. Track
 > [!NOTE]
 > Files in root are ignored if subfolders exist.
 
-> Supported formats: MP3, FLAC, OGG, OPUS, M4A, M4B, WAV, AAC, WebM, MKA
-
 ### Using Your Existing Library
 
 You don't *need* to copy files, you can just point Jill to your collection:
@@ -47,7 +45,7 @@ You don't *need* to copy files, you can just point Jill to your collection:
 - **Linux:** Set `MUSIC_PATH` in `.env`: `MUSIC_PATH=/home/user/Music`
 - **Docker:** Edit the music volume in `docker-compose.yml`: `/your/music/folder:/music:ro`
 
-Jill only reads your music files, she'll never modify or delete them.
+Jill only **reads** your music files, she'll never modify or delete them.
 
 <details>
 <summary><strong>Alternative: Link specific folders</strong></summary>

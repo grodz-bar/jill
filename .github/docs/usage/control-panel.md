@@ -21,7 +21,7 @@ An interactive Discord embed with buttons for playback control. Appears when you
 > [!TIP]
 > `shuffle`, `loop`, and `playlist` buttons can be hidden in [settings](../configuration/settings.md#panel-appearance) (or [here](../configuration/environment.md) for Docker). `playlist` auto-hides with only one playlist.
 
-<a href="../configuration/settings.md#panel-appearance"><img src="../images/buttons-example.png" width="900"></a>
+<img src="../images/buttons-example.png" width="900">
 
 ---
 

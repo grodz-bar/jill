@@ -27,9 +27,9 @@ Your local music library, on tap in Discord.
 
 <table>
   <tr>
-    <td><a href="docs/usage/control-panel.md"><img src="docs/images/control-panel.png" height="600"></a></td>
-    <td><a href="docs/usage/commands.md"><img src="docs/images/song-search-2.png" height="600"></a></td>
-    <td><a href="docs/usage/commands.md"><img src="docs/images/queue.png" height="600"></a></td>
+    <td><img src="docs/images/control-panel.png" height="600"></td>
+    <td><img src="docs/images/song-search-2.png" height="600"></td>
+    <td><img src="docs/images/queue.png" height="600"></td>
   </tr>
 </table>
 

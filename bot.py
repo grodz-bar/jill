@@ -17,7 +17,7 @@
 
 """Jill Discord Music Bot - Main Entry Point."""
 
-__version__ = "2.1.1"
+__version__ = "2.2.0"
 
 import asyncio
 import colorsys
@@ -561,7 +561,7 @@ class MusicBot(commands.Bot):
                 song_word = "song" if total_new == 1 else "songs"
                 logger.info(f"read {total_new} new {song_word}")
             elif total_new == 0:
-                logger.debug("no new songs")
+                logger.info("no new songs")
 
         # Log duplicates (deduplicated to avoid repeats in log)
         unique_duplicates = list(dict.fromkeys(all_duplicates))  # Preserve order, remove dupes

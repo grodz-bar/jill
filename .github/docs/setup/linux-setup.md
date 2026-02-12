@@ -43,11 +43,9 @@ This guide walks you through setting up Jill on Linux.
 
 **1. Get the Files**
 
-- Download [jill-linux.zip](https://github.com/grodz-bar/jill/releases/latest/download/jill-linux.zip)
+- [Download](https://github.com/grodz-bar/jill/releases/latest/download/jill-linux.zip): `curl -LO https://github.com/grodz-bar/jill/releases/latest/download/jill-linux.zip`
 
-> **Terminal:** `curl -LO https://github.com/grodz-bar/jill/releases/latest/download/jill-linux.zip`
-
-- Extract it: `unzip jill-linux.zip -d jill && cd jill`
+- Extract: `unzip jill-linux.zip -d jill && cd jill`
 
 <br>
 

@@ -57,9 +57,8 @@ mklink /d "music\rock" "C:\Users\You\Music\Rock"
 
 Jill reads **title**, **artist**, **album**, and **track number** from your files. Missing title falls back to filename. Tracks sort by track number, then alphabetically.
 
-### Limits
+### Duplicates
 
-- **1000 tracks per playlist** - split larger collections into multiple folders
-- **Duplicates** - detected by title+artist, only the first is kept
+If two files have the same title and artist, only the first is kept.
 
 Having issues? See [Troubleshooting](../troubleshooting.md#playback).

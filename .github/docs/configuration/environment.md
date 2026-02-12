@@ -17,7 +17,7 @@ Docker configuration reference. Set these in the `environment:` section.
 | `PGID` | 1000 | Group ID for file permissions |
 | `DEFAULT_VOLUME` | 50 | Initial volume (0-100) |
 | `DEFAULT_PLAYLIST` | — | Playlist folder name to auto-load |
-| `AUTO_RESCAN` | true | Scan for new music on startup |
+| `AUTO_RESCAN` | true | Read metadata from new/changed files on startup |
 | `INACTIVITY_TIMEOUT` | 10 | Minutes before auto-disconnect (0 = never) |
 | `PRESENCE_ENABLED` | true | Show "Listening to [song]" in bot status |
 | `QUEUE_DISPLAY_SIZE` | 15 | Tracks per page (1-50) |

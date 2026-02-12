@@ -59,7 +59,7 @@ Customize Jill's panel appearance, playback behavior, and commands.
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `auto_rescan` | `true` | Scan for new/changed files on startup |
+| `auto_rescan` | `true` | Read metadata from new/changed files on startup |
 
 > Auto-rescan only reads tags from new or modified files. Use `/rescan` for a full rebuild.
 

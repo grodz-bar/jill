@@ -4,38 +4,38 @@ Jill plays from the `music/` folder. Top-level subfolders become playlists.
 > Supported formats: MP3, FLAC, OGG, OPUS, M4A, M4B, WAV, AAC, WebM, MKA
 ```
 music/
-├── chill-beats/           → "chill-beats" playlist
-│   ├── track1.mp3
-│   └── track2.flac
-├── lofi/                  → "lofi" playlist
-│   └── rainy-day.mp3
-└── va-11-hall-a-ex/       → "va-11-hall-a-ex" playlist
-    ├── 01-glitch-city.flac
-    └── 02-shine-spark.flac
+├── synthwave/            ← playlist
+│   ├── song1.mp3
+│   ├── song2.flac
+│   └── ...
+└── lofi/                 ← playlist
+    ├── cloudly-day.mp3
+    ├── midnight.flac
+    └── ...
 ```
 
-You can also organize files within a playlist using subfolders:
+You can also use subfolders to organize tracks within a playlist — they all count as one playlist:
 
 ```
 music/
-└── ost-collection/
+└── frieren-OST/          ← playlist
     ├── Disc 1/
-    │   ├── 01-opening.flac
-    │   └── 02-theme.flac
+    │   ├── 01-main theme.flac
+    │   ├── 02-end of one journey.flac
+    │   └── ...
     └── Disc 2/
-        ├── 01-finale.flac
-        └── 02-credits.flac
+        ├── 01-zoltraak.flac
+        ├── 02-the slayer.flac
+        └── ...
 ```
 
-All files in subfolders are included in the playlist, up to 5 levels deep. Tracks are grouped by subfolder, then sorted by track number.
+Jill scans folders up to 5 levels deep. If you use subfolders (like Disc 1, Disc 2), each subfolder plays through before the next. Within each subfolder, tracks are sorted by metadata track number, with filename as fallback.
+
+> [!IMPORTANT]
+> If you don't need playlists, just put files directly in `music/` with **no** subfolders. If you **do** have playlists (subfolders), any files ***not*** inside one will be ignored.
 
 > [!TIP]
-> Don't need playlists? Put files directly in `music/` with no subfolders.
->
 > After adding or removing files, run `/rescan` in Discord or restart Jill.
-
-> [!NOTE]
-> Files in root are ignored if subfolders exist.
 
 ### Using Your Existing Library
 
@@ -68,7 +68,7 @@ mklink /d "music\rock" "C:\Users\You\Music\Rock"
 
 ### Metadata
 
-Jill reads **title**, **artist**, **album**, and **track number** from your files. Missing title falls back to filename. Tracks are sorted by subfolder first, then track number, then alphabetically.
+Jill reads **title**, **album artist**, **album**, and **track number** from your files' metadata. No title? She'll use the filename. For artist, she prefers album artist but falls back to track artist if it's missing or generic (like "Various Artists").
 
 ### Duplicates
 

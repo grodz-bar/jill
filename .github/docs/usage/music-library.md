@@ -6,11 +6,11 @@ Jill plays from the `music/` folder. Top-level subfolders become playlists.
 music/
 ├── synthwave/            ← playlist
 │   ├── song1.mp3
-│   ├── song2.flac
+│   ├── song2.mp3
 │   └── ...
 └── lofi/                 ← playlist
-    ├── cloudly-day.mp3
-    ├── midnight.flac
+    ├── cloudly-day.opus
+    ├── midnight.opus
     └── ...
 ```
 

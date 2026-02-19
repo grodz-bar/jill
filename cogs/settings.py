@@ -262,10 +262,13 @@ class Settings(ResponseMixin, commands.Cog):
             if not self.bot.panel_manager.has_panel():
                 await self.respond(interaction, "panel_not_active")
                 return
-            await self.bot.panel_manager.remove()
+            await self.bot.panel_manager.remove(user=interaction.user.display_name)
             await self.respond(interaction, "panel_removed")
         else:
-            success = await self.bot.panel_manager.create(interaction.channel, interaction.guild_id)
+            success = await self.bot.panel_manager.create(
+                interaction.channel, interaction.guild_id,
+                user=interaction.user.display_name
+            )
             if success:
                 await self.respond(interaction, "panel_created", channel=interaction.channel.mention)
             else:

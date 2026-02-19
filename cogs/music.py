@@ -42,7 +42,7 @@ from utils.response import (
     CHOICE_NAME_MAX,
     EMBED_FIELD_MAX,
 )
-from utils.search import autocomplete_search, get_best_match
+from utils.search import autocomplete_search, get_best_match, build_search_index
 from utils.holidays import get_active_holiday
 
 
@@ -72,6 +72,7 @@ class GuildQueue:
     # Metadata (Mutagen cache - single source of truth)
     metadata_cache: dict[str, dict] = field(default_factory=dict)  # rel_path -> metadata
     current_metadata: dict | None = None  # Frozen on track start, survives playlist switches
+    search_index: list = field(default_factory=list)  # Pre-built from metadata_cache
 
     # Playback modes
     shuffle: bool = False
@@ -109,6 +110,7 @@ class GuildQueue:
 
         if not cache_file.exists():
             self.metadata_cache = {}
+            self.search_index = []
             return
 
         try:
@@ -119,9 +121,11 @@ class GuildQueue:
                 for entry in data.values()
                 if entry.get("rel_path")
             }
+            self.search_index = build_search_index(list(self.metadata_cache.values()))
         except (json.JSONDecodeError, UnicodeDecodeError, OSError) as e:
             logger.warning(f"failed to load cache for '{playlist_name}': {e}")
             self.metadata_cache = {}
+            self.search_index = []
 
     def capture_current_metadata(self) -> None:
         """Capture metadata for current track (call on track start).
@@ -751,13 +755,11 @@ class Music(ResponseMixin, commands.Cog):
             return choices
 
         # Only search if we have cached metadata (playlist must be loaded first)
-        if not queue.metadata_cache:
+        if not queue.search_index:
             return []
 
-        metadata = list(queue.metadata_cache.values())
-
         # Search and return top 25 as Choice objects
-        results = autocomplete_search(current, metadata, max_results=25)
+        results = autocomplete_search(current, queue.search_index, max_results=25)
 
         choices = []
         for track, score in results:
@@ -866,11 +868,9 @@ class Music(ResponseMixin, commands.Cog):
                 for entry in metadata_list
                 if entry.get("rel_path")
             }
+            queue.search_index = build_search_index(list(queue.metadata_cache.values()))
 
-        # Convert to list for search function
-        metadata = list(queue.metadata_cache.values())
-
-        if not metadata:
+        if not queue.search_index:
             await self.respond(interaction, "playlist_empty")
             return
 
@@ -909,7 +909,7 @@ class Music(ResponseMixin, commands.Cog):
             return
 
         # Search for song
-        best, confidence, alternatives = get_best_match(song, metadata)
+        best, confidence, alternatives = get_best_match(song, queue.search_index)
 
         # Log search result
         query_display = (song[:50] + "...") if len(song) > 50 else song

@@ -1697,7 +1697,7 @@ class PanelManager:
                 new_msg = await channel.send(view=view)
                 await self._register(new_msg)
                 self._last_recreate = now
-                logger.info(f"recreated panel in #{channel.name}")
+                logger.debug(f"recreated panel in #{channel.name}")
             except discord.HTTPException as e:
                 # Send failed after old message was deleted — go dormant
                 await self._go_dormant()
@@ -1726,7 +1726,7 @@ class PanelManager:
 
     # --- Public API ---
 
-    async def create(self, channel: discord.abc.Messageable, guild_id: int) -> bool:
+    async def create(self, channel: discord.abc.Messageable, guild_id: int, *, user: str | None = None) -> bool:
         """Create or move the panel to a channel.
 
         If a panel already exists, deletes the old one first (best effort).
@@ -1756,13 +1756,16 @@ class PanelManager:
             try:
                 new_msg = await channel.send(view=layout)
                 await self._register(new_msg)
-                logger.info(f"created panel in #{channel.name}")
+                if user:
+                    logger.info(f"{user} created panel in #{channel.name}")
+                else:
+                    logger.info(f"created panel in #{channel.name}")
                 return True
             except discord.HTTPException as e:
                 logger.error(f"failed to create panel: {e}")
                 return False
 
-    async def remove(self) -> None:
+    async def remove(self, *, user: str | None = None) -> None:
         """Delete the panel message and go dormant."""
         async with self._panel_lock:
             msg = self._get_message()
@@ -1771,6 +1774,10 @@ class PanelManager:
                     await msg.delete()
                 except discord.HTTPException:
                     pass
+            if user:
+                logger.info(f"{user} removed panel")
+            else:
+                logger.info("panel removed")
             await self._go_dormant()
 
     async def notify(self, guild_id: int) -> None:
@@ -1876,7 +1883,7 @@ class PanelManager:
                 if e.code == 10008:
                     # Message deleted externally — go dormant
                     await self._go_dormant()
-                    logger.debug("panel message was deleted externally")
+                    logger.info("panel message was deleted externally")
                 elif e.code == 30046:
                     # Edit limit — recreate in same channel
                     self._invalidate_cache()

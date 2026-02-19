@@ -806,7 +806,7 @@ class Music(ResponseMixin, commands.Cog):
             logger.info(f"resumed by {interaction.user.display_name}")
             await self.respond(interaction, "resumed")
             if not self.bot.panel_manager.has_panel():
-                await self.bot.panel_manager.create(interaction.channel, interaction.guild_id)
+                await self.bot.panel_manager.create(interaction.channel, interaction.guild_id, user=interaction.user.display_name)
             else:
                 await self.bot.panel_manager.notify(interaction.guild_id)
             return
@@ -819,7 +819,7 @@ class Music(ResponseMixin, commands.Cog):
             # No song specified and already playing
             await self.respond(interaction, "already_playing")
             if not self.bot.panel_manager.has_panel():
-                await self.bot.panel_manager.create(interaction.channel, interaction.guild_id)
+                await self.bot.panel_manager.create(interaction.channel, interaction.guild_id, user=interaction.user.display_name)
             else:
                 await self.bot.panel_manager.notify(interaction.guild_id)
             return
@@ -891,7 +891,7 @@ class Music(ResponseMixin, commands.Cog):
                     title, _ = queue.get_current_display()
                     await self.respond(interaction, "now_playing", title=escape_markdown(title))
                     if not self.bot.panel_manager.has_panel():
-                        await self.bot.panel_manager.create(interaction.channel, guild_id)
+                        await self.bot.panel_manager.create(interaction.channel, guild_id, user=interaction.user.display_name)
                 else:
                     await self.respond(interaction, "track_play_error")
                 return
@@ -903,7 +903,7 @@ class Music(ResponseMixin, commands.Cog):
                     title, _ = queue.get_current_display()
                     await self.respond(interaction, "now_playing", title=escape_markdown(title))
                     if not self.bot.panel_manager.has_panel():
-                        await self.bot.panel_manager.create(interaction.channel, guild_id)
+                        await self.bot.panel_manager.create(interaction.channel, guild_id, user=interaction.user.display_name)
                 else:
                     await self.respond(interaction, "track_play_error")
             return
@@ -947,7 +947,7 @@ class Music(ResponseMixin, commands.Cog):
                 logger.info(f"{interaction.user.display_name} started \"{best['title']}\"")
                 await self.respond(interaction, "track_selected", title=escape_markdown(best['title']))
                 if not self.bot.panel_manager.has_panel():
-                    await self.bot.panel_manager.create(interaction.channel, guild_id)
+                    await self.bot.panel_manager.create(interaction.channel, guild_id, user=interaction.user.display_name)
             else:
                 await self.respond(interaction, "track_play_error")
                 return
@@ -991,7 +991,7 @@ class Music(ResponseMixin, commands.Cog):
                     logger.info(f"{interaction.user.display_name} started \"{view.selected['title']}\"")
                     # Callback already showed track_selected via edit_message
                     if not self.bot.panel_manager.has_panel():
-                        await self.bot.panel_manager.create(interaction.channel, guild_id)
+                        await self.bot.panel_manager.create(interaction.channel, guild_id, user=interaction.user.display_name)
                 else:
                     await self.respond(interaction, "track_play_error")
 

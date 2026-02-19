@@ -177,8 +177,8 @@ DEFAULT_MESSAGES = {
     "shuffle_off": {"text": "keeping it neat", "enabled": False},
     "loop_on": {"text": "i'll keep this one going", "enabled": False},
     "loop_off": {"text": "last pour for this one", "enabled": False},
-    "filter_applied": {"text": "**{preset}** — coming right up", "enabled": False},
-    "filter_cleared": {"text": "back to the house sound", "enabled": False},
+    "filter_applied": {"text": "**{preset}** - coming right up", "enabled": False},
+    "filter_cleared": {"text": "no more funny business", "enabled": False},
 
     # Seek
     "seek_to": {"text": "jumped to {position}% of **{title}**", "enabled": False},

@@ -23,25 +23,32 @@ FILTER_LABEL = "preset"
 
 # name -> (Filter, description)
 FILTER_PRESETS: dict[str, tuple[Filter, str]] = {
-    "bass boost": (
-        Filter(equalizer=Equalizer([0.6, 0.7, 0.8, 0.55, 0.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])),
-        "heavy low end",
+    "bass boosted": (
+        Filter(equalizer=Equalizer([0.15, 0.13, 0.10, 0.07, 0.03, 0, -0.04, -0.06, -0.06, -0.04, 0, 0, 0, 0, 0])),
+        "heavier low end",
     ),
     "nightcore": (
-        Filter(timescale=Timescale(speed=1.25, pitch=1.3)),
+        Filter(timescale=Timescale(rate=1.25)),
         "sped up, high pitch",
     ),
     "slowed": (
-        Filter(timescale=Timescale(speed=0.85, pitch=0.9), low_pass=LowPass(smoothing=20.0)),
+        Filter(timescale=Timescale(speed=0.9, pitch=0.95), low_pass=LowPass(smoothing=14.0), volume=1.15),
         "slowed down, muffled",
     ),
-    "8d": (
-        Filter(rotation=Rotation(rotation_hz=0.2)),
+    "spatial": (
+        Filter(rotation=Rotation(rotation_hz=0.07)),
         "rotating stereo",
     ),
     "karaoke": (
-        Filter(karaoke=Karaoke()),
-        "vocal removal",
+        Filter(karaoke=Karaoke(level=1.0, mono_level=1.0, filter_band=220.0, filter_width=100.0)),
+        "vocal removal (mixed results)",
+    ),
+    "lo-fi": (
+        Filter(
+            equalizer=Equalizer([0, 0, 0, 0, 0, 0.1, 0.1, 0.05, 0, -0.05, -0.1, -0.1, -0.15, -0.2, -0.25]),
+            low_pass=LowPass(smoothing=14.0),
+        ),
+        "muffled highs, warm mids",
     ),
 }
 

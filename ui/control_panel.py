@@ -348,7 +348,7 @@ class FilterSelectView(AutoDeleteView):
 
     def __init__(self, bot: commands.Bot, current_filter: str | None) -> None:
         ui_config = bot.config_manager.get("ui", {})
-        timeout = ui_config.get("brief_auto_delete", 10)
+        timeout = ui_config.get("extended_auto_delete", 90)
         super().__init__(timeout=timeout)
         self.bot = bot
 

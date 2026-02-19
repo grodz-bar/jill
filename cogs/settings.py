@@ -215,6 +215,7 @@ class Settings(ResponseMixin, commands.Cog):
             current_filter = self.bot.state_manager.get("filter")
             view = FilterSelectView(self.bot, current_filter)
             await interaction.response.send_message(view=view, ephemeral=True)
+            view.message = await interaction.original_response()
             return
 
         # Clear filter

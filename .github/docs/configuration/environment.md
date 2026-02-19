@@ -13,36 +13,37 @@ Docker configuration reference. Set these in the `environment:` section.
 |----------|---------|-------------|
 | `DISCORD_TOKEN` | — | **Required.** Bot token |
 | `GUILD_ID` | — | Server ID for instant slash commands |
-| `PUID` | 1000 | User ID for file permissions |
-| `PGID` | 1000 | Group ID for file permissions |
-| `DEFAULT_VOLUME` | 50 | Initial volume (0-100) |
+| `PUID` | `1000` | User ID for file permissions |
+| `PGID` | `1000` | Group ID for file permissions |
+| `DEFAULT_VOLUME` | `50` | Initial volume (0-100) |
 | `DEFAULT_PLAYLIST` | — | Playlist folder name to auto-load |
-| `AUTO_RESCAN` | true | Read metadata from new/changed files on boot |
-| `INACTIVITY_TIMEOUT` | 10 | Minutes before auto-disconnect (0 = never) |
-| `PRESENCE_ENABLED` | true | Show "Listening to [song]" in bot status |
-| `QUEUE_DISPLAY_SIZE` | 15 | Tracks per page (1-50) |
-| `PLAYLISTS_DISPLAY_SIZE` | 15 | Playlists per page (1-50) |
-| `LOG_LEVEL` | verbose | `minimal`, `verbose`, or `debug` |
-| `PANEL_ENABLED` | true | Show the control panel |
-| `PANEL_COLOR` | A03E72 | Hex color for panel accent |
-| `PROGRESS_BAR_ENABLED` | true | Show progress bar |
+| `AUTO_RESCAN` | `true` | Read metadata from new/changed files on boot |
+| `INACTIVITY_TIMEOUT` | `10` | Minutes before auto-disconnect (0 = never) |
+| `PRESENCE_ENABLED` | `true` | Show "Listening to [song]" in bot status |
+| `QUEUE_DISPLAY_SIZE` | `15` | Tracks per page (1-50) |
+| `PLAYLISTS_DISPLAY_SIZE` | `15` | Playlists per page (1-50) |
+| `LOG_LEVEL` | `verbose` | `minimal`, `verbose`, or `debug` |
+| `PANEL_ENABLED` | `true` | Show the control panel |
+| `PANEL_COLOR` | `A03E72` | Hex color for panel accent |
+| `PROGRESS_BAR_ENABLED` | `true` | Show progress bar |
 | `PROGRESS_BAR_FILLED` | 🟪 | Filled portion emoji |
 | `PROGRESS_BAR_EMPTY` | ⬛ | Empty portion emoji |
-| `DRINK_EMOJIS_ENABLED` | true | Cycling drink emojis per track |
-| `INFO_FALLBACK_MESSAGE` | mixing drinks and changing lives | Shown when no artist/album |
-| `SHUFFLE_BUTTON` | true | Show shuffle button |
-| `LOOP_BUTTON` | true | Show loop button |
-| `PLAYLIST_BUTTON` | true | Show playlist button |
-| `PROGRESS_UPDATE_INTERVAL` | 15 | Seconds between updates (10-3600) |
-| `UPDATE_DEBOUNCE_MS` | 500 | Wait before panel update (ms) |
-| `RECREATE_INTERVAL` | 30 | Minutes before panel recreate (0 = never) |
-| `SHUFFLE_COMMAND` | true | Enable /shuffle command |
-| `LOOP_COMMAND` | true | Enable /loop command |
-| `PANEL_COMMAND` | true | Enable /panel command |
-| `RESCAN_COMMAND` | true | Enable /rescan command |
-| `EXTENDED_AUTO_DELETE` | 90 | Seconds for /queue, /np messages (0 = never) |
-| `BRIEF_AUTO_DELETE` | 10 | Seconds for feedback messages (0 = never) |
-| `ENABLE_PERMISSIONS` | false | Enable role-based restrictions |
+| `DRINK_EMOJIS_ENABLED` | `true` | Cycling drink emojis per track |
+| `INFO_FALLBACK_MESSAGE` | `mixing drinks and changing lives` | Shown when no artist/album |
+| `SHUFFLE_BUTTON` | `true` | Show shuffle button |
+| `LOOP_BUTTON` | `true` | Show loop button |
+| `PLAYLIST_BUTTON` | `true` | Show playlist button |
+| `PROGRESS_UPDATE_INTERVAL` | `15` | Seconds between updates (10-3600) |
+| `UPDATE_DEBOUNCE_MS` | `500` | Wait before panel update (ms) |
+| `RECREATE_INTERVAL` | `30` | Minutes before panel recreate (0 = never) |
+| `FILTER_COMMAND` | `true` | Enable /filter command |
+| `SHUFFLE_COMMAND` | `true` | Enable /shuffle command |
+| `LOOP_COMMAND` | `true` | Enable /loop command |
+| `PANEL_COMMAND` | `true` | Enable /panel command |
+| `RESCAN_COMMAND` | `true` | Enable /rescan command |
+| `EXTENDED_AUTO_DELETE` | `90` | Seconds for /queue, /np messages (0 = never) |
+| `BRIEF_AUTO_DELETE` | `10` | Seconds for feedback messages (0 = never) |
+| `ENABLE_PERMISSIONS` | `false` | Enable role-based restrictions |
 | `BARTENDER_ROLE_ID` | — | Role ID for playback commands |
 
 ### Notes

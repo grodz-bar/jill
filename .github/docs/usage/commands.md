@@ -18,6 +18,7 @@ Type `/` in Discord to see all available commands.
 | `/queue` | Show current queue | customer |
 | `/playlists` | List all available playlists | customer |
 | `/np` | Show current song details | customer |
+| `/filter [preset]` | Apply an audio filter | bartender |
 | `/rescan` | Fully rebuilds metadata cache | owner |
 
 > `[brackets]` = optional, `<brackets>` = required.
@@ -36,7 +37,9 @@ Type `/` in Discord to see all available commands.
 >
 > **Loop**: Repeats current track. Resets when you switch playlists or restart the bot.
 >
-> **Saved across restarts**: Volume, shuffle mode, last playlist.
+> **Filter**: bass boosted, nightcore, slowed, spatial, karaoke, lo-fi.
+>
+> **Saved across restarts**: Volume, shuffle mode, last playlist, filter.
 >
 > **`/playlists`**: Hidden if you only have one playlist.
 

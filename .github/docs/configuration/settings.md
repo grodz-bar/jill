@@ -52,6 +52,7 @@ Customize Jill's panel appearance, playback behavior, and commands.
 |---------|---------|-------------|
 | `commands.shuffle_command` | `true` | Enable `/shuffle` |
 | `commands.loop_command` | `true` | Enable `/loop` |
+| `commands.filter_command` | `true` | Enable `/filter` |
 | `commands.panel_command` | `true` | Enable `/panel` |
 | `commands.rescan_command` | `true` | Enable `/rescan` |
 

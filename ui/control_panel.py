@@ -32,6 +32,7 @@ from discord.ext import commands
 from loguru import logger
 
 from ui.views import AutoDeleteView, PaginationView
+from utils.filters import FILTER_LABEL, FILTER_PRESETS, PRESET_NAMES, get_filter
 from utils.holidays import get_active_holiday
 from utils.response import (
     escape_markdown,
@@ -337,6 +338,101 @@ class PlaylistSelectView(AutoDeleteView):
         self.stop()
 
 
+class FilterSelectView(AutoDeleteView):
+    """Ephemeral dropdown for selecting an audio filter preset.
+
+    Shows available filter presets plus a clear option. Current active
+    filter is highlighted. Applies filter to player if connected,
+    saves to state regardless.
+    """
+
+    def __init__(self, bot: commands.Bot, current_filter: str | None) -> None:
+        ui_config = bot.config_manager.get("ui", {})
+        timeout = ui_config.get("brief_auto_delete", 10)
+        super().__init__(timeout=timeout)
+        self.bot = bot
+
+        options = []
+        for name in PRESET_NAMES:
+            _, description = FILTER_PRESETS[name]
+            options.append(discord.SelectOption(
+                label=name,
+                value=name,
+                description=description,
+                default=(name == current_filter)
+            ))
+        options.append(discord.SelectOption(
+            label="clear",
+            value="_clear",
+            description="remove active filter"
+        ))
+
+        select = discord.ui.Select(
+            placeholder="select a filter",
+            options=options,
+            custom_id="filter:select"
+        )
+        select.callback = self.on_select
+        self.add_item(select)
+
+    async def on_select(self, interaction: discord.Interaction) -> None:
+        """Handle filter selection from the dropdown."""
+        selected_value = interaction.data['values'][0]
+
+        if not self._user_in_bot_vc(interaction):
+            await interaction.response.edit_message(view=None)
+            self.stop()
+            return
+
+        music_cog = self.bot.get_cog("Music") if self.bot else None
+        player = music_cog.get_player(interaction) if music_cog else None
+
+        if selected_value == "_clear":
+            if player:
+                try:
+                    await player.remove_filter(FILTER_LABEL)
+                except KeyError:
+                    pass
+            self.bot.state_manager.set("filter", None)
+            await self.bot.state_manager.save()
+            logger.info(f"{interaction.user.display_name} cleared the playback filter")
+            msg_key = "filter_cleared"
+            msg_text = self.bot.config_manager.msg("filter_cleared")
+        else:
+            filter_obj = get_filter(selected_value)
+            if player and filter_obj:
+                await player.add_filter(filter_obj, label=FILTER_LABEL)
+            self.bot.state_manager.set("filter", selected_value)
+            await self.bot.state_manager.save()
+            logger.info(f"{interaction.user.display_name} set filter to {selected_value}")
+            msg_key = "filter_applied"
+            msg_text = self.bot.config_manager.msg("filter_applied", preset=selected_value)
+
+        guild_id = interaction.guild_id
+
+        if self.bot.config_manager.is_enabled(msg_key):
+            await interaction.response.edit_message(
+                content=msg_text,
+                view=None
+            )
+            ui_config = self.bot.config_manager.get("ui", {})
+            delete_after = ui_config.get("brief_auto_delete", 10)
+            if delete_after > 0:
+                task = asyncio.create_task(self._delete_response_after(interaction, delete_after))
+                _cleanup_tasks.add(task)
+                task.add_done_callback(_cleanup_tasks.discard)
+        else:
+            await interaction.response.defer()
+            try:
+                await interaction.delete_original_response()
+            except discord.NotFound:
+                pass
+
+        await self.bot.panel_manager.notify(guild_id)
+
+        self.stop()
+
+
 class ControlPanelLayout(discord.ui.LayoutView):
     """The main music control panel displayed in Discord.
 
@@ -454,7 +550,9 @@ class ControlPanelLayout(discord.ui.LayoutView):
 
     def _build_idle_header(self) -> str:
         """Build header for idle/startup state."""
-        return "### now serving:\n[nothing]"
+        active_filter = self.bot.state_manager.get("filter") if self.bot else None
+        header = f"### now serving · {active_filter}:" if active_filter else "### now serving:"
+        return f"{header}\n[nothing]"
 
     def _build_idle_progress(self) -> str:
         """Build progress bar for idle/startup state."""
@@ -790,7 +888,9 @@ class ControlPanelLayout(discord.ui.LayoutView):
 
         # Change header when song repeat is on or single-song playlist
         is_single_track = len(queue.active_tracks) == 1 if queue.active_tracks else False
-        header = "### now serving only:" if queue.song_loop or is_single_track else "### now serving:"
+        base = "now serving only" if queue.song_loop or is_single_track else "now serving"
+        active_filter = self.bot.state_manager.get("filter") if self.bot else None
+        header = f"### {base} · {active_filter}:" if active_filter else f"### {base}:"
 
         if queue.current or queue.current_metadata:
             current_title, _ = queue.get_current_display()
@@ -1109,6 +1209,15 @@ class ControlPanelLayout(discord.ui.LayoutView):
                 default_vol = self.bot.config_manager.get("default_volume", 50)
                 saved_volume = self.bot.state_manager.get("volume", default_vol)
                 await player.set_volume(saved_volume)
+
+                try:
+                    saved_filter = self.bot.state_manager.get("filter")
+                    if saved_filter:
+                        filter_obj = get_filter(saved_filter)
+                        if filter_obj:
+                            await player.add_filter(filter_obj, label=FILTER_LABEL)
+                except Exception:
+                    logger.warning("failed to reapply filter on connect")
             except Exception as e:
                 logger.error(f"failed to connect to voice: {e}")
                 await self.respond(interaction, "failed_join_vc")

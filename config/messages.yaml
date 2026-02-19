@@ -125,6 +125,12 @@ loop_on:
 loop_off:
   text: "last pour for this one"
   enabled: false
+filter_applied:
+  text: "**{preset}** — coming right up"
+  enabled: false
+filter_cleared:
+  text: "back to the house sound"
+  enabled: false
 
 # Seek
 seek_to:

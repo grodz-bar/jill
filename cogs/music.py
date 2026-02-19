@@ -32,6 +32,7 @@ from discord.ext import commands
 from loguru import logger
 
 from ui.control_panel import ControlPanelLayout, DrinkCounter
+from utils.filters import FILTER_LABEL, get_filter
 from utils.library import ROOT_PLAYLIST_NAME
 from utils.permissions import require_permission
 from utils.response import (
@@ -669,6 +670,15 @@ class Music(ResponseMixin, commands.Cog):
             default_vol = self.bot.config_manager.get("default_volume", 50)
             saved_volume = self.bot.state_manager.get("volume", default_vol)
             await player.set_volume(saved_volume)
+
+            try:
+                saved_filter = self.bot.state_manager.get("filter")
+                if saved_filter:
+                    filter_obj = get_filter(saved_filter)
+                    if filter_obj:
+                        await player.add_filter(filter_obj, label=FILTER_LABEL)
+            except Exception:
+                logger.warning("failed to reapply filter on connect")
 
             logger.info(f"summoned by {interaction.user.display_name} to #{user_channel.name}")
             return player

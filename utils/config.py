@@ -105,6 +105,7 @@ DEFAULT_SETTINGS = {
     "commands": {
         "shuffle_command": True,
         "loop_command": True,
+        "filter_command": True,
         "rescan_command": True,
         "panel_command": True,
     },
@@ -176,6 +177,8 @@ DEFAULT_MESSAGES = {
     "shuffle_off": {"text": "keeping it neat", "enabled": False},
     "loop_on": {"text": "i'll keep this one going", "enabled": False},
     "loop_off": {"text": "last pour for this one", "enabled": False},
+    "filter_applied": {"text": "**{preset}** — coming right up", "enabled": False},
+    "filter_cleared": {"text": "back to the house sound", "enabled": False},
 
     # Seek
     "seek_to": {"text": "jumped to {position}% of **{title}**", "enabled": False},
@@ -507,6 +510,7 @@ class ConfigManager:
             "LOOP_COMMAND": ("commands.loop_command", lambda x: x.lower() == "true"),
             "RESCAN_COMMAND": ("commands.rescan_command", lambda x: x.lower() == "true"),
             "PANEL_COMMAND": ("commands.panel_command", lambda x: x.lower() == "true"),
+            "FILTER_COMMAND": ("commands.filter_command", lambda x: x.lower() == "true"),
             # UI timeouts
             "EXTENDED_AUTO_DELETE": ("ui.extended_auto_delete", non_negative("EXTENDED_AUTO_DELETE")),
             "BRIEF_AUTO_DELETE": ("ui.brief_auto_delete", non_negative("BRIEF_AUTO_DELETE")),

@@ -46,6 +46,7 @@ ui:
 commands:
   shuffle_command: true
   loop_command: true
+  filter_command: true
   rescan_command: true
   panel_command: true
 

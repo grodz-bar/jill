@@ -24,9 +24,16 @@ from discord import app_commands
 from discord.ext import commands
 from loguru import logger
 
+from ui.control_panel import FilterSelectView
+from utils.filters import FILTER_LABEL, PRESET_NAMES, get_filter
 from utils.metadata import scan_playlist_metadata
 from utils.permissions import require_command_enabled, require_permission
 from utils.response import ResponseMixin
+
+# Build filter choices from preset names (single source of truth)
+_FILTER_CHOICES = [
+    app_commands.Choice(name=name, value=name) for name in PRESET_NAMES
+] + [app_commands.Choice(name="clear", value="_clear")]
 
 
 class Settings(ResponseMixin, commands.Cog):
@@ -180,6 +187,59 @@ class Settings(ResponseMixin, commands.Cog):
 
         logger.info(f"{interaction.user.display_name} set volume to {level}")
         await self.respond(interaction, "volume_set", level=level)
+
+    @app_commands.command(name="filter", description="apply an audio filter preset")
+    @app_commands.guild_only()
+    @app_commands.describe(preset="filter preset to apply")
+    @app_commands.choices(preset=_FILTER_CHOICES)
+    @require_command_enabled("filter")
+    @require_permission("filter")
+    async def filter_cmd(
+        self,
+        interaction: discord.Interaction,
+        preset: app_commands.Choice[str] | None = None
+    ) -> None:
+        """Apply or clear an audio filter preset. Shows picker if no preset given."""
+        music_cog = self.bot.get_cog("Music")
+        if not music_cog:
+            await self.respond(interaction, "music_unavailable")
+            return
+
+        player = music_cog.get_player(interaction)
+        if player:
+            if not await self._check_same_vc(interaction, player):
+                return
+
+        # No preset given — show picker dropdown
+        if preset is None:
+            current_filter = self.bot.state_manager.get("filter")
+            view = FilterSelectView(self.bot, current_filter)
+            await interaction.response.send_message(view=view, ephemeral=True)
+            return
+
+        # Clear filter
+        if preset.value == "_clear":
+            if player:
+                try:
+                    await player.remove_filter(FILTER_LABEL)
+                except KeyError:
+                    pass
+            self.bot.state_manager.set("filter", None)
+            await self.bot.state_manager.save()
+            logger.info(f"{interaction.user.display_name} cleared the playback filter")
+            await self.respond(interaction, "filter_cleared")
+            await self.bot.panel_manager.notify(interaction.guild_id)
+            return
+
+        # Apply preset
+        filter_obj = get_filter(preset.value)
+        if player and filter_obj:
+            await player.add_filter(filter_obj, label=FILTER_LABEL)
+        self.bot.state_manager.set("filter", preset.value)
+        await self.bot.state_manager.save()
+        logger.info(f"{interaction.user.display_name} set filter to {preset.value}")
+        await self.respond(interaction, "filter_applied", preset=preset.value)
+        await self.bot.panel_manager.notify(interaction.guild_id)
 
     @app_commands.command(name="panel", description="create or move the control panel")
     @app_commands.guild_only()

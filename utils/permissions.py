@@ -56,7 +56,7 @@ DEFAULT_PERMISSIONS = {
         "bartender": [
             "play", "pause", "skip", "previous", "stop",
             "seek", "shuffle", "loop", "playlist", "volume",
-            "panel"
+            "panel", "filter"
         ],
         "owner": ["rescan"]
     }

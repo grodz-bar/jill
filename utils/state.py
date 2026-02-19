@@ -38,6 +38,7 @@ class StateManager:
     - last_playlist: Name of last loaded playlist, restored on startup
     - shuffle: Whether shuffle mode is enabled (persisted across restarts)
     - last_track: Filename of last played track, restored to current_index on startup
+    - filter: Active audio filter preset name (reapplied on connect)
 
     Usage:
         state_manager.get("volume", 50)     # Read with default
@@ -60,11 +61,13 @@ class StateManager:
     # - last_playlist: Most recently loaded playlist (restored on startup)
     # - shuffle: Shuffle mode enabled (persisted and restored on startup)
     # - last_track: Filename of last played track (restored to current_index on startup)
+    # - filter: Active audio filter preset name (reapplied on connect)
     DEFAULT_STATE = {
         "volume": 50,
         "last_playlist": None,
         "shuffle": False,
         "last_track": None,
+        "filter": None,
     }
 
     def __init__(self, data_path: Path) -> None:
@@ -98,7 +101,9 @@ class StateManager:
                 shuffle = 'on' if self.state.get('shuffle', False) else 'off'
                 last_track = self.state.get('last_track')
                 track_info = f", track '{last_track}'" if last_track else ""
-                logger.info(f"restored state: volume {vol}%, shuffle {shuffle}{track_info}")
+                active_filter = self.state.get('filter')
+                filter_info = f", filter '{active_filter}'" if active_filter else ""
+                logger.info(f"restored state: volume {vol}%, shuffle {shuffle}{track_info}{filter_info}")
             except (json.JSONDecodeError, IOError) as e:
                 # Preserve corrupted file for debugging
                 backup = self.state_file.with_suffix('.json.bak')

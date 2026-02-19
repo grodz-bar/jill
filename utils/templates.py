@@ -81,6 +81,7 @@ ui:
 commands:
   shuffle_command: true
   loop_command: true
+  filter_command: true
   rescan_command: true
   panel_command: true
 
@@ -228,6 +229,12 @@ loop_on:
 loop_off:
   text: "last pour for this one"
   enabled: false
+filter_applied:
+  text: "**{preset}** — coming right up"
+  enabled: false
+filter_cleared:
+  text: "back to the house sound"
+  enabled: false
 
 # Seek
 seek_to:
@@ -352,6 +359,7 @@ tiers:
     - playlist
     - volume
     - panel
+    - filter
   owner:
     - rescan
 """

@@ -521,8 +521,15 @@ class ControlPanelLayout(discord.ui.LayoutView):
 
         container_items.extend([
             self.body_display,
-            self.separator,
         ])
+
+        # Filter indicator (shown only when a filter is active)
+        active_filter = self.bot.state_manager.get("filter") if self.bot else None
+        if active_filter:
+            self.filter_display = discord.ui.TextDisplay(f"`filter: {active_filter}`")
+            container_items.append(self.filter_display)
+
+        container_items.append(self.separator)
 
         # Add button rows - with separator between if 2 rows
         if len(self.action_rows) == 2:
@@ -550,9 +557,7 @@ class ControlPanelLayout(discord.ui.LayoutView):
 
     def _build_idle_header(self) -> str:
         """Build header for idle/startup state."""
-        active_filter = self.bot.state_manager.get("filter") if self.bot else None
-        header = f"### now serving · {active_filter}:" if active_filter else "### now serving:"
-        return f"{header}\n[nothing]"
+        return "### now serving:\n[nothing]"
 
     def _build_idle_progress(self) -> str:
         """Build progress bar for idle/startup state."""
@@ -889,8 +894,7 @@ class ControlPanelLayout(discord.ui.LayoutView):
         # Change header when song repeat is on or single-song playlist
         is_single_track = len(queue.active_tracks) == 1 if queue.active_tracks else False
         base = "now serving only" if queue.song_loop or is_single_track else "now serving"
-        active_filter = self.bot.state_manager.get("filter") if self.bot else None
-        header = f"### {base} · {active_filter}:" if active_filter else f"### {base}:"
+        header = f"### {base}:"
 
         if queue.current or queue.current_metadata:
             current_title, _ = queue.get_current_display()

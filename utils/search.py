@@ -21,13 +21,62 @@ Best practices from:
 - RapidFuzz: WRatio for general-purpose, token_set_ratio for word order independence
 - Spotify: Combine "title artist" into searchable field
 - Thresholds: 75% for auto-play, 51% for picker, 61% for autocomplete
+
+Search index: build_search_index() pre-computes processed strings once per playlist
+load. fuzzy_search() uses pre-processed data with processor=None, eliminating
+redundant default_process() calls on every autocomplete keystroke.
 """
+
+from dataclasses import dataclass
 
 from rapidfuzz import fuzz, process
 from rapidfuzz.utils import default_process
 
 
-def fuzzy_search(query: str, tracks: list[dict], max_results: int = 25) -> list[tuple[dict, float]]:
+@dataclass(slots=True)
+class SearchEntry:
+    """Pre-processed search data for one track.
+
+    Built once per playlist load via build_search_index().
+    Reused across every autocomplete keystroke and /play search.
+    """
+    track: dict                      # Original metadata dict
+    proc_title: str                  # default_process(title)
+    proc_title_artist: str           # default_process("artist - title")
+    proc_title_artist_combined: str  # default_process("artist title")
+    title_len: int                   # len(proc_title)
+    combined_len: int                # len(proc_title_artist_combined)
+
+
+def build_search_index(tracks: list[dict]) -> list[SearchEntry]:
+    """Pre-process track strings for fast fuzzy search.
+
+    Call once when metadata_cache is populated. Returns one SearchEntry per track.
+    """
+    entries = []
+    for track in tracks:
+        title = track.get('title', '') or ''
+        artist = track.get('artist') or ''
+
+        title_artist = f"{artist} - {title}" if artist else title
+        title_artist_combined = f"{artist} {title}" if artist else title
+
+        proc_title = default_process(title) or ''
+        proc_ta = default_process(title_artist) or proc_title
+        proc_tac = default_process(title_artist_combined) or proc_title
+
+        entries.append(SearchEntry(
+            track=track,
+            proc_title=proc_title,
+            proc_title_artist=proc_ta,
+            proc_title_artist_combined=proc_tac,
+            title_len=len(proc_title),
+            combined_len=len(proc_tac),
+        ))
+    return entries
+
+
+def fuzzy_search(query: str, index: list[SearchEntry], max_results: int = 25) -> list[tuple[dict, float]]:
     """
     Search tracks with fuzzy matching using RapidFuzz.
 
@@ -39,13 +88,13 @@ def fuzzy_search(query: str, tracks: list[dict], max_results: int = 25) -> list[
 
     Args:
         query: Search string (truncated to 100 chars)
-        tracks: List of dicts with keys: title, artist (optional), track
+        index: Pre-built search index from build_search_index()
         max_results: Maximum results to return (default 25)
 
     Returns:
         List of (track, confidence) tuples sorted by confidence (0-100, or 101 for exact title match).
     """
-    if not query or not tracks:
+    if not query or not index:
         return []
 
     # Truncate absurdly long queries (no song title is 100+ chars)
@@ -56,39 +105,30 @@ def fuzzy_search(query: str, tracks: list[dict], max_results: int = 25) -> list[
     if not query_processed:
         return []
 
+    query_len = len(query_processed)
     results = []
 
-    for track in tracks:
-        title = track.get('title', '')
-        artist = track.get('artist')
-        filename = track.get('filename', '')
-
-        # Build searchable strings (omit artist if missing)
-        title_artist = f"{artist} - {title}" if artist else title
-        title_artist_combined = f"{artist} {title}" if artist else title
-
+    for entry in index:
         # Strategy 1: WRatio on "artist - title" (best general-purpose)
         # Handles partial matches, different lengths, some word reordering
-        score_wratio = fuzz.WRatio(query, title_artist, processor=default_process)
+        score_wratio = fuzz.WRatio(query_processed, entry.proc_title_artist, processor=None)
 
         # Strategy 2: token_set_ratio on combined (word order independence)
         # "Garoad Dawn Approaches" matches "Dawn Approaches Garoad" perfectly
         # Length penalty: short queries shouldn't get 100% on long targets
-        score_token_set_raw = fuzz.token_set_ratio(query, title_artist_combined, processor=default_process)
-        target_len = len(default_process(title_artist_combined))
-        length_ratio = min(len(query_processed) / max(target_len, 1), 1.0)
+        score_token_set_raw = fuzz.token_set_ratio(query_processed, entry.proc_title_artist_combined, processor=None)
+        length_ratio = min(query_len / max(entry.combined_len, 1), 1.0)
         score_token_set = score_token_set_raw * (0.7 + 0.3 * length_ratio)
 
         # Strategy 3: WRatio on title only (for title-focused searches)
-        score_title = fuzz.WRatio(query, title, processor=default_process)
+        score_title = fuzz.WRatio(query_processed, entry.proc_title, processor=None)
 
         # Strategy 4: partial_ratio on title (substring matching)
         # "drum" matches "Drum Show" well
         # Length penalty: if query is longer than title, title is just a fragment
-        score_partial_raw = fuzz.partial_ratio(query, title, processor=default_process)
-        title_len = len(default_process(title))
-        if len(query_processed) > title_len:
-            title_ratio = title_len / len(query_processed)
+        score_partial_raw = fuzz.partial_ratio(query_processed, entry.proc_title, processor=None)
+        if query_len > entry.title_len:
+            title_ratio = entry.title_len / query_len
             score_partial = score_partial_raw * (0.5 + 0.5 * title_ratio)
         else:
             score_partial = score_partial_raw
@@ -98,10 +138,10 @@ def fuzzy_search(query: str, tracks: list[dict], max_results: int = 25) -> list[
 
         # Boost exact matches by 1 point to ensure they win ties
         # Example: "Date 2" query vs "Date 2" title gets 101, vs "Date" title gets 100
-        if default_process(title) == query_processed:
+        if entry.proc_title == query_processed:
             final_score += 1
 
-        results.append((track, final_score))
+        results.append((entry.track, final_score))
 
     # Sort by score descending, then by track number for tie-breaker
     results.sort(key=lambda x: (-x[1], x[0].get('track', 0)))
@@ -109,7 +149,7 @@ def fuzzy_search(query: str, tracks: list[dict], max_results: int = 25) -> list[
     return results[:max_results]
 
 
-def get_best_match(query: str, tracks: list[dict]) -> tuple[dict | None, float, list[tuple[dict, float]]]:
+def get_best_match(query: str, index: list[SearchEntry]) -> tuple[dict | None, float, list[tuple[dict, float]]]:
     """
     Get best match with confidence handling.
 
@@ -124,7 +164,7 @@ def get_best_match(query: str, tracks: list[dict]) -> tuple[dict | None, float, 
     - If confidence 51-75 or ambiguous: returns (None, 0, alternatives)
     - If confidence < 51: returns (None, 0, [])
     """
-    results = fuzzy_search(query, tracks)
+    results = fuzzy_search(query, index)
 
     if not results:
         return None, 0, []
@@ -154,12 +194,12 @@ def get_best_match(query: str, tracks: list[dict]) -> tuple[dict | None, float, 
     return None, 0, []
 
 
-def autocomplete_search(query: str, tracks: list[dict], max_results: int = 25) -> list[tuple[dict, float]]:
+def autocomplete_search(query: str, index: list[SearchEntry], max_results: int = 25) -> list[tuple[dict, float]]:
     """Search for Discord autocomplete dropdown.
 
     Filters results to 61%+ confidence. Default max_results=25 matches Discord's autocomplete limit.
     """
-    results = fuzzy_search(query, tracks, max_results=max_results)
+    results = fuzzy_search(query, index, max_results=max_results)
     return [(t, s) for t, s in results if s >= 61]
 
 

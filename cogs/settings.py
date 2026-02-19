@@ -135,6 +135,7 @@ class Settings(ResponseMixin, commands.Cog):
                                 queue.current_index = None
                                 queue.current_metadata = None
                                 queue.metadata_cache = {}
+                                queue.search_index = []
                                 queue.shuffled_tracks = None
                                 queue.shuffle = False
                                 queue.song_loop = False

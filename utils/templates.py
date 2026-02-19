@@ -230,10 +230,10 @@ loop_off:
   text: "last pour for this one"
   enabled: false
 filter_applied:
-  text: "**{preset}** — coming right up"
+  text: "**{preset}** - coming right up"
   enabled: false
 filter_cleared:
-  text: "back to the house sound"
+  text: "no more funny business"
   enabled: false
 
 # Seek

@@ -646,7 +646,10 @@ class MusicBot(commands.Bot):
         """Cleanup on shutdown."""
         logger.info("cleaning up")
 
-        await self.panel_manager.set_offline()
+        try:
+            await self.panel_manager.set_offline()
+        except Exception:
+            logger.opt(exception=True).warning("couldn't switch panel to offline mode")
 
         if self._update_check_task and not self._update_check_task.done():
             self._update_check_task.cancel()

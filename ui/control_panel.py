@@ -1908,8 +1908,8 @@ class PanelManager:
         """Update panel to offline state during shutdown.
 
         Best-effort: won't block shutdown if Discord API is slow/down.
-        Sets _layout_builder = None inside _panel_lock to prevent late
-        notify() calls from overwriting the offline state.
+        Sets _layout_builder = None to prevent late notify() calls from
+        overwriting the offline state (always set, even on timeout).
         """
         if not self.panel_enabled() or not self.has_panel():
             return
@@ -1933,15 +1933,19 @@ class PanelManager:
             layout.filter_display.content = "..."
         layout.disable_all_buttons()
 
-        async with self._panel_lock:
-            try:
-                await asyncio.wait_for(
-                    msg.edit(view=layout, embed=None, content=None),
-                    timeout=1.5
-                )
-            except Exception:
-                pass  # Best effort — don't block shutdown
-            self._layout_builder = None
+        try:
+            async with asyncio.timeout(3.0):
+                async with self._panel_lock:
+                    try:
+                        await asyncio.wait_for(
+                            msg.edit(view=layout, embed=None, content=None),
+                            timeout=1.5
+                        )
+                    except Exception as e:
+                        logger.debug(f"failed to change panel to offline mode: {e}")
+        except TimeoutError:
+            logger.debug("switching panel to offline mode timed out")
+        self._layout_builder = None
 
     def shutdown(self) -> None:
         """Cancel pending update tasks. Called from Music cog_unload."""

@@ -681,8 +681,8 @@ class Music(ResponseMixin, commands.Cog):
                     filter_obj = get_filter(saved_filter)
                     if filter_obj:
                         await player.add_filter(filter_obj, label=FILTER_LABEL)
-            except Exception:
-                logger.warning("failed to reapply filter on connect")
+            except Exception as e:
+                logger.warning(f"failed to reapply filter on connect: {e}")
 
             logger.info(f"summoned by {interaction.user.display_name} to #{user_channel.name}")
             return player

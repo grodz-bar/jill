@@ -243,6 +243,7 @@ class Queue(ResponseMixin, commands.Cog):
     async def playlist(self, interaction: discord.Interaction, name: str | None = None) -> None:
         """Switch to a different playlist.
 
+        Returns early when fewer than two playlists are available.
         Acquires playback lock before calling set_playlist() and loading metadata
         cache to prevent races with concurrent skip/previous/on_track_end operations.
         State save happens outside lock (has its own atomic save mechanism).

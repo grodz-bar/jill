@@ -63,6 +63,8 @@ from utils.templates import MESSAGES_TEMPLATE, SETTINGS_TEMPLATE, write_template
 # Command Settings (commands.*):
 #   shuffle_command        - Enable /shuffle slash command
 #   loop_command           - Enable /loop slash command
+#   filter_command         - Enable /filter slash command
+#   panel_command          - Enable /panel slash command
 #   rescan_command         - Enable /rescan slash command (admin)
 #
 # UI Settings (ui.*):

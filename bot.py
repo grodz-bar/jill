@@ -646,6 +646,8 @@ class MusicBot(commands.Bot):
         """Cleanup on shutdown."""
         logger.info("cleaning up")
 
+        await self.panel_manager.set_offline()
+
         if self._update_check_task and not self._update_check_task.done():
             self._update_check_task.cancel()
 
@@ -772,6 +774,9 @@ class MusicBot(commands.Bot):
         print(_colorize_banner(BANNER_TEXT, BANNER_COLORS))
         logger.log("NOTICE", f"v{__version__} - time to mix drinks and change lives")
         self._update_check_task = asyncio.create_task(self._check_for_updates())
+
+        if self.guilds:
+            await self.panel_manager.notify(self.guilds[0].id)
 
     async def _check_for_updates(self) -> None:
         """Check GitHub for a newer Jill release. Logs NOTICE if available."""

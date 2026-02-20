@@ -48,14 +48,14 @@ Docker configuration reference. Set these in the `environment:` section.
 
 ### Notes
 
+> [!WARNING]
+> Never share your `DISCORD_TOKEN`, make sure to [reset it](https://discord.com/developers/applications) if you leak it.
+
 > [!IMPORTANT]
 > Hiding a button doesn't disable its command, and disabling a command doesn't hide its button.
 
 > [!TIP]
 > `GUILD_ID` makes slash commands appear instantly instead of taking up to an hour.
-
-> [!WARNING]
-> Never share your `DISCORD_TOKEN` or commit it to version control.
 
 > [!TIP]
 > **PUID/PGID**: Find your IDs with `id -u` and `id -g`. Most Linux users are 1000:1000 (the default).

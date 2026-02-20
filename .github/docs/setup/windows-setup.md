@@ -22,7 +22,7 @@ This guide covers Windows installation.
 1. Install [Python 3.11+](https://www.python.org/downloads/) (click **"Download Python install manager"**) and [Java 17+](https://adoptium.net/temurin/releases/?version=25&os=windows&arch=x64) (Select ***JRE***, download the ***.msi***)
 2. Download and extract [jill-windows.zip](https://github.com/grodz-bar/jill/releases/latest/download/jill-windows.zip)
 3. Double-click `setup-jill-win.bat`
-4. Add music to `music\` subfolders, or [link your existing library](../usage/music-library.md)
+4. Add music to `music/` subfolders, or [link your existing library](../usage/music-library.md)
 5. Double-click `START-jill-win.bat`
 6. Once you see "time to mix drinks and change lives," head to Discord and type `/play`
 
@@ -87,7 +87,7 @@ java -version
 
 **5. Add Your Music**
 
-Create folders in `music\` for your playlists, or use your existing library. See [Music Library](../usage/music-library.md) for options.
+Create folders in `music/` for your playlists, or use your existing library. See [Music Library](../usage/music-library.md) for options.
 
 <br>
 
@@ -144,7 +144,7 @@ Once Jill's running, here's how to control things:
 
 ### Configuration
 
-Config files in `config\` are auto-generated on first run. To edit `.env`, right-click it and choose **Open with** → **Notepad**. See [Settings Reference](../configuration/settings.md).
+Config files in `config/` are auto-generated on first run. To edit `.env`, right-click it and choose **Open with** → **Notepad**. See [Settings Reference](../configuration/settings.md).
 
 ---
 
@@ -207,19 +207,19 @@ Windows Firewall may be blocking Java from sending audio.
 <details>
 <summary><strong>Music not showing up</strong></summary>
 
-Check your folder structure in `music\`:
+Check your folder structure in `music/`:
 
 **If using playlists** (subfolders), files must be inside them:
 ```
-music\
-  rock\           ← playlist
+music/
+  rock/           ← playlist
     song.mp3
-  jazz\           ← playlist
+  jazz/           ← playlist
     track.flac
 ```
-Files directly in `music\` are ignored when subfolders exist.
+Files directly in `music/` are ignored when subfolders exist.
 
-**If not using playlists**, put files directly in `music\` with no subfolders.
+**If not using playlists**, put files directly in `music/` with no subfolders.
 
 Supported formats: MP3, FLAC, OGG, OPUS, M4A, M4B, WAV, AAC, WebM, MKA
 

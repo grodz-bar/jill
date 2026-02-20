@@ -60,8 +60,8 @@ ln -s /home/user/Music/rock music/rock
 
 **Windows** (run Command Prompt as Administrator):
 ```batch
-mklink /d "music\jazz" "C:\Users\You\Music\Jazz"
-mklink /d "music\rock" "C:\Users\You\Music\Rock"
+mklink /d "music/jazz" "C:\Users\You\Music\Jazz"
+mklink /d "music/rock" "C:\Users\You\Music\Rock"
 ```
 
 </details>

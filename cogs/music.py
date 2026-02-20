@@ -42,7 +42,7 @@ from utils.response import (
     CHOICE_NAME_MAX,
     EMBED_FIELD_MAX,
 )
-from utils.search import autocomplete_search, get_best_match, build_search_index
+from utils.search import autocomplete_search, get_best_match, build_search_index, SearchEntry
 from utils.holidays import get_active_holiday
 
 
@@ -72,7 +72,7 @@ class GuildQueue:
     # Metadata (Mutagen cache - single source of truth)
     metadata_cache: dict[str, dict] = field(default_factory=dict)  # rel_path -> metadata
     current_metadata: dict | None = None  # Frozen on track start, survives playlist switches
-    search_index: list = field(default_factory=list)  # Pre-built from metadata_cache
+    search_index: list[SearchEntry] = field(default_factory=list)  # Pre-built from metadata_cache
 
     # Playback modes
     shuffle: bool = False

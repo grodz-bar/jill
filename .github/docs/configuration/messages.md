@@ -90,6 +90,7 @@ not_in_vc:
 | **Queue and Playlists** |  |  |  |
 | `queue_empty` | "nothing in the queue" | Queue is empty | enabled |
 | `no_playlists` | "shelves are empty" | No playlists found | enabled |
+| `single_playlist` | "only one playlist" | Only one playlist exists | enabled |
 | `playlist_empty` | "that one's empty" | Playlist has no tracks | enabled |
 | `no_playlist_loaded` | "no menu set" | No playlist selected | disabled |
 | `playlist_not_found` | "can't find '{name}'" | Playlist doesn't exist | enabled |

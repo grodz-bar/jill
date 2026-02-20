@@ -104,9 +104,11 @@ class Queue(ResponseMixin, commands.Cog):
         library = self.bot.library
         playlist_names = library.get_playlist_names()
 
-        # Disable when <=1 playlist (includes root-only mode)
-        if len(playlist_names) <= 1:
+        if not playlist_names:
             await self.respond(interaction, "no_playlists")
+            return
+        if len(playlist_names) == 1:
+            await self.respond(interaction, "single_playlist")
             return
 
         # Build playlist info with track counts
@@ -248,9 +250,11 @@ class Queue(ResponseMixin, commands.Cog):
         library = self.bot.library
         available = library.get_playlist_names()
 
-        # Disable when <=1 playlist (includes root-only mode)
-        if len(available) <= 1:
+        if not available:
             await self.respond(interaction, "no_playlists")
+            return
+        if len(available) == 1:
+            await self.respond(interaction, "single_playlist")
             return
 
         # Get music cog and check VC early (before showing picker)

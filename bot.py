@@ -354,29 +354,34 @@ class CustomTree(app_commands.CommandTree):
         msg_key = "error_generic"
         msg = config.msg(msg_key)
 
-        # Check if message is disabled - silent acknowledgment
-        if not config.is_enabled(msg_key):
+        # Respond to user — wrapped because interaction may already be expired
+        # (e.g. 10062 Unknown interaction). Error is already logged above.
+        try:
+            # Check if message is disabled - silent acknowledgment
+            if not config.is_enabled(msg_key):
+                if not interaction.response.is_done():
+                    await interaction.response.defer(ephemeral=True)
+                try:
+                    await interaction.delete_original_response()
+                except discord.NotFound:
+                    pass
+                return
+
+            # Get auto-delete timeout
+            ui_config = config.get("ui", {})
+            timeout = ui_config.get("brief_auto_delete", 10)
+            delete_after = timeout if timeout > 0 else None
+
             if not interaction.response.is_done():
-                await interaction.response.defer(ephemeral=True)
-            try:
-                await interaction.delete_original_response()
-            except discord.NotFound:
-                pass
-            return
-
-        # Get auto-delete timeout
-        ui_config = config.get("ui", {})
-        timeout = ui_config.get("brief_auto_delete", 10)
-        delete_after = timeout if timeout > 0 else None
-
-        if not interaction.response.is_done():
-            await interaction.response.send_message(msg, ephemeral=True, delete_after=delete_after)
-        else:
-            followup_msg = await interaction.followup.send(msg, ephemeral=True)
-            if delete_after:
-                task = asyncio.create_task(_delete_followup(followup_msg, delete_after))
-                _cleanup_tasks.add(task)
-                task.add_done_callback(_cleanup_tasks.discard)
+                await interaction.response.send_message(msg, ephemeral=True, delete_after=delete_after)
+            else:
+                followup_msg = await interaction.followup.send(msg, ephemeral=True)
+                if delete_after:
+                    task = asyncio.create_task(_delete_followup(followup_msg, delete_after))
+                    _cleanup_tasks.add(task)
+                    task.add_done_callback(_cleanup_tasks.discard)
+        except discord.HTTPException:
+            pass
 
 
 class MusicBot(commands.Bot):

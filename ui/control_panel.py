@@ -1937,7 +1937,7 @@ class PanelManager:
         layout.disable_all_buttons()
 
         try:
-            async with asyncio.timeout(3.0):
+            async with asyncio.timeout(2.0):
                 async with self._panel_lock:
                     try:
                         await asyncio.wait_for(

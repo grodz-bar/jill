@@ -570,7 +570,7 @@ class ControlPanelLayout(discord.ui.LayoutView):
 
     def _build_idle_body(self) -> str:
         """Build body for idle/startup state."""
-        return "press `▶️play` to start"
+        return "**press** `▶️play` **to start**"
 
     def _build_idle_info(self) -> str:
         """Build info line for idle/startup state."""
@@ -693,6 +693,18 @@ class ControlPanelLayout(discord.ui.LayoutView):
                 else:
                     row2.add_item(btn)
             return [row1, row2]
+
+    def disable_all_buttons(self) -> None:
+        """Disable all buttons (for offline state)."""
+        self.previous_btn.disabled = True
+        self.playpause_btn.disabled = True
+        self.skip_btn.disabled = True
+        if self.shuffle_btn:
+            self.shuffle_btn.disabled = True
+        if self.loop_btn:
+            self.loop_btn.disabled = True
+        if self.playlist_btn:
+            self.playlist_btn.disabled = True
 
     # --- Helper methods ---
 
@@ -941,7 +953,7 @@ class ControlPanelLayout(discord.ui.LayoutView):
 
         # If nothing playing, show hint instead of queue content
         if not queue.current and (not player or not player.current):
-            return "press `▶️play` to start"
+            return "**press** `▶️play` **to start**"
 
         # Get truncation threshold based on button count
         coming_up_threshold = COMING_UP_TRUNCATE_THRESHOLDS.get(self._button_count, 40)
@@ -1891,6 +1903,45 @@ class PanelManager:
                 else:
                     self._invalidate_cache()
                     logger.warning(f"panel update failed: {e}")
+
+    async def set_offline(self) -> None:
+        """Update panel to offline state during shutdown.
+
+        Best-effort: won't block shutdown if Discord API is slow/down.
+        Sets _layout_builder = None inside _panel_lock to prevent late
+        notify() calls from overwriting the offline state.
+        """
+        if not self.panel_enabled() or not self.has_panel():
+            return
+
+        # Cancel pending debounced updates (prevent races)
+        for task in self._update_tasks.values():
+            if not task.done():
+                task.cancel()
+        self._update_tasks.clear()
+
+        msg = self._get_message()
+        if not msg:
+            return
+
+        # Build layout with idle defaults, then override for offline
+        layout = ControlPanelLayout(self.bot)
+        layout.header_display.content = "## [offline]"
+        layout.body_display.content = "`bar's closed`"
+        layout.info_display.content = "mixing lives and changing drinks"
+        if hasattr(layout, 'filter_display'):
+            layout.filter_display.content = "..."
+        layout.disable_all_buttons()
+
+        async with self._panel_lock:
+            try:
+                await asyncio.wait_for(
+                    msg.edit(view=layout, embed=None, content=None),
+                    timeout=1.5
+                )
+            except Exception:
+                pass  # Best effort — don't block shutdown
+            self._layout_builder = None
 
     def shutdown(self) -> None:
         """Cancel pending update tasks. Called from Music cog_unload."""

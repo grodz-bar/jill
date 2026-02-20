@@ -155,11 +155,11 @@ sudo systemctl start jill
 
 | Task | Manual | As Service |
 |------|--------|------------|
-| **Start** | `./START-jill-linux.sh` | `sudo systemctl start jill` |
-| **Stop** | <kbd>Ctrl</kbd>+<kbd>C</kbd> in terminal | `sudo systemctl stop jill` |
-| **Restart** | Stop and start again | `sudo systemctl restart jill` |
-| **View logs** | Terminal output | `journalctl -u jill -f` |
-| **Update music** | Add files, then `/rescan` in Discord | Same |
+| Start | `./START-jill-linux.sh` | `sudo systemctl start jill` |
+| Stop | <kbd>Ctrl</kbd>+<kbd>C</kbd> in terminal | `sudo systemctl stop jill` |
+| Restart | <kbd>Ctrl</kbd>+<kbd>C</kbd> to stop, then `./START-jill-linux.sh` | `sudo systemctl restart jill` |
+| View logs | Terminal output | `journalctl -u jill -f` |
+| Update music | Add files, then `/rescan` in Discord | Same |
 
 ---
 

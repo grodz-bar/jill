@@ -391,7 +391,7 @@ class FilterSelectView(AutoDeleteView):
             if player:
                 try:
                     await player.remove_filter(FILTER_LABEL)
-                except KeyError:
+                except Exception:
                     pass
             self.bot.state_manager.set("filter", None)
             await self.bot.state_manager.save()
@@ -401,7 +401,10 @@ class FilterSelectView(AutoDeleteView):
         else:
             filter_obj = get_filter(selected_value)
             if player and filter_obj:
-                await player.add_filter(filter_obj, label=FILTER_LABEL)
+                try:
+                    await player.add_filter(filter_obj, label=FILTER_LABEL)
+                except Exception:
+                    logger.warning(f"failed to apply filter {selected_value}")
             self.bot.state_manager.set("filter", selected_value)
             await self.bot.state_manager.save()
             logger.info(f"{interaction.user.display_name} set filter to {selected_value}")
@@ -1232,8 +1235,8 @@ class ControlPanelLayout(discord.ui.LayoutView):
                         filter_obj = get_filter(saved_filter)
                         if filter_obj:
                             await player.add_filter(filter_obj, label=FILTER_LABEL)
-                except Exception:
-                    logger.warning("failed to reapply filter on connect")
+                except Exception as e:
+                    logger.warning(f"failed to reapply filter on connect: {e}")
             except Exception as e:
                 logger.error(f"failed to connect to voice: {e}")
                 await self.respond(interaction, "failed_join_vc")

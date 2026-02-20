@@ -224,7 +224,7 @@ class Settings(ResponseMixin, commands.Cog):
             if player:
                 try:
                     await player.remove_filter(FILTER_LABEL)
-                except KeyError:
+                except Exception:
                     pass
             self.bot.state_manager.set("filter", None)
             await self.bot.state_manager.save()
@@ -236,7 +236,10 @@ class Settings(ResponseMixin, commands.Cog):
         # Apply preset
         filter_obj = get_filter(preset.value)
         if player and filter_obj:
-            await player.add_filter(filter_obj, label=FILTER_LABEL)
+            try:
+                await player.add_filter(filter_obj, label=FILTER_LABEL)
+            except Exception:
+                logger.warning(f"failed to apply filter {preset.value}")
         self.bot.state_manager.set("filter", preset.value)
         await self.bot.state_manager.save()
         logger.info(f"{interaction.user.display_name} set filter to {preset.value}")

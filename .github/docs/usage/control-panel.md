@@ -28,6 +28,7 @@ An interactive Discord embed with buttons for playback control. Appears when you
 ### Behavior
 
 - **Adaptive layout** - Panel adjusts based on how many buttons are enabled
+- **Filter indicator** - Shows the active audio filter when one is applied via `/filter`
 - **Auto-recreation** - Panel recreates every 30 minutes ([configurable](../configuration/settings.md#panel-appearance)) to stay responsive
 - **Moving the panel** - Run `/panel` in the channel you want it in. Jill deletes the old one automatically
 

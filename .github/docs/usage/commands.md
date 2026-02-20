@@ -15,10 +15,10 @@ Type `/` in Discord to see all available commands.
 | `/loop <on/off>` | Toggle track loop on or off | bartender |
 | `/volume <0-100>` | Adjust music volume | bartender |
 | `/panel [remove]` | Create, move, or remove the control panel | bartender |
+| `/filter [preset]` | Apply an audio filter | bartender |
 | `/queue` | Show current queue | customer |
 | `/playlists` | List all available playlists | customer |
 | `/np` | Show current song details | customer |
-| `/filter [preset]` | Apply an audio filter | bartender |
 | `/rescan` | Fully rebuilds metadata cache | owner |
 
 > `[brackets]` = optional, `<brackets>` = required.
@@ -29,19 +29,15 @@ Type `/` in Discord to see all available commands.
 ### Behavior Notes
 
 > [!NOTE]
-> Playback commands require you to be in Jill's voice channel. When Jill isn't in a voice channel, `/shuffle`, `/loop`, and `/playlist` still work.
+> Playback commands require you to be in Jill's voice channel. When Jill isn't in a voice channel, `/shuffle`, `/loop`, `/filter`, and `/playlist` still work.
 >
-> **Pause vs auto-pause**: Manual `/pause` stays paused. Auto-pause (when channel empties) auto-resumes when someone joins.
+> **Filters**: Use with `/filter`, pick "clear" to return to normal playback.
 >
-> **Shuffle**: Randomizes the entire playlist. Reshuffles when it loops.
+> **Loop**: Repeats current track, resets when you switch playlists or restart Jill.
 >
-> **Loop**: Repeats current track. Resets when you switch playlists or restart the bot.
+> **Saved across restarts**: Volume, shuffle mode, last playlist, filter selection.
 >
-> **Filter**: bass boosted, nightcore, slowed, spatial, karaoke, lo-fi.
->
-> **Saved across restarts**: Volume, shuffle mode, last playlist, filter.
->
-> **`/playlists`**: Hidden if you only have one playlist.
+> **`/playlists`**: Turns auto-off if you only have one playlist.
 
 ### Disabling Commands
 

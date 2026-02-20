@@ -62,7 +62,7 @@
 
 ### Playback
 
-- **Audio sounds weird**: Check the host's internet connection. If stable, check [Discord status](https://discordstatus.com).
+- **Audio sounds weird**: Check if you have an audio filter active (`/filter` to view or clear). Otherwise, check the host's internet connection. If stable, check [Discord status](https://discordstatus.com).
 
 - **No audio**: Check logs show "lavalink connected", music folder has files, Jill has read access. Also check if her volume, both in Discord and with /volume is not set too low.
 
@@ -101,9 +101,11 @@
   commands:
     shuffle_command: true
     loop_command: true
+    filter_command: true
+    panel_command: true
     rescan_command: true
   ```
-  > Docker: `SHUFFLE_COMMAND=true`, `LOOP_COMMAND=true`, `RESCAN_COMMAND=true`
+  > Docker: `SHUFFLE_COMMAND=true`, `LOOP_COMMAND=true`, `FILTER_COMMAND=true`, `PANEL_COMMAND=true`, `RESCAN_COMMAND=true`
 
 ---
 

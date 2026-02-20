@@ -35,6 +35,7 @@ not_in_vc:
 | `{playlists}` | Number of playlists |
 | `{tracks}` | Number of tracks |
 | `{channel}` | Voice channel mention |
+| `{preset}` | Filter preset name |
 | `{command}` | Command name (without the slash) |
 
 **Discord markdown** works in messages: `**bold**` → **bold**, `*italic*` → *italic*, `` `code` `` → `code`, `~~strike~~` → ~~strike~~
@@ -100,6 +101,8 @@ not_in_vc:
 | `shuffle_off` | "keeping it neat" | Shuffle turned off | disabled |
 | `loop_on` | "i'll keep this one going" | Loop turned on | disabled |
 | `loop_off` | "last pour for this one" | Loop turned off | disabled |
+| `filter_applied` | "\*\*{preset}\*\* - coming right up" | Filter preset applied | disabled |
+| `filter_cleared` | "no more funny business" | Filter cleared | disabled |
 | | | | |
 | **Seek and Navigation** |  |  |  |
 | `seek_to` | "jumped to {position}% of **{title}**" | Jumped to a position | disabled |

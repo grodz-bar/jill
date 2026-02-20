@@ -37,7 +37,7 @@ Customize Jill's panel appearance, playback behavior, and commands.
 | `inactivity_timeout` | `10` | Minutes before auto-disconnect when alone. `0` = never |
 | `presence_enabled` | `true` | Show "Listening to [song]" in bot status |
 
-> Jill remembers volume and last playlist between restarts. `default_playlist` overrides the remembered playlist if set.
+> Jill remembers volume, shuffle, last playlist, and filter between restarts. `default_playlist` overrides the remembered playlist if set.
 
 ### Display
 

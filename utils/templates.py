@@ -117,7 +117,7 @@ MESSAGES_TEMPLATE = """\
 #     **bold**  *italic*  `code`  ***bold italic***
 #
 #   Variables (keep these exactly as shown):
-#     {title}  {name}  {level}  {position}  {playlist}  {playlists}  {tracks}  {channel}  {command}
+#     {title}  {name}  {level}  {position}  {playlist}  {playlists}  {tracks}  {channel}  {command}  {preset}
 #
 #   Custom emojis:
 #     1. In Discord, type \\:youremojiname: and hit send

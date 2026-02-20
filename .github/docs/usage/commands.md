@@ -37,7 +37,7 @@ Type `/` in Discord to see all available commands.
 >
 > **Saved across restarts**: Volume, shuffle mode, last playlist, filter selection.
 >
-> **`/playlists`**: Turns auto-off if you only have one playlist.
+> **`/playlists`**: Disabled if you only have one playlist.
 
 ### Disabling Commands
 
@@ -45,6 +45,7 @@ Type `/` in Discord to see all available commands.
 ```yaml
 - SHUFFLE_COMMAND=false
 - LOOP_COMMAND=false
+- FILTER_COMMAND=false
 - PANEL_COMMAND=false
 ```
 
@@ -54,6 +55,7 @@ Type `/` in Discord to see all available commands.
 commands:
   shuffle_command: false
   loop_command: false
+  filter_command: false
   panel_command: false
 ```
 

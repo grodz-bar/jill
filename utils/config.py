@@ -166,6 +166,7 @@ DEFAULT_MESSAGES = {
     # Queue
     "queue_empty": {"text": "nothing in the queue", "enabled": True},
     "no_playlists": {"text": "shelves are empty", "enabled": True},
+    "single_playlist": {"text": "only one playlist", "enabled": True},
     "playlist_empty": {"text": "that one's empty", "enabled": True},
     "no_playlist_loaded": {"text": "no menu set", "enabled": False},
     "playlist_not_found": {"text": "can't find '{name}'", "enabled": True},

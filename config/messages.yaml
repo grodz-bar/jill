@@ -96,6 +96,9 @@ queue_empty:
 no_playlists:
   text: "shelves are empty"
   enabled: true
+single_playlist:
+  text: "only one playlist"
+  enabled: true
 playlist_empty:
   text: "that one's empty"
   enabled: true

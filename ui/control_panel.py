@@ -1242,35 +1242,45 @@ class ControlPanelLayout(discord.ui.LayoutView):
                 await self.respond(interaction, "failed_join_vc")
                 return
 
-            # Load saved or first available playlist (already checked names exist above)
-            if not queue.playlist_name:
-                names = self.bot.library.get_playlist_names()
-                playlist_name = music_cog._resolve_playlist(names)
-                tracks = self.bot.library.get_playlist(playlist_name)
-                if not tracks:
-                    await self.respond(interaction, "playlist_empty")
+            # Try to start playback; disconnect if it fails (prevents stranded bot in voice)
+            playback_started = False
+            try:
+                # Load saved or first available playlist (already checked names exist above)
+                if not queue.playlist_name:
+                    names = self.bot.library.get_playlist_names()
+                    playlist_name = music_cog._resolve_playlist(names)
+                    tracks = self.bot.library.get_playlist(playlist_name)
+                    if not tracks:
+                        await self.respond(interaction, "playlist_empty")
+                        return
+                    queue.set_playlist(playlist_name, tracks, self.bot.library.get_playlist_path(playlist_name))
+                    await queue.load_metadata_cache(self.bot.metadata_cache_path, playlist_name)
+
+                # Restore track from preserved position (after /stop or disconnect)
+                if queue.current_index is not None and not queue.current and queue.tracks:
+                    queue.set_current_track(queue.current_index)
+
+                # If no current index, start from beginning
+                if queue.current_index is None and queue.tracks:
+                    queue.set_current_track(0)
+
+                # Resume if we have a current track but player isn't playing
+                if queue.current and not player.current:
+                    if await music_cog.play_track(player, queue.current, queue.playlist_name):
+                        playback_started = True
+                    else:
+                        await self.respond(interaction, "track_play_error")
                     return
-                queue.set_playlist(playlist_name, tracks, self.bot.library.get_playlist_path(playlist_name))
-                await queue.load_metadata_cache(self.bot.metadata_cache_path, playlist_name)
 
-            # Restore track from preserved position (after /stop or disconnect)
-            if queue.current_index is not None and not queue.current and queue.tracks:
-                queue.set_current_track(queue.current_index)
-
-            # If no current index, start from beginning
-            if queue.current_index is None and queue.tracks:
-                queue.set_current_track(0)
-
-            # Resume if we have a current track but player isn't playing
-            if queue.current and not player.current:
-                if not await music_cog.play_track(player, queue.current, queue.playlist_name):
+                # Start playback from current index
+                # Note: Panel update handled by on_track_start (which captures correct metadata)
+                if await music_cog.play_next(player, guild_id):
+                    playback_started = True
+                elif queue.tracks:
                     await self.respond(interaction, "track_play_error")
-                return
-
-            # Start playback from current index
-            # Note: Panel update handled by on_track_start (which captures correct metadata)
-            if not await music_cog.play_next(player, guild_id) and queue.tracks:
-                await self.respond(interaction, "track_play_error")
+            finally:
+                if not playback_started and player.connected:
+                    await player.disconnect()
             return
 
         # Player exists - require user in same VC (silent ignore if not)

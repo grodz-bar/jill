@@ -793,6 +793,7 @@ class Music(ResponseMixin, commands.Cog):
 
         await interaction.response.defer(ephemeral=True)
 
+        was_connected = interaction.guild.voice_client is not None
         player = await self.ensure_voice(interaction)
         if not player:
             return
@@ -827,149 +828,109 @@ class Music(ResponseMixin, commands.Cog):
         # Get current playlist
         guild_id = interaction.guild_id
         queue = self.get_queue(guild_id)
+        playback_started = False
 
-        if not queue.playlist_name:
-            # Load saved or first available playlist
-            names = self.bot.library.get_playlist_names()
-            if not names:
-                await self.respond(interaction, "no_playlists")
-                return
+        try:
+            if not queue.playlist_name:
+                # Load saved or first available playlist
+                names = self.bot.library.get_playlist_names()
+                if not names:
+                    await self.respond(interaction, "no_playlists")
+                    return
 
-            playlist_name = self._resolve_playlist(names)
-            tracks = self.bot.library.get_playlist(playlist_name)
-            if not tracks:
+                playlist_name = self._resolve_playlist(names)
+                tracks = self.bot.library.get_playlist(playlist_name)
+                if not tracks:
+                    await self.respond(interaction, "playlist_empty")
+                    return
+                queue.set_playlist(playlist_name, tracks, self.bot.library.get_playlist_path(playlist_name))
+
+                # Validate and apply restored current_index (if shuffle is enabled, it was already applied by enable_shuffle)
+                if queue.current_index is not None:
+                    if not (0 <= queue.current_index < len(queue.tracks)):
+                        logger.warning(f"invalid saved queue index {queue.current_index}, resetting to 0")
+                        queue.set_current_track(0)
+
+            # Get metadata for search (use in-memory cache if loaded, otherwise scan)
+            # Ensure metadata cache is loaded
+            if not queue.metadata_cache:
+                await queue.load_metadata_cache(self.bot.metadata_cache_path, queue.playlist_name)
+
+            # If still empty (no cache file), scan to create it
+            if not queue.metadata_cache:
+                from utils.metadata import scan_playlist_metadata
+                metadata_list, _, _, _ = await scan_playlist_metadata(
+                    self.bot.library.get_playlist(queue.playlist_name) or [],
+                    self.bot.metadata_cache_path,
+                    queue.playlist_name,
+                    self.bot.library.get_playlist_path(queue.playlist_name)
+                )
+                # Use scan result directly instead of re-reading from disk
+                queue.metadata_cache = {
+                    entry.get("rel_path", ""): entry
+                    for entry in metadata_list
+                    if entry.get("rel_path")
+                }
+                queue.search_index = build_search_index(list(queue.metadata_cache.values()))
+
+            if not queue.search_index:
                 await self.respond(interaction, "playlist_empty")
                 return
-            queue.set_playlist(playlist_name, tracks, self.bot.library.get_playlist_path(playlist_name))
 
-            # Validate and apply restored current_index (if shuffle is enabled, it was already applied by enable_shuffle)
-            if queue.current_index is not None:
-                if not (0 <= queue.current_index < len(queue.tracks)):
-                    logger.warning(f"invalid saved queue index {queue.current_index}, resetting to 0")
+            # If no song specified, start playing or resume
+            if not song:
+                # Restore track from preserved position (after /stop or disconnect)
+                if queue.current_index is not None and not queue.current and queue.tracks:
+                    queue.set_current_track(queue.current_index)
+
+                # If no current index, start from beginning
+                if queue.current_index is None and queue.tracks:
                     queue.set_current_track(0)
 
-        # Get metadata for search (use in-memory cache if loaded, otherwise scan)
-        # Ensure metadata cache is loaded
-        if not queue.metadata_cache:
-            await queue.load_metadata_cache(self.bot.metadata_cache_path, queue.playlist_name)
+                # Resume if we have a current track but player isn't playing
+                if queue.current and not player.current:
+                    success = await self.play_track(player, queue.current, queue.playlist_name)
+                    if success:
+                        playback_started = True
+                        title, _ = queue.get_current_display()
+                        await self.respond(interaction, "now_playing", title=escape_markdown(title))
+                        if not self.bot.panel_manager.has_panel():
+                            await self.bot.panel_manager.create(interaction.channel, guild_id, user=interaction.user.display_name)
+                    else:
+                        await self.respond(interaction, "track_play_error")
+                    return
 
-        # If still empty (no cache file), scan to create it
-        if not queue.metadata_cache:
-            from utils.metadata import scan_playlist_metadata
-            metadata_list, _, _, _ = await scan_playlist_metadata(
-                self.bot.library.get_playlist(queue.playlist_name) or [],
-                self.bot.metadata_cache_path,
-                queue.playlist_name,
-                self.bot.library.get_playlist_path(queue.playlist_name)
-            )
-            # Use scan result directly instead of re-reading from disk
-            queue.metadata_cache = {
-                entry.get("rel_path", ""): entry
-                for entry in metadata_list
-                if entry.get("rel_path")
-            }
-            queue.search_index = build_search_index(list(queue.metadata_cache.values()))
-
-        if not queue.search_index:
-            await self.respond(interaction, "playlist_empty")
-            return
-
-        # If no song specified, start playing or resume
-        if not song:
-            # Restore track from preserved position (after /stop or disconnect)
-            if queue.current_index is not None and not queue.current and queue.tracks:
-                queue.set_current_track(queue.current_index)
-
-            # If no current index, start from beginning
-            if queue.current_index is None and queue.tracks:
-                queue.set_current_track(0)
-
-            # Resume if we have a current track but player isn't playing
-            if queue.current and not player.current:
-                success = await self.play_track(player, queue.current, queue.playlist_name)
-                if success:
-                    title, _ = queue.get_current_display()
-                    await self.respond(interaction, "now_playing", title=escape_markdown(title))
-                    if not self.bot.panel_manager.has_panel():
-                        await self.bot.panel_manager.create(interaction.channel, guild_id, user=interaction.user.display_name)
-                else:
-                    await self.respond(interaction, "track_play_error")
+                # Start fresh if nothing is current
+                if not queue.current and queue.tracks:
+                    success = await self.play_next(player, guild_id)
+                    if success:
+                        playback_started = True
+                        title, _ = queue.get_current_display()
+                        await self.respond(interaction, "now_playing", title=escape_markdown(title))
+                        if not self.bot.panel_manager.has_panel():
+                            await self.bot.panel_manager.create(interaction.channel, guild_id, user=interaction.user.display_name)
+                    else:
+                        await self.respond(interaction, "track_play_error")
                 return
 
-            # Start fresh if nothing is current
-            if not queue.current and queue.tracks:
-                success = await self.play_next(player, guild_id)
-                if success:
-                    title, _ = queue.get_current_display()
-                    await self.respond(interaction, "now_playing", title=escape_markdown(title))
-                    if not self.bot.panel_manager.has_panel():
-                        await self.bot.panel_manager.create(interaction.channel, guild_id, user=interaction.user.display_name)
-                else:
-                    await self.respond(interaction, "track_play_error")
-            return
+            # Search for song
+            best, confidence, alternatives = get_best_match(song, queue.search_index)
 
-        # Search for song
-        best, confidence, alternatives = get_best_match(song, queue.search_index)
-
-        # Log search result
-        query_display = (song[:50] + "...") if len(song) > 50 else song
-        if best:
-            logger.info(f"{interaction.user.display_name} searched '{query_display}' -> \"{best['title']}\" ({confidence:.0f}%)")
-        elif alternatives:
-            logger.info(f"{interaction.user.display_name} searched '{query_display}' -> ambiguous ({len(alternatives)} options)")
-        else:
-            logger.info(f"{interaction.user.display_name} searched '{query_display}' -> no match")
-
-        if best:
-            # High confidence - play directly
-            track_path = Path(best['path'])
-
-            async with self._get_playback_lock(guild_id):
-                # Re-validate after acquiring lock (matches /skip pattern)
-                player = self.get_player(interaction)
-                if not player or not player.connected:
-                    await self.respond(interaction, "nothing_playing")
-                    return
-
-                queue = self.get_queue(guild_id)  # Re-fetch inside lock
-
-                # Find track in active playlist (handles shuffle mode automatically)
-                try:
-                    index = queue.active_tracks.index(track_path)
-                except ValueError:
-                    await self.respond(interaction, "song_not_found")
-                    return
-
-                queue.set_current_track(index)
-                success = await self.play_track(player, track_path, queue.playlist_name)
-
-            if success:
-                logger.info(f"{interaction.user.display_name} started \"{best['title']}\"")
-                await self.respond(interaction, "track_selected", title=escape_markdown(best['title']))
-                if not self.bot.panel_manager.has_panel():
-                    await self.bot.panel_manager.create(interaction.channel, guild_id, user=interaction.user.display_name)
+            # Log search result
+            query_display = (song[:50] + "...") if len(song) > 50 else song
+            if best:
+                logger.info(f"{interaction.user.display_name} searched '{query_display}' -> \"{best['title']}\" ({confidence:.0f}%)")
+            elif alternatives:
+                logger.info(f"{interaction.user.display_name} searched '{query_display}' -> ambiguous ({len(alternatives)} options)")
             else:
-                await self.respond(interaction, "track_play_error")
-                return
+                logger.info(f"{interaction.user.display_name} searched '{query_display}' -> no match")
 
-        elif alternatives:
-            # Show selection menu
-            from ui.views import SearchSelectionView
-            view = SearchSelectionView(alternatives, bot=self.bot)
-            msg = await interaction.followup.send(
-                "try one of these:",
-                view=view,
-                ephemeral=True
-            )
-            view.message = msg  # Store for auto-delete on timeout
-
-            # Wait for selection
-            await view.wait()
-            if view.selected:
-                track_path = Path(view.selected['path'])
+            if best:
+                # High confidence - play directly
+                track_path = Path(best['path'])
 
                 async with self._get_playback_lock(guild_id):
-                    # Re-validate after acquiring lock
+                    # Re-validate after acquiring lock (matches /skip pattern)
                     player = self.get_player(interaction)
                     if not player or not player.connected:
                         await self.respond(interaction, "nothing_playing")
@@ -977,7 +938,7 @@ class Music(ResponseMixin, commands.Cog):
 
                     queue = self.get_queue(guild_id)  # Re-fetch inside lock
 
-                    # Find track in active playlist
+                    # Find track in active playlist (handles shuffle mode automatically)
                     try:
                         index = queue.active_tracks.index(track_path)
                     except ValueError:
@@ -988,15 +949,64 @@ class Music(ResponseMixin, commands.Cog):
                     success = await self.play_track(player, track_path, queue.playlist_name)
 
                 if success:
-                    logger.info(f"{interaction.user.display_name} started \"{view.selected['title']}\"")
-                    # Callback already showed track_selected via edit_message
+                    playback_started = True
+                    logger.info(f"{interaction.user.display_name} started \"{best['title']}\"")
+                    await self.respond(interaction, "track_selected", title=escape_markdown(best['title']))
                     if not self.bot.panel_manager.has_panel():
                         await self.bot.panel_manager.create(interaction.channel, guild_id, user=interaction.user.display_name)
                 else:
                     await self.respond(interaction, "track_play_error")
+                    return
 
-        else:
-            await self.respond(interaction, "song_not_found")
+            elif alternatives:
+                # Show selection menu
+                from ui.views import SearchSelectionView
+                view = SearchSelectionView(alternatives, bot=self.bot)
+                msg = await interaction.followup.send(
+                    "try one of these:",
+                    view=view,
+                    ephemeral=True
+                )
+                view.message = msg  # Store for auto-delete on timeout
+
+                # Wait for selection
+                await view.wait()
+                if view.selected:
+                    track_path = Path(view.selected['path'])
+
+                    async with self._get_playback_lock(guild_id):
+                        # Re-validate after acquiring lock
+                        player = self.get_player(interaction)
+                        if not player or not player.connected:
+                            await self.respond(interaction, "nothing_playing")
+                            return
+
+                        queue = self.get_queue(guild_id)  # Re-fetch inside lock
+
+                        # Find track in active playlist
+                        try:
+                            index = queue.active_tracks.index(track_path)
+                        except ValueError:
+                            await self.respond(interaction, "song_not_found")
+                            return
+
+                        queue.set_current_track(index)
+                        success = await self.play_track(player, track_path, queue.playlist_name)
+
+                    if success:
+                        playback_started = True
+                        logger.info(f"{interaction.user.display_name} started \"{view.selected['title']}\"")
+                        # Callback already showed track_selected via edit_message
+                        if not self.bot.panel_manager.has_panel():
+                            await self.bot.panel_manager.create(interaction.channel, guild_id, user=interaction.user.display_name)
+                    else:
+                        await self.respond(interaction, "track_play_error")
+
+            else:
+                await self.respond(interaction, "song_not_found")
+        finally:
+            if not was_connected and not playback_started and player.connected:
+                await player.disconnect()
 
     @app_commands.command(name="pause", description="pause playback")
     @app_commands.guild_only()

@@ -118,14 +118,18 @@ class Settings(ResponseMixin, commands.Cog):
                                 if queue.shuffle:
                                     queue._regenerate_shuffle(exclude_last=queue.current)
 
-                                # Handle current track removed from playlist
-                                if queue.current and queue.current not in updated_tracks:
-                                    queue.current = None
-                                    queue.current_metadata = None
-                                    player = music_cog._get_player_by_guild_id(interaction.guild_id)
-                                    if player and player.current:
-                                        await player.stop()
-                                    logger.info("current track no longer in playlist, playback stopped")
+                                # Reconcile current_index with new track list
+                                # (disconnect cleared queue.current but preserved current_index)
+                                saved_track = self.bot.state_manager.get("last_track")
+                                if saved_track:
+                                    for i, track in enumerate(queue.active_tracks):
+                                        if queue._track_key(track) == saved_track:
+                                            queue.current_index = i
+                                            break
+                                    else:
+                                        queue.current_index = None
+                                else:
+                                    queue.current_index = None
                             else:
                                 # Playlist deleted - reset queue to initial state
                                 old_name = queue.playlist_name

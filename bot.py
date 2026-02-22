@@ -451,6 +451,7 @@ class MusicBot(commands.Bot):
         self._lavalink_disconnect_lock = asyncio.Lock()
         self._presence_task: asyncio.Task | None = None
         self._update_check_task: asyncio.Task | None = None
+        self._commands_synced = False
         # Store config as instance attributes for cog access
         self.http_host = HTTP_HOST
         self.http_port = HTTP_PORT
@@ -765,19 +766,23 @@ class MusicBot(commands.Bot):
                     await self.close()
                     return
                 logger.log("NOTICE", f"connected to {guild.name}")
-                guild_obj = discord.Object(id=guild_id)
-                self.tree.copy_global_to(guild=guild_obj)
-                logger.debug("syncing commands")
-                await self.tree.sync(guild=guild_obj)
-                logger.debug(f"commands synced to guild {guild_id}")
+                if not self._commands_synced:
+                    guild_obj = discord.Object(id=guild_id)
+                    self.tree.copy_global_to(guild=guild_obj)
+                    logger.debug("syncing commands")
+                    await self.tree.sync(guild=guild_obj)
+                    logger.debug(f"commands synced to guild {guild_id}")
+                    self._commands_synced = True
             except ValueError:
                 logger.error(f"guild_id '{guild_id_str}' is not a valid integer")
                 await self.close()
                 return
         else:
-            logger.debug("syncing commands globally")
-            await self.tree.sync()
-            logger.debug("commands synced globally")
+            if not self._commands_synced:
+                logger.debug("syncing commands globally")
+                await self.tree.sync()
+                logger.debug("commands synced globally")
+                self._commands_synced = True
 
         print()
         print("jill copyright (c) 2026 grodz - licensed under gpl 3.0\n")
@@ -833,7 +838,7 @@ class MusicBot(commands.Bot):
         payload = {"resuming": True, "timeout": timeout}
 
         try:
-            async with self.session.patch(url, json=payload, headers=headers) as resp:
+            async with self.session.patch(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                 if resp.status == 200:
                     logger.debug(f"lavalink session resume enabled ({timeout}s)")
                 else:
@@ -890,7 +895,13 @@ class MusicBot(commands.Bot):
                 await node.close()
             except Exception:
                 pass
-            asyncio.create_task(node.connect())
+            task = asyncio.create_task(node.connect())
+            _cleanup_tasks.add(task)
+            def _reconnect_done(t):
+                _cleanup_tasks.discard(t)
+                if not t.cancelled():
+                    t.exception()  # Mark retrieved, suppress asyncio warning
+            task.add_done_callback(_reconnect_done)
 
     async def update_presence(self, title: str | None = None, artist: str | None = None) -> None:
         """Update bot presence to show current song.

@@ -324,6 +324,10 @@ async def logging_middleware(request: web.Request, handler) -> web.Response:
         duration = time.perf_counter() - start
         logger.warning(f"{request.method} {request.path} {ex.status} ({duration:.3f}s)")
         raise
+    except Exception:
+        duration = time.perf_counter() - start
+        logger.opt(exception=True).error(f"{request.method} {request.path} 500 ({duration:.3f}s)")
+        raise
 
 
 # Track fire-and-forget cleanup tasks to prevent GC warnings
@@ -813,8 +817,8 @@ class MusicBot(commands.Bot):
             if remote > local:
                 remote_str = ".".join(str(x) for x in remote)
                 logger.log("NOTICE", f"update available: v{remote_str} - github.com/grodz-bar/jill")
-        except Exception:
-            logger.debug("update check failed")
+        except Exception as e:
+            logger.debug(f"update check failed: {e}")
 
     # Mafic event listeners (Bot class auto-registers on_<event> methods)
     async def on_node_ready(self, node: mafic.Node) -> None:

@@ -70,7 +70,7 @@
 
 - **Songs not appearing**: Run `/rescan`. Check format is supported (MP3, FLAC, OGG, OPUS, M4A, M4B, WAV, AAC, WebM, MKA) and file isn't corrupted. File extensions are case-insensitive.
 
-- **Wrong track order**: Tracks sort by subfolder, then track number tag, then alphabetically. Check your files have track numbers set.
+- **Wrong track order**: Tracks sort by subfolder, then track number tag, then by filename. Check your files have track numbers set.
 
 - **Playback stops**: Check inactivity timeout (Jill leaves when alone), Lavalink logs, network stability.
 
@@ -80,7 +80,7 @@
 
 - **Duplicates appearing**: Files have slightly different metadata. Check title/artist spelling matches exactly.
 
-- **Slow startup**: First run reads metadata from all files. Later startups only check new or changed files. For large libraries that rarely change:
+- **Slow startup (large libraries on weak hardware)**: Auto-rescan reads metadata on boot. You can disable it and use `/rescan` manually instead, but track order and search won't update until you do.
   ```yaml
   # settings.yaml
   auto_rescan: false

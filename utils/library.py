@@ -55,7 +55,7 @@ class MusicLibrary:
     Scanning behavior:
     - Hidden folders (starting with .) are skipped
     - Playlist names are lowercased for case-insensitive lookups
-    - Tracks sorted by relative path from playlist root (groups by subfolder)
+    - Track ordering owned by metadata scan (subfolder, track number, filename)
     - Loose files in root: warned and ignored if playlists exist,
       otherwise become "_root" playlist (stays flat, not recursive)
 
@@ -150,9 +150,6 @@ class MusicLibrary:
             audio_files = self._scan_audio_files(playlist_dir)
 
             if audio_files:
-                # Sort by relative path (groups files by subfolder)
-                sorted_files = sorted(audio_files, key=lambda p: p.relative_to(playlist_dir).as_posix().lower())
-
                 key = playlist_dir.name.lower()
                 if key in playlists:
                     existing_dir = playlist_paths[key]
@@ -160,7 +157,7 @@ class MusicLibrary:
                         f"folders '{existing_dir.name}' and '{playlist_dir.name}' "
                         f"have the same name, keeping '{playlist_dir.name}'"
                     )
-                playlists[key] = sorted_files
+                playlists[key] = audio_files
                 playlist_paths[key] = playlist_dir
             else:
                 logger.warning(f"playlist '{playlist_dir.name}' is empty")
@@ -175,8 +172,7 @@ class MusicLibrary:
                 loose_files = [f.name for f in root_audio]
             else:
                 # NO playlists but root has files: treat as root playlist
-                sorted_files = sorted(root_audio, key=lambda p: p.name.lower())
-                playlists[ROOT_PLAYLIST_NAME] = sorted_files
+                playlists[ROOT_PLAYLIST_NAME] = root_audio
 
         return playlists, loose_files, playlist_paths
 

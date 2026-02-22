@@ -99,6 +99,7 @@ class Queue(ResponseMixin, commands.Cog):
 
     @app_commands.command(name="playlists", description="list all available playlists")
     @app_commands.guild_only()
+    @require_permission("playlists")
     async def playlists(self, interaction: discord.Interaction) -> None:
         """Show available playlists with pagination. Disabled when one or fewer playlists exist."""
         library = self.bot.library
@@ -148,6 +149,7 @@ class Queue(ResponseMixin, commands.Cog):
 
     @app_commands.command(name="queue", description="show the current queue")
     @app_commands.guild_only()
+    @require_permission("queue")
     async def queue(self, interaction: discord.Interaction) -> None:
         """Show queue with pagination. Opens to the page containing the current track."""
         music_cog = self.bot.get_cog("Music")
@@ -311,6 +313,9 @@ class Queue(ResponseMixin, commands.Cog):
 
         # Load playlist
         tracks = library.get_playlist(matched)
+        if not tracks:
+            await self.respond(interaction, "playlist_empty")
+            return
         guild_id = interaction.guild_id
 
         async with music_cog._get_playback_lock(guild_id):

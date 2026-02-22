@@ -1068,6 +1068,7 @@ class Music(ResponseMixin, commands.Cog):
 
     @app_commands.command(name="np", description="show current song details")
     @app_commands.guild_only()
+    @require_permission("np")
     async def now_playing(self, interaction: discord.Interaction) -> None:
         """Show detailed current track info."""
         player = self.get_player(interaction)
@@ -1259,6 +1260,8 @@ class Music(ResponseMixin, commands.Cog):
 
         if not await self._check_same_vc(interaction, player):
             return
+
+        await interaction.response.defer(ephemeral=True)
 
         guild_id = interaction.guild_id
 

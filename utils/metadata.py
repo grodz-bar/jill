@@ -158,6 +158,14 @@ def _get_first(audio, key: str) -> str | None:
         return None
 
 
+def _natural_sort_key(s: str) -> list:
+    """Split string into text/number chunks for natural ordering.
+
+    'Disc 2' -> ['disc ', 2]  'Disc 10' -> ['disc ', 10]
+    """
+    return [int(p) if p.isdigit() else p for p in re.split(r'(\d+)', s.lower())]
+
+
 def _normalize_filename(name: str) -> str:
     """Normalize filename (or relative path) for duplicate detection.
 
@@ -169,7 +177,7 @@ def _normalize_filename(name: str) -> str:
     try:
         stem = p.stem.lower()
         normalized = re.sub(r'\s*\(\d+\)\s*$', '', stem)
-        parent = p.parent.as_posix()
+        parent = p.parent.as_posix().lower()
         return f"{parent}/{normalized}" if parent != "." else normalized
     except Exception:
         return name.lower()
@@ -381,20 +389,21 @@ async def scan_playlist_metadata(
         seen_keys.add(dup_key)
         metadata.append(info)
 
-    # Sort by subfolder, then track number, then filename
+    # Sort by subfolder (natural), then track number (untagged last), then filename (natural)
     metadata.sort(key=lambda m: (
-        str(Path(m.get('rel_path', m.get('filename', ''))).parent),
-        m.get('track', 0),
-        m.get('filename', '')
+        _natural_sort_key(str(Path(m.get('rel_path', m.get('filename', ''))).parent)),
+        (0, m.get('track', 0)) if m.get('track', 0) > 0 else (1, 0),
+        _natural_sort_key(m.get('filename', ''))
     ))
 
     # Count new unique songs (in final metadata list, not in original cache)
     new_count = sum(1 for m in metadata if m['file_id'] not in original_cache)
 
-    # Remove duplicates from cache (for autocomplete)
-    # Keep only file IDs that are in the filtered metadata list
+    # Remove duplicates from cache and reorder to match canonical sort
+    # (cache dict order flows to empty-input autocomplete via metadata_cache.values())
     filtered_file_ids = {entry['file_id'] for entry in metadata}
     cache = {fid: info for fid, info in cache.items() if fid in filtered_file_ids}
+    cache = {m['file_id']: cache[m['file_id']] for m in metadata if m['file_id'] in cache}
 
     # Save cache if updated (now contains only non-duplicates)
     if updated or len(cache) < len(original_cache):

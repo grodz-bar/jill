@@ -96,7 +96,7 @@ class Settings(ResponseMixin, commands.Cog):
 
                 # Apply metadata-based filtering and log failures
                 failed_count = 0
-                for name, result in zip(playlist_names, results):
+                for name, result in zip(playlist_names, results, strict=True):
                     if isinstance(result, Exception):
                         failed_count += 1
                         logger.warning(f"scan failed for playlist '{name}': {result}")

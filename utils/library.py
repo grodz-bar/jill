@@ -141,7 +141,7 @@ class MusicLibrary:
             return playlists, loose_files, playlist_paths
 
         # Scan subdirectories for playlists (recursive into subfolders)
-        for playlist_dir in self.music_path.iterdir():
+        for playlist_dir in sorted(self.music_path.iterdir(), key=lambda p: p.name.lower()):
             if not playlist_dir.is_dir():
                 continue
             if playlist_dir.name.startswith('.'):

@@ -137,8 +137,9 @@ class PaginationView(AutoDeleteView):
 
     def _update_buttons(self) -> None:
         """Update button states based on current page."""
-        self.prev_button.disabled = self.current_page <= 0
-        self.next_button.disabled = self.current_page >= self.total_pages - 1
+        only_one = self.total_pages <= 1
+        self.prev_button.disabled = only_one
+        self.next_button.disabled = only_one
 
     def get_page_items(self) -> list:
         """Get items for current page."""
@@ -148,23 +149,17 @@ class PaginationView(AutoDeleteView):
 
     @discord.ui.button(emoji="◀️", style=discord.ButtonStyle.secondary)
     async def prev_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        if self.current_page > 0:
-            self.current_page -= 1
-            self._update_buttons()
-            embed = self.format_page(self.get_page_items(), self.current_page, self.total_pages)
-            await interaction.response.edit_message(embed=embed, view=self)
-        else:
-            await interaction.response.defer()
+        self.current_page = (self.current_page - 1) % self.total_pages
+        self._update_buttons()
+        embed = self.format_page(self.get_page_items(), self.current_page, self.total_pages)
+        await interaction.response.edit_message(embed=embed, view=self)
 
     @discord.ui.button(emoji="▶️", style=discord.ButtonStyle.secondary)
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        if self.current_page < self.total_pages - 1:
-            self.current_page += 1
-            self._update_buttons()
-            embed = self.format_page(self.get_page_items(), self.current_page, self.total_pages)
-            await interaction.response.edit_message(embed=embed, view=self)
-        else:
-            await interaction.response.defer()
+        self.current_page = (self.current_page + 1) % self.total_pages
+        self._update_buttons()
+        embed = self.format_page(self.get_page_items(), self.current_page, self.total_pages)
+        await interaction.response.edit_message(embed=embed, view=self)
 
 
 class SearchSelectionView(AutoDeleteView):

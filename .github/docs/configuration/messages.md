@@ -112,6 +112,7 @@ not_in_vc:
 | | | | |
 | **Admin** |  |  |  |
 | `rescan_complete` | "found {playlists} playlists and {tracks} songs" | Rescan finished | enabled |
+| `rescan_metadata_failed` | "found {playlists} playlists and {tracks} songs, but metadata failed for {failed} playlists" | Metadata rebuild failed for some playlists | enabled |
 | `rescan_in_progress` | "a rescan is already running, please wait" | Rescan already running | enabled |
 | `rescan_failed` | "rescan failed, check the logs" | Rescan failed | enabled |
 | | | | |

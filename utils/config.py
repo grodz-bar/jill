@@ -192,6 +192,7 @@ DEFAULT_MESSAGES = {
 
     # Admin
     "rescan_complete": {"text": "found {playlists} playlists and {tracks} songs", "enabled": True},
+    "rescan_metadata_failed": {"text": "found {playlists} playlists and {tracks} songs, but metadata failed for {failed} playlists", "enabled": True},
     "rescan_in_progress": {"text": "a rescan is already running, please wait", "enabled": True},
     "rescan_failed": {"text": "rescan failed, check the logs", "enabled": True},
     "music_unavailable": {"text": "music system's down", "enabled": True},

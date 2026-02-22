@@ -1005,7 +1005,7 @@ class Music(ResponseMixin, commands.Cog):
             else:
                 await self.respond(interaction, "song_not_found")
         finally:
-            if not was_connected and not playback_started and player.connected:
+            if not was_connected and not playback_started and player and player.connected:
                 await player.disconnect()
 
     @app_commands.command(name="pause", description="pause playback")

@@ -399,7 +399,7 @@ async def scan_playlist_metadata(
     cache = {fid: info for fid, info in cache.items() if fid in filtered_file_ids}
 
     # Save cache if updated (now contains only non-duplicates)
-    if updated:
+    if updated or len(cache) < len(original_cache):
         try:
             await asyncio.to_thread(_save_json, cache_file, cache)
         except Exception as e:

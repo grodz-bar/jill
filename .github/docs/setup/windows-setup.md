@@ -131,7 +131,7 @@ Once Jill's running, here's how to control things:
 
 ### Updating
 
-1. Download the latest [jill-windows.zip](https://github.com/grodz-bar/jill/releases/latest/download/jill-windows.zip)
+1. Go to the [latest release](https://github.com/grodz-bar/jill/releases/latest) and download **jill-windows.zip**
 2. Extract over your existing Jill folder
 3. Run `setup-jill-win.bat` to update dependencies and Lavalink
 

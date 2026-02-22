@@ -191,6 +191,7 @@ class PlaylistSelectView(AutoDeleteView):
         super().__init__(timeout=timeout)
         self.bot = bot
         self.selected: str | None = None
+        self.current_playlist = current
 
         # Discord limits select menus to 25 options
         has_overflow = len(playlists) > 25
@@ -249,19 +250,25 @@ class PlaylistSelectView(AutoDeleteView):
                 playlist_info.append((name, len(tracks) if tracks else 0))
 
             panel_color = self.bot.config_manager.get_panel_color()
+            page_size = self.bot.config_manager.get("playlists_display_size", 15)
+            current = self.current_playlist
 
-            def format_playlists_page(items: list, page: int, total: int) -> discord.Embed:
-                embed = discord.Embed(title="🎶 available playlists", color=panel_color)
-                lines = [
-                    f"• **{escape_markdown(truncate_for_display(name, PLAYLIST_NAME_MAX))}** [{count} {'track' if count == 1 else 'tracks'}]"
-                    for name, count in items
-                ]
+            # Keep in sync with queue.py format_playlists_page
+            def format_playlists_page(items: list, page_num: int, total: int) -> discord.Embed:
+                embed = discord.Embed(title="available playlists", color=panel_color)
+                lines = []
+
+                for name, count in items:
+                    display_name = escape_markdown(truncate_for_display(name, PLAYLIST_NAME_MAX))
+                    if name == current:
+                        lines.append(f"**\u2192 {display_name} \u2190** [{count}]")
+                    else:
+                        lines.append(f"{display_name} [{count}]")
+
                 lines.append("\nuse `/playlist [name]` to switch")
                 embed.description = "\n".join(lines)
-                embed.set_footer(text=f"page {page + 1}/{total}")
+                embed.set_footer(text=f"page {page_num + 1}/{total}")
                 return embed
-
-            page_size = self.bot.config_manager.get("playlists_display_size", 15)
 
             view = PaginationView(
                 items=playlist_info,
@@ -270,7 +277,18 @@ class PlaylistSelectView(AutoDeleteView):
                 bot=self.bot
             )
 
-            embed = format_playlists_page(view.get_page_items(), 0, view.total_pages)
+            # Open to page containing current playlist
+            start_page = 0
+            if current:
+                for idx, (name, _) in enumerate(playlist_info):
+                    if name == current:
+                        start_page = idx // page_size
+                        break
+
+            view.current_page = start_page
+            view._update_buttons()
+
+            embed = format_playlists_page(view.get_page_items(), start_page, view.total_pages)
             await interaction.response.edit_message(content=None, embed=embed, view=view)
             view.message = interaction.message
             self.stop()  # Stop this view's timeout before transitioning

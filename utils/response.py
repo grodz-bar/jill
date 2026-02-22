@@ -50,7 +50,8 @@ def escape_markdown(text: str) -> str:
 
 # Per-item limits for paginated embeds (must stay under 4096 total)
 QUEUE_TITLE_MAX = 60       # 50 items × ~66 chars/line = ~3300 (under 4096)
-QUEUE_ARTIST_MAX = 20      # Artist prefix in multi-artist /queue display
+QUEUE_ARTIST_MAX = 18      # 15 visible + "..." — artist in multi-artist /queue lines
+QUEUE_TITLE_MULTI_MAX = 33 # 30 visible + "..." — title when sharing line with artist
 PLAYLIST_NAME_MAX = 50     # Same consideration
 
 # Discord API hard limits

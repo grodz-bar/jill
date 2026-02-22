@@ -927,7 +927,7 @@ class Music(ResponseMixin, commands.Cog):
 
             if best:
                 # High confidence - play directly
-                track_path = Path(best['path'])
+                track_path = queue.playlist_path / best['rel_path']
 
                 async with self._get_playback_lock(guild_id):
                     # Re-validate after acquiring lock (matches /skip pattern)
@@ -972,7 +972,7 @@ class Music(ResponseMixin, commands.Cog):
                 # Wait for selection
                 await view.wait()
                 if view.selected:
-                    track_path = Path(view.selected['path'])
+                    track_path = queue.playlist_path / view.selected['rel_path']
 
                     async with self._get_playback_lock(guild_id):
                         # Re-validate after acquiring lock

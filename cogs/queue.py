@@ -30,6 +30,7 @@ from utils.response import (
     escape_markdown,
     truncate_for_display,
     QUEUE_TITLE_MAX,
+    QUEUE_TITLE_MULTI_MAX,
     QUEUE_ARTIST_MAX,
     PLAYLIST_NAME_MAX,
     CHOICE_NAME_MAX,
@@ -236,24 +237,37 @@ class Queue(ResponseMixin, commands.Cog):
 
             start_num = page_num * display_size + 1
             for i, track in enumerate(items):
-                track_title, track_artist = queue_obj.get_track_display(track)
-                track_title = truncate_for_display(track_title, QUEUE_TITLE_MAX)
-                track_title = escape_markdown(track_title)
+                track_title_raw, track_artist = queue_obj.get_track_display(track)
                 track_num = start_num + i
+                is_current = track == queue_obj.current
 
-                if artist_mode == "multi" and track_artist:
-                    artist_display = truncate_for_display(track_artist, QUEUE_ARTIST_MAX)
-                    artist_display = escape_markdown(artist_display)
+                # Show artist inline only in multi-artist mode for tracks that have one
+                show_artist = (artist_mode == "multi"
+                               and track_artist and track_artist.strip())
 
-                    if track == queue_obj.current:
-                        lines.append(f"{track_num}. **\u2192 *{artist_display}* - {track_title} \u2190**")
+                if show_artist:
+                    title = escape_markdown(truncate_for_display(
+                        track_title_raw, QUEUE_TITLE_MULTI_MAX))
+                    artist = escape_markdown(truncate_for_display(
+                        track_artist, QUEUE_ARTIST_MAX))
+
+                    if is_current:
+                        lines.append(
+                            f"{track_num}. \U0001f4bf "
+                            f"**\u2192 *{artist}* \u2022 {title} \u2190**")
                     else:
-                        lines.append(f"{track_num}. *{artist_display}* - {track_title}")
+                        lines.append(
+                            f"{track_num}. *{artist}* \u2022 **{title}**")
                 else:
-                    if track == queue_obj.current:
-                        lines.append(f"{track_num}. **\u2192 {track_title} \u2190**")
+                    title = escape_markdown(truncate_for_display(
+                        track_title_raw, QUEUE_TITLE_MAX))
+
+                    if is_current:
+                        lines.append(
+                            f"{track_num}. \U0001f4bf "
+                            f"**\u2192 {title} \u2190**")
                     else:
-                        lines.append(f"{track_num}. {track_title}")
+                        lines.append(f"{track_num}. **{title}**")
 
             # Add loop indicator on last page
             if is_last_page and len(items) > 0:

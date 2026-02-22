@@ -230,8 +230,7 @@ def _make_fallback(audio_file: Path, file_id: str) -> dict:
         'artist': None,
         'album': None,
         'track': 0,
-        'file_id': file_id,
-        'path': str(audio_file)
+        'file_id': file_id
     }
 
 
@@ -269,7 +268,6 @@ async def _extract_one(audio_file: Path, file_id: str) -> tuple[str, dict | None
         try:
             info = await extract_metadata(audio_file)
             info['file_id'] = file_id
-            info['path'] = str(audio_file)
 
             # Apply lowercase normalization
             if info.get("title"):
@@ -406,7 +404,7 @@ async def scan_playlist_metadata(
             logger.warning(f"failed to save cache: {e}")
 
     # Build filtered file paths from metadata (non-duplicates only)
-    filtered_paths = [Path(entry['path']) for entry in metadata]
+    filtered_paths = [playlist_root / entry['rel_path'] for entry in metadata]
 
     return metadata, new_count, filtered_paths, duplicates
 

@@ -114,15 +114,17 @@ class ResponseMixin:
         """
         return self.bot.config_manager.msg(key, **kwargs)
 
-    async def _delete_response(self, interaction: discord.Interaction, delay: float) -> None:
-        """Delete interaction response after delay (for followup path).
+    async def _delete_followup(self, msg: discord.Message, delay: float) -> None:
+        """Delete a followup message after delay.
 
         Used internally when delete_after isn't available (followup messages).
-        Silently handles cancellation (shutdown) and Discord errors.
+        Deletes the specific message object rather than using
+        delete_original_response(), matching the pattern in
+        ControlPanelLayout and bot.py error handler.
         """
         try:
             await asyncio.sleep(delay)
-            await interaction.delete_original_response()
+            await msg.delete()
         except asyncio.CancelledError:
             pass  # Shutdown during wait - acceptable
         except discord.NotFound:
@@ -167,9 +169,9 @@ class ResponseMixin:
             await interaction.response.send_message(text, ephemeral=True, delete_after=delete_after)
         else:
             # Followup path - manual deletion via task
-            await interaction.followup.send(text, ephemeral=True)
+            msg = await interaction.followup.send(text, ephemeral=True, wait=True)
             if delete_after:
-                task = asyncio.create_task(self._delete_response(interaction, delete_after))
+                task = asyncio.create_task(self._delete_followup(msg, delete_after))
                 _cleanup_tasks.add(task)
                 task.add_done_callback(_cleanup_tasks.discard)
 

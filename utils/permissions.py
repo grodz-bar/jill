@@ -113,6 +113,9 @@ class PermissionManager:
             self.enabled = config.get("enabled", False)
             self.bartender_role_id = config.get("bartender_role_id")
             self.tiers = config.get("tiers", DEFAULT_PERMISSIONS["tiers"])
+            if not isinstance(self.tiers, dict):
+                logger.warning("'tiers' invalid, using defaults")
+                self.tiers = DEFAULT_PERMISSIONS["tiers"]
 
             # Environment variables override YAML
             if os.getenv("ENABLE_PERMISSIONS", "").lower() == "true":

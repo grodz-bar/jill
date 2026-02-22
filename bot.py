@@ -284,7 +284,7 @@ def configure_logger(level_name: str) -> None:
 
 # Configuration
 _bot_dir = Path(__file__).parent
-MUSIC_PATH = Path(os.getenv("MUSIC_PATH", "./music"))
+MUSIC_PATH = Path(os.getenv("MUSIC_PATH") or str(_bot_dir / "music"))
 DATA_PATH = Path(os.getenv("DATA_PATH") or str(_bot_dir / "data"))
 METADATA_CACHE_PATH = DATA_PATH / "metadata"
 CONFIG_PATH = Path(os.getenv("CONFIG_PATH") or str(_bot_dir / "config"))

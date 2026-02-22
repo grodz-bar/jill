@@ -654,7 +654,8 @@ async def validate_configuration() -> None:
         )
 
     # Ensure music directory exists
-    music_path = Path(os.getenv("MUSIC_PATH", "./music"))
+    _default_music = Path(__file__).parent.parent / "music"
+    music_path = Path(os.getenv("MUSIC_PATH") or str(_default_music))
     if not music_path.exists():
         try:
             music_path.mkdir(parents=True)

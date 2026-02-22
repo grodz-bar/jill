@@ -23,20 +23,21 @@ not_in_vc:
 
 ### Formatting
 
-**Variables** - Dynamic content in curly braces:
+**Variables** - Dynamic content, only use in the messages listed:
 
-| Variable | Contains |
-|----------|----------|
-| `{title}` | Track title |
-| `{name}` | Item name (playlist, track, etc.) |
-| `{playlist}` | Current playlist name |
-| `{level}` | Volume percentage (0-100) |
-| `{position}` | Seek position as percentage |
-| `{playlists}` | Number of playlists |
-| `{tracks}` | Number of tracks |
-| `{channel}` | Voice channel mention |
-| `{preset}` | Filter preset name |
-| `{command}` | Command name (without the slash) |
+| Variable | What it contains | Used in |
+|----------|-----------------|---------|
+| `{title}` | Track title | `now_playing`, `seek_to`, `track_selected` |
+| `{name}` | Playlist name | `playlist_not_found` |
+| `{playlist}` | Current playlist | `playlist_switched` |
+| `{level}` | Volume (0-100) | `volume_set` |
+| `{position}` | Seek percentage | `seek_to` |
+| `{playlists}` | Playlist count | `rescan_complete`, `rescan_metadata_failed` |
+| `{tracks}` | Track count | `rescan_complete`, `rescan_metadata_failed` |
+| `{failed}` | Failed playlist count | `rescan_metadata_failed` |
+| `{channel}` | Channel mention | `wrong_vc`, `panel_orphaned`, `panel_created` |
+| `{command}` | Command name | `command_disabled` |
+| `{preset}` | Filter preset name | `filter_applied` |
 
 **Discord markdown** works in messages: `**bold**` → **bold**, `*italic*` → *italic*, `` `code` `` → `code`, `~~strike~~` → ~~strike~~
 

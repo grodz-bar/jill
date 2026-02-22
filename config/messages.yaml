@@ -12,8 +12,18 @@
 #   Discord markdown:
 #     **bold**  *italic*  `code`  ***bold italic***
 #
-#   Variables (keep these exactly as shown):
-#     {title}  {name}  {level}  {position}  {playlist}  {playlists}  {tracks}  {channel}  {command}  {preset}
+#   Variables (use only in messages that have them):
+#     {title}    - track title (now_playing, seek_to, track_selected)
+#     {name}     - playlist name (playlist_not_found)
+#     {playlist} - current playlist (playlist_switched)
+#     {level}    - volume 0-100 (volume_set)
+#     {position} - seek percentage (seek_to)
+#     {playlists} - playlist count (rescan_complete, rescan_metadata_failed)
+#     {tracks}   - track count (rescan_complete, rescan_metadata_failed)
+#     {failed}   - failed playlist count (rescan_metadata_failed)
+#     {channel}  - channel mention (wrong_vc, panel_orphaned, panel_created)
+#     {command}  - command name (command_disabled)
+#     {preset}   - filter name (filter_applied)
 #
 #   Custom emojis:
 #     1. In Discord, type \:youremojiname: and hit send

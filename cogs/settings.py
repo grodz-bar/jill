@@ -95,8 +95,10 @@ class Settings(ResponseMixin, commands.Cog):
                 logger.debug("metadata rebuilt")
 
                 # Apply metadata-based filtering and log failures
+                failed_count = 0
                 for name, result in zip(playlist_names, results):
                     if isinstance(result, Exception):
+                        failed_count += 1
                         logger.warning(f"scan failed for playlist '{name}': {result}")
                     else:
                         _, _, filtered_paths, _ = result
@@ -159,7 +161,12 @@ class Settings(ResponseMixin, commands.Cog):
                 playlists = self.bot.library.playlists
                 total_tracks = sum(len(t) for t in playlists.values())
 
-                await self.respond(interaction, "rescan_complete", playlists=len(playlists), tracks=total_tracks)
+                if failed_count:
+                    await self.respond(interaction, "rescan_metadata_failed",
+                                       playlists=len(playlists), tracks=total_tracks, failed=failed_count)
+                else:
+                    await self.respond(interaction, "rescan_complete",
+                                       playlists=len(playlists), tracks=total_tracks)
 
             except Exception:
                 logger.opt(exception=True).error("rescan failed")

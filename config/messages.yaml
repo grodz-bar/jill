@@ -152,6 +152,9 @@ history_empty:
 rescan_complete:
   text: "found {playlists} playlists and {tracks} songs"
   enabled: true
+rescan_metadata_failed:
+  text: "found {playlists} playlists and {tracks} songs, but metadata failed for {failed} playlists"
+  enabled: true
 rescan_in_progress:
   text: "a rescan is already running, please wait"
   enabled: true

@@ -153,8 +153,15 @@ class MusicLibrary:
                 # Sort by relative path (groups files by subfolder)
                 sorted_files = sorted(audio_files, key=lambda p: p.relative_to(playlist_dir).as_posix().lower())
 
-                playlists[playlist_dir.name.lower()] = sorted_files
-                playlist_paths[playlist_dir.name.lower()] = playlist_dir
+                key = playlist_dir.name.lower()
+                if key in playlists:
+                    existing_dir = playlist_paths[key]
+                    logger.warning(
+                        f"playlist name collision: '{playlist_dir.name}' and '{existing_dir.name}' "
+                        f"map to the same name '{key}', using '{playlist_dir.name}'"
+                    )
+                playlists[key] = sorted_files
+                playlist_paths[key] = playlist_dir
             else:
                 logger.warning(f"playlist '{playlist_dir.name}' is empty")
 

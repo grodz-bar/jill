@@ -927,8 +927,6 @@ class Music(ResponseMixin, commands.Cog):
 
             if best:
                 # High confidence - play directly
-                track_path = queue.playlist_path / best['rel_path']
-
                 async with self._get_playback_lock(guild_id):
                     # Re-validate after acquiring lock (matches /skip pattern)
                     player = self.get_player(interaction)
@@ -937,6 +935,7 @@ class Music(ResponseMixin, commands.Cog):
                         return
 
                     queue = self.get_queue(guild_id)  # Re-fetch inside lock
+                    track_path = queue.playlist_path / best['rel_path']
 
                     # Find track in active playlist (handles shuffle mode automatically)
                     try:

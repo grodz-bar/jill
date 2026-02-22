@@ -157,8 +157,8 @@ class MusicLibrary:
                 if key in playlists:
                     existing_dir = playlist_paths[key]
                     logger.warning(
-                        f"playlist name collision: '{playlist_dir.name}' and '{existing_dir.name}' "
-                        f"map to the same name '{key}', using '{playlist_dir.name}'"
+                        f"folders '{existing_dir.name}' and '{playlist_dir.name}' "
+                        f"have the same name, keeping '{playlist_dir.name}'"
                     )
                 playlists[key] = sorted_files
                 playlist_paths[key] = playlist_dir

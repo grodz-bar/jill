@@ -165,7 +165,7 @@ sudo systemctl start jill
 
 ### Updating
 
-1. Download the latest [jill-linux.zip](https://github.com/grodz-bar/jill/releases/latest/download/jill-linux.zip)
+1. Go to the [latest release](https://github.com/grodz-bar/jill/releases/latest) and download **jill-linux.zip**
 2. Extract over your existing Jill folder: `unzip -o jill-linux.zip -d /path/to/jill`
 3. Run `./setup-jill-linux.sh` to update dependencies and Lavalink
 

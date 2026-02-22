@@ -37,8 +37,8 @@ from utils.templates import MESSAGES_TEMPLATE, SETTINGS_TEMPLATE, write_template
 # Environment variables can override any setting (see _apply_env_overrides).
 #
 # Playback Settings:
-#   queue_display_size     - Tracks shown per page in /queue command (1-100)
-#   playlists_display_size - Playlists shown per page (1-100)
+#   queue_display_size     - Tracks shown per page in /queue command (1-50)
+#   playlists_display_size - Playlists shown per page (1-50)
 #   inactivity_timeout     - Minutes alone in VC before auto-disconnect (0 = never)
 #   default_volume         - Initial volume when joining voice (0-100)
 #   auto_rescan            - Scan music folder for new tracks on startup
@@ -241,12 +241,12 @@ def deep_merge(user: dict, defaults: dict) -> dict:
 def load_yaml(path: Path, defaults: dict) -> dict:
     """Load YAML file with defaults and error handling.
 
-    If file doesn't exist or is invalid, returns defaults without error.
-    Invalid YAML syntax is logged and defaults are used.
+    Missing files or unparseable YAML return defaults (YAML errors are logged).
+    I/O errors (permission denied, disk failure) propagate to the caller.
 
     Args:
         path: Path to YAML file
-        defaults: Default values if file missing or invalid
+        defaults: Default values if file missing or unparseable
 
     Returns:
         Loaded config merged with defaults, or defaults on failure
@@ -684,11 +684,11 @@ async def validate_configuration() -> None:
 
     # Check Lavalink connectivity
     lavalink_host = os.getenv("LAVALINK_HOST", "127.0.0.1")
-    lavalink_port = os.getenv("LAVALINK_PORT", "2333")
+    lavalink_port = os.getenv("LAVALINK_PORT") or "2333"
     lavalink_password = os.getenv("LAVALINK_PASSWORD", "timetomixdrinksandnotchangepasswords")
 
     # Check for duplicate ports (will definitely fail at runtime)
-    http_port = os.getenv("HTTP_SERVER_PORT", "2334")
+    http_port = os.getenv("HTTP_SERVER_PORT") or "2334"
     try:
         if int(lavalink_port) == int(http_port):
             errors.append(

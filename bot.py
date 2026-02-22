@@ -289,10 +289,10 @@ DATA_PATH = Path(os.getenv("DATA_PATH") or str(_bot_dir / "data"))
 METADATA_CACHE_PATH = DATA_PATH / "metadata"
 CONFIG_PATH = Path(os.getenv("CONFIG_PATH") or str(_bot_dir / "config"))
 HTTP_HOST = os.getenv("HTTP_SERVER_HOST", "127.0.0.1")
-HTTP_PORT = int(os.getenv("HTTP_SERVER_PORT", "2334"))
+HTTP_PORT = int(os.getenv("HTTP_SERVER_PORT") or "2334")
 HTTP_URL_HOST = os.getenv("HTTP_SERVER_URL_HOST") or HTTP_HOST
 LAVALINK_HOST = os.getenv("LAVALINK_HOST", "127.0.0.1")
-LAVALINK_PORT = int(os.getenv("LAVALINK_PORT", "2333"))
+LAVALINK_PORT = int(os.getenv("LAVALINK_PORT") or "2333")
 LAVALINK_PASSWORD = os.getenv("LAVALINK_PASSWORD", "timetomixdrinksandnotchangepasswords")
 GITHUB_API_URL = "https://api.github.com/repos/grodz-bar/jill/releases/latest"
 
@@ -544,13 +544,15 @@ class MusicBot(commands.Bot):
 
             total_new = 0
             for i, result in enumerate(results):
-                if not isinstance(result, Exception):
-                    _, new_count, filtered_paths, duplicates = result
-                    total_new += new_count
-                    all_duplicates.extend(duplicates)
+                if isinstance(result, Exception):
+                    logger.warning(f"metadata scan failed for '{playlist_names[i]}': {result}")
+                    continue
+                _, new_count, filtered_paths, duplicates = result
+                total_new += new_count
+                all_duplicates.extend(duplicates)
 
-                    # Apply metadata-based filtering to library playlists
-                    self.library.update_playlist_files(playlist_names[i], filtered_paths)
+                # Apply metadata-based filtering to library playlists
+                self.library.update_playlist_files(playlist_names[i], filtered_paths)
 
             # Log per-playlist counts (after metadata filtering applied)
             for name, tracks in self.library.playlists.items():

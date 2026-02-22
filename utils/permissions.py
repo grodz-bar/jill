@@ -116,10 +116,16 @@ class PermissionManager:
             if not isinstance(self.tiers, dict):
                 logger.warning("'tiers' invalid, using defaults")
                 self.tiers = DEFAULT_PERMISSIONS["tiers"]
+            else:
+                for tier_name, commands in self.tiers.items():
+                    if not isinstance(commands, list):
+                        logger.warning(f"tier '{tier_name}' invalid, using defaults")
+                        self.tiers = DEFAULT_PERMISSIONS["tiers"]
+                        break
 
             # Environment variables override YAML
-            if os.getenv("ENABLE_PERMISSIONS", "").lower() == "true":
-                self.enabled = True
+            if enable_env := os.getenv("ENABLE_PERMISSIONS"):
+                self.enabled = enable_env.lower() == "true"
 
             if bartender_id := os.getenv("BARTENDER_ROLE_ID"):
                 try:

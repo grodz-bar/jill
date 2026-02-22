@@ -314,7 +314,7 @@ async def scan_playlist_metadata(
 
     Returns:
         Tuple of (metadata_list, new_count, filtered_paths, duplicate_names):
-        - metadata_list: List of metadata dicts sorted by (track number, filename)
+        - metadata_list: List of metadata dicts sorted by (subfolder, artist, album, track number, filename)
         - new_count: Number of new non-duplicate files added to playlist
         - filtered_paths: File paths after duplicate removal
         - duplicate_names: Filenames that were skipped as duplicates
@@ -389,9 +389,11 @@ async def scan_playlist_metadata(
         seen_keys.add(dup_key)
         metadata.append(info)
 
-    # Sort by subfolder (natural), then track number (untagged last), then filename (natural)
+    # Sort by subfolder (natural), artist, album, track number (untagged last), filename (natural)
     metadata.sort(key=lambda m: (
         _natural_sort_key(str(Path(m.get('rel_path', m.get('filename', ''))).parent)),
+        (0, _natural_sort_key(m['artist'])) if m.get('artist') else (1,),
+        (0, _natural_sort_key(m['album'])) if m.get('album') else (1,),
         (0, m.get('track', 0)) if m.get('track', 0) > 0 else (1, 0),
         _natural_sort_key(m.get('filename', ''))
     ))

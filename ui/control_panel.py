@@ -259,10 +259,11 @@ class PlaylistSelectView(AutoDeleteView):
                 lines = []
 
                 for name, count in items:
-                    display_name = escape_markdown(truncate_for_display(name, PLAYLIST_NAME_MAX))
                     if name == current:
-                        lines.append(f"**\u2192 {display_name} \u2190** [{count}]")
+                        display_name = truncate_for_display(name, PLAYLIST_NAME_MAX)
+                        lines.append(f"**`{display_name}`** [{count}]")
                     else:
+                        display_name = escape_markdown(truncate_for_display(name, PLAYLIST_NAME_MAX))
                         lines.append(f"{display_name} [{count}]")
 
                 lines.append("\nuse `/playlist [name]` to switch")

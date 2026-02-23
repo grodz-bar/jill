@@ -53,6 +53,7 @@ QUEUE_TITLE_MAX = 60       # 50 items × ~66 chars/line = ~3300 (under 4096)
 QUEUE_ARTIST_MAX = 18      # 15 visible + "..." — artist in multi-artist /queue lines
 QUEUE_TITLE_MULTI_MAX = 33 # 30 visible + "..." — title when sharing line with artist
 PLAYLIST_NAME_MAX = 50     # Same consideration
+FOOTER_ARTIST_MAX = 35     # Artist name in /queue footer (single-artist mode, UX choice)
 
 # Discord API hard limits
 CHOICE_NAME_MAX = 97       # app_commands.Choice.name (limit 100) - room for "..."
@@ -82,6 +83,31 @@ def truncate_for_display(text: str, max_length: int) -> str:
     if len(text) <= max_length:
         return text
     return text[:max_length - 3] + "..."
+
+
+def format_playlists_page(
+    items: list, page_num: int, total: int, *,
+    current_name: str | None, color: int
+) -> discord.Embed:
+    """Format a page of playlists as a Discord embed.
+
+    Used by /playlists command and panel overflow picker.
+    """
+    embed = discord.Embed(title="available playlists", color=color)
+    lines = []
+
+    for name, count in items:
+        if name == current_name:
+            display_name = truncate_for_display(name, PLAYLIST_NAME_MAX)
+            lines.append(f"- **`{display_name}`** [{count}]")
+        else:
+            display_name = escape_markdown(truncate_for_display(name, PLAYLIST_NAME_MAX))
+            lines.append(f"- {display_name} [{count}]")
+
+    lines.append("\nuse `/playlist [name]` to switch")
+    embed.description = "\n".join(lines)
+    embed.set_footer(text=f"page {page_num + 1}/{total}")
+    return embed
 
 
 class ResponseMixin:

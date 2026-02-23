@@ -142,10 +142,10 @@ class Queue(ResponseMixin, commands.Cog):
             for name, count in items:
                 if name == current_playlist:
                     display_name = truncate_for_display(name, PLAYLIST_NAME_MAX)
-                    lines.append(f"**`{display_name}`** [{count}]")
+                    lines.append(f"- **`{display_name}`** [{count}]")
                 else:
                     display_name = escape_markdown(truncate_for_display(name, PLAYLIST_NAME_MAX))
-                    lines.append(f"{display_name} [{count}]")
+                    lines.append(f"- {display_name} [{count}]")
 
             lines.append("\nuse `/playlist [name]` to switch")
             embed.description = "\n".join(lines)

@@ -77,7 +77,7 @@ from utils.templates import MESSAGES_TEMPLATE, SETTINGS_TEMPLATE, write_template
 
 DEFAULT_SETTINGS = {
     "queue_display_size": 15,
-    "playlists_display_size": 15,
+    "playlists_display_size": 12,
     "inactivity_timeout": 10,
     "default_volume": 50,
     "auto_rescan": True,

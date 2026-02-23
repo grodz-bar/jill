@@ -98,7 +98,7 @@ def format_playlists_page(
 
     for name, count in items:
         if name == current_name:
-            display_name = truncate_for_display(name, PLAYLIST_NAME_MAX)
+            display_name = truncate_for_display(name, PLAYLIST_NAME_MAX).replace("`", "'")
             lines.append(f"- **`{display_name}`** [{count}]")
         else:
             display_name = escape_markdown(truncate_for_display(name, PLAYLIST_NAME_MAX))

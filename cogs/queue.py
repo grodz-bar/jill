@@ -240,9 +240,9 @@ class Queue(ResponseMixin, commands.Cog):
                     if is_current:
                         # Code block — no markdown escaping needed
                         title = truncate_for_display(
-                            track_title_raw, QUEUE_TITLE_MULTI_MAX)
+                            track_title_raw, QUEUE_TITLE_MULTI_MAX).replace("`", "'")
                         artist = truncate_for_display(
-                            track_artist, QUEUE_ARTIST_MAX)
+                            track_artist, QUEUE_ARTIST_MAX).replace("`", "'")
                         lines.append(
                             f"{track_num}. "
                             f"**`{artist} \u2022 {title}`**")
@@ -256,7 +256,7 @@ class Queue(ResponseMixin, commands.Cog):
                 else:
                     if is_current:
                         title = truncate_for_display(
-                            track_title_raw, QUEUE_TITLE_MAX)
+                            track_title_raw, QUEUE_TITLE_MAX).replace("`", "'")
                         lines.append(
                             f"{track_num}. "
                             f"**`{title}`**")

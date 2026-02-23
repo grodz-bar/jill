@@ -64,7 +64,7 @@ class Queue(ResponseMixin, commands.Cog):
     @property
     def playlists_display_size(self) -> int:
         """Get playlists display size from config."""
-        return self.bot.config_manager.get("playlists_display_size", 15)
+        return self.bot.config_manager.get("playlists_display_size", 12)
 
     async def playlist_autocomplete(
         self,

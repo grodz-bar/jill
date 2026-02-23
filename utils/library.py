@@ -115,7 +115,7 @@ class MusicLibrary:
             return []
         result = []
         try:
-            children = list(directory.iterdir())
+            children = sorted(directory.iterdir(), key=lambda p: p.name.lower())
         except PermissionError:
             logger.warning(f"permission denied: {directory}")
             return []
@@ -163,8 +163,11 @@ class MusicLibrary:
                 logger.warning(f"playlist '{playlist_dir.name}' is empty")
 
         # Check for audio files in root (stays flat — not recursive)
-        root_audio = [f for f in self.music_path.iterdir()
-                      if f.is_file() and f.suffix.lower() in AUDIO_EXTENSIONS]
+        root_audio = sorted(
+            [f for f in self.music_path.iterdir()
+             if f.is_file() and f.suffix.lower() in AUDIO_EXTENSIONS],
+            key=lambda f: f.name.lower()
+        )
 
         if root_audio:
             if playlists:

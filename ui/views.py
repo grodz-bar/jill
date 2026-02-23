@@ -116,6 +116,7 @@ class PaginationView(AutoDeleteView):
         items: list,
         format_page: Callable[[list, int, int], discord.Embed],
         page_size: int = 15,
+        start_page: int = 0,
         timeout: float = None,
         bot = None  # Pass bot for config access
     ) -> None:
@@ -130,7 +131,7 @@ class PaginationView(AutoDeleteView):
         self.items = items
         self.page_size = page_size
         self.format_page = format_page
-        self.current_page = 0
+        self.current_page = start_page
         self.total_pages = max(1, (len(items) + page_size - 1) // page_size)
 
         self._update_buttons()

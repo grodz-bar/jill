@@ -36,6 +36,7 @@ from utils.filters import FILTER_LABEL, FILTER_PRESETS, PRESET_NAMES, get_filter
 from utils.holidays import get_active_holiday
 from utils.response import (
     escape_markdown,
+    format_playlists_page,
     truncate_for_display,
     PLAYLIST_NAME_MAX,
     SELECT_LABEL_MAX,
@@ -253,30 +254,11 @@ class PlaylistSelectView(AutoDeleteView):
             page_size = self.bot.config_manager.get("playlists_display_size", 12)
             current = self.current_playlist
 
-            # Keep in sync with queue.py format_playlists_page
-            def format_playlists_page(items: list, page_num: int, total: int) -> discord.Embed:
-                embed = discord.Embed(title="available playlists", color=panel_color)
-                lines = []
-
-                for name, count in items:
-                    if name == current:
-                        display_name = truncate_for_display(name, PLAYLIST_NAME_MAX)
-                        lines.append(f"- **`{display_name}`** [{count}]")
-                    else:
-                        display_name = escape_markdown(truncate_for_display(name, PLAYLIST_NAME_MAX))
-                        lines.append(f"- {display_name} [{count}]")
-
-                lines.append("\nuse `/playlist [name]` to switch")
-                embed.description = "\n".join(lines)
-                embed.set_footer(text=f"page {page_num + 1}/{total}")
-                return embed
-
-            view = PaginationView(
-                items=playlist_info,
-                page_size=page_size,
-                format_page=format_playlists_page,
-                bot=self.bot
-            )
+            def format_page(items: list, page_num: int, total: int) -> discord.Embed:
+                return format_playlists_page(
+                    items, page_num, total,
+                    current_name=current, color=panel_color
+                )
 
             # Open to page containing current playlist
             start_page = 0
@@ -286,10 +268,15 @@ class PlaylistSelectView(AutoDeleteView):
                         start_page = idx // page_size
                         break
 
-            view.current_page = start_page
-            view._update_buttons()
+            view = PaginationView(
+                items=playlist_info,
+                page_size=page_size,
+                start_page=start_page,
+                format_page=format_page,
+                bot=self.bot
+            )
 
-            embed = format_playlists_page(view.get_page_items(), start_page, view.total_pages)
+            embed = format_page(view.get_page_items(), start_page, view.total_pages)
             await interaction.response.edit_message(content=None, embed=embed, view=view)
             view.message = interaction.message
             self.stop()  # Stop this view's timeout before transitioning

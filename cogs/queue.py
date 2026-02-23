@@ -28,7 +28,9 @@ from utils.permissions import require_command_enabled, require_permission
 from utils.response import (
     ResponseMixin,
     escape_markdown,
+    format_playlists_page,
     truncate_for_display,
+    FOOTER_ARTIST_MAX,
     QUEUE_TITLE_MAX,
     QUEUE_TITLE_MULTI_MAX,
     QUEUE_ARTIST_MAX,
@@ -135,33 +137,16 @@ class Queue(ResponseMixin, commands.Cog):
         panel_color = self.bot.config_manager.get_panel_color()
         page_size = self.playlists_display_size
 
-        def format_playlists_page(items: list, page_num: int, total: int) -> discord.Embed:
-            embed = discord.Embed(title="available playlists", color=panel_color)
-            lines = []
-
-            for name, count in items:
-                if name == current_playlist:
-                    display_name = truncate_for_display(name, PLAYLIST_NAME_MAX)
-                    lines.append(f"- **`{display_name}`** [{count}]")
-                else:
-                    display_name = escape_markdown(truncate_for_display(name, PLAYLIST_NAME_MAX))
-                    lines.append(f"- {display_name} [{count}]")
-
-            lines.append("\nuse `/playlist [name]` to switch")
-            embed.description = "\n".join(lines)
-            embed.set_footer(text=f"page {page_num + 1}/{total}")
-            return embed
-
-        view = PaginationView(
-            items=playlist_info,
-            page_size=page_size,
-            format_page=format_playlists_page,
-            bot=self.bot
-        )
+        def format_page(items: list, page_num: int, total: int) -> discord.Embed:
+            return format_playlists_page(
+                items, page_num, total,
+                current_name=current_playlist, color=panel_color
+            )
 
         # Determine start page: explicit param > current playlist page > 0
+        total_pages = max(1, (len(playlist_info) + page_size - 1) // page_size)
         if page is not None:
-            start_page = min(page - 1, view.total_pages - 1)
+            start_page = min(page - 1, total_pages - 1)
         elif current_playlist:
             start_page = 0
             for idx, (name, _) in enumerate(playlist_info):
@@ -171,10 +156,15 @@ class Queue(ResponseMixin, commands.Cog):
         else:
             start_page = 0
 
-        view.current_page = start_page
-        view._update_buttons()
+        view = PaginationView(
+            items=playlist_info,
+            page_size=page_size,
+            start_page=start_page,
+            format_page=format_page,
+            bot=self.bot
+        )
 
-        embed = format_playlists_page(view.get_page_items(), start_page, view.total_pages)
+        embed = format_page(view.get_page_items(), start_page, view.total_pages)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
         view.message = await interaction.original_response()
 
@@ -287,30 +277,29 @@ class Queue(ResponseMixin, commands.Cog):
 
             # Footer: page info + single-artist display
             if artist_mode == "single":
-                footer_artist = truncate_for_display(single_artist, 40)
+                footer_artist = truncate_for_display(single_artist, FOOTER_ARTIST_MAX)
                 embed.set_footer(text=f"page {page_num + 1}/{total} \u00b7 {footer_artist}")
             else:
                 embed.set_footer(text=f"page {page_num + 1}/{total}")
 
             return embed
 
-        view = PaginationView(
-            items=display_items,
-            page_size=display_size,
-            format_page=format_queue_page,
-            bot=self.bot
-        )
-
         # Determine start page: explicit param > current track page > 0
+        total_pages = max(1, (len(display_items) + display_size - 1) // display_size)
         if page is not None:
-            start_page = min(page - 1, view.total_pages - 1)
+            start_page = min(page - 1, total_pages - 1)
         elif queue_obj.current_index is not None:
             start_page = queue_obj.current_index // display_size
         else:
             start_page = 0
 
-        view.current_page = start_page
-        view._update_buttons()
+        view = PaginationView(
+            items=display_items,
+            page_size=display_size,
+            start_page=start_page,
+            format_page=format_queue_page,
+            bot=self.bot
+        )
 
         embed = format_queue_page(view.get_page_items(), start_page, view.total_pages)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)

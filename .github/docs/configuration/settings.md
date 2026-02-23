@@ -44,7 +44,7 @@ Customize Jill's panel appearance, playback behavior, and commands.
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `queue_display_size` | `15` | Tracks per page in `/queue` (1-50) |
-| `playlists_display_size` | `15` | Playlists per page in `/playlists` (1-50) |
+| `playlists_display_size` | `12` | Playlists per page in `/playlists` (1-50) |
 
 ### Commands
 

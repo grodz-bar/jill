@@ -87,7 +87,7 @@ commands:
 
 # Queue/playlist display
 queue_display_size: 15      # 1-50: tracks shown per page in /queue
-playlists_display_size: 15  # 1-50: playlists shown per page in /playlists
+playlists_display_size: 12  # 1-50: playlists shown per page in /playlists
 
 # Library scanning
 auto_rescan: true           # Check for new/changed music files on startup

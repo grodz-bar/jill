@@ -250,7 +250,7 @@ class PlaylistSelectView(AutoDeleteView):
                 playlist_info.append((name, len(tracks) if tracks else 0))
 
             panel_color = self.bot.config_manager.get_panel_color()
-            page_size = self.bot.config_manager.get("playlists_display_size", 15)
+            page_size = self.bot.config_manager.get("playlists_display_size", 12)
             current = self.current_playlist
 
             # Keep in sync with queue.py format_playlists_page
@@ -261,10 +261,10 @@ class PlaylistSelectView(AutoDeleteView):
                 for name, count in items:
                     if name == current:
                         display_name = truncate_for_display(name, PLAYLIST_NAME_MAX)
-                        lines.append(f"**`{display_name}`** [{count}]")
+                        lines.append(f"- **`{display_name}`** [{count}]")
                     else:
                         display_name = escape_markdown(truncate_for_display(name, PLAYLIST_NAME_MAX))
-                        lines.append(f"{display_name} [{count}]")
+                        lines.append(f"- {display_name} [{count}]")
 
                 lines.append("\nuse `/playlist [name]` to switch")
                 embed.description = "\n".join(lines)

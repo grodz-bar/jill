@@ -70,7 +70,7 @@
 
 - **Songs not appearing**: Run `/rescan`. Check format is supported (MP3, FLAC, OGG, OPUS, M4A, M4B, WAV, AAC, WebM, MKA) and file isn't corrupted. File extensions are case-insensitive.
 
-- **Wrong track order**: Tracks sort by subfolder, then track number tag, then by filename. Check your files have track numbers set.
+- **Wrong track order**: Tracks sort by subfolder, then artist, album, track number, then filename. Check your files have metadata tags set.
 
 - **Playback stops**: Check inactivity timeout (Jill leaves when alone), Lavalink logs, network stability.
 

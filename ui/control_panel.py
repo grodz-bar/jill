@@ -547,9 +547,7 @@ class ControlPanelLayout(discord.ui.LayoutView):
             self.filter_display = discord.ui.TextDisplay(f"`filter: {active_filter}`")
             container_items.append(self.filter_display)
 
-        container_items.extend([
-            self.body_display,
-        ])
+        container_items.append(self.body_display)
 
         container_items.append(self.separator)
 

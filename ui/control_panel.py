@@ -541,15 +541,15 @@ class ControlPanelLayout(discord.ui.LayoutView):
             container_items.append(self.progress_display)
             container_items.append(self.progress_separator)
 
-        container_items.extend([
-            self.body_display,
-        ])
-
         # Filter indicator (shown only when a filter is active)
         active_filter = self.bot.state_manager.get("filter") if self.bot else None
         if active_filter:
             self.filter_display = discord.ui.TextDisplay(f"`filter: {active_filter}`")
             container_items.append(self.filter_display)
+
+        container_items.extend([
+            self.body_display,
+        ])
 
         container_items.append(self.separator)
 

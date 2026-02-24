@@ -17,7 +17,8 @@
 
 """Metadata extraction using Mutagen.
 
-Extracts title, artist, album, and track number from audio files.
+Extracts title, album artist, album, and track number from audio files.
+Uses album artist only (not track/contributing artist) for sorting and display.
 Supports multiple tag formats (ID3, Vorbis, MP4, etc.) via Mutagen.
 
 Key functions:
@@ -46,8 +47,6 @@ except ImportError:
     File = None
     MutagenError = Exception
     logger.warning("mutagen not installed, metadata extraction disabled")
-
-GENERIC_ALBUMARTISTS = frozenset({"various artists", "various", "va", "soundtrack", "ost"})
 
 # Shared across all concurrent scan_playlist_metadata calls.
 # Limits total extraction concurrency to match thread pool capacity.
@@ -88,26 +87,13 @@ def extract_metadata_sync(filepath: Path) -> dict:
             filepath.stem
         )
 
-        # Prefer album artist (primary artist) over track artist (all performers)
-        albumartist = (
+        # Album artist only (not track/contributing artist)
+        result["artist"] = (
             _get_first(audio, "albumartist") or
             _get_first(audio, "album artist") or  # Some taggers use space
             _get_first(audio, "TPE2") or
             _get_first(audio, "aART")
         )
-
-        track_artist = (
-            _get_first(audio, "artist") or
-            _get_first(audio, "TPE1") or
-            _get_first(audio, "\xa9ART")
-        )
-
-        if albumartist and albumartist.lower() not in GENERIC_ALBUMARTISTS:
-            result["artist"] = albumartist
-        elif track_artist:
-            result["artist"] = track_artist
-        else:
-            result["artist"] = albumartist  # even "Various Artists" beats None
 
         # Album (support multiple formats)
         result["album"] = (
@@ -187,7 +173,7 @@ def _get_dedup_key(info: dict, filename: str) -> tuple:
     """Get deduplication key based on available metadata.
 
     Returns a tuple with type prefix for namespace separation:
-    - ('metadata', title, artist) when both exist
+    - ('metadata', title, artist, album) when title and artist exist
     - ('title_only', title, normalized_filename) when title only
     - ('filename', normalized_filename) when no metadata
 
@@ -195,10 +181,12 @@ def _get_dedup_key(info: dict, filename: str) -> tuple:
     """
     title = info.get('title')
     artist = info.get('artist')
+    album = info.get('album')
 
     if title and artist:
-        # Full metadata available - standard dedup
-        return ('metadata', title.lower(), artist.lower())
+        # Full metadata available - album included to prevent false matches
+        # when many tracks share a generic album artist like "Various Artists"
+        return ('metadata', title.lower(), artist.lower(), (album or '').lower())
     elif title:
         # Title only - combine with filename to distinguish different songs
         return ('title_only', title.lower(), _normalize_filename(filename))

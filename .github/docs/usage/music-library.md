@@ -68,10 +68,10 @@ mklink /d "music/rock" "C:\Users\You\Music\Rock"
 
 ### Metadata
 
-Jill reads **title**, **album artist**, **album**, and **track number** from your files' metadata. No title? She'll use the filename. For artist, she prefers album artist but falls back to track artist if it's missing or generic (like "Various Artists").
+Jill reads **title**, **album artist**, **album**, and **track number** from your files' metadata. No title? She'll use the filename. She uses the **album artist** tag (not the track/contributing artist) for sorting and display. If your artist isn't showing, make sure your files have the album artist tag set.
 
 ### Duplicates
 
-If two files have the same title and artist, only the first is kept.
+If two files have the same title, album artist, and album, only the first is kept.
 
 Having issues? See [Troubleshooting](../troubleshooting.md#playback).

@@ -37,6 +37,7 @@ from utils.library import ROOT_PLAYLIST_NAME
 from utils.permissions import require_permission
 from utils.response import (
     ResponseMixin,
+    display_artist,
     escape_markdown,
     truncate_for_display,
     CHOICE_NAME_MAX,
@@ -748,7 +749,7 @@ class Music(ResponseMixin, commands.Cog):
             choices = []
             for track in list(queue.metadata_cache.values())[:25]:
                 title = track.get('title', 'unknown')
-                artist = track.get('artist')
+                artist = display_artist(track.get('artist'))
                 display = f"{artist} - {title}" if artist else title
                 display = truncate_for_display(display, CHOICE_NAME_MAX)
                 choices.append(app_commands.Choice(name=display, value=title))
@@ -766,7 +767,7 @@ class Music(ResponseMixin, commands.Cog):
             if score < 55:  # Skip low-relevance matches
                 continue
             title = track.get('title', 'unknown')
-            artist = track.get('artist')
+            artist = display_artist(track.get('artist'))
             # Display: "Artist - Title" if artist exists, else just "Title"
             display = f"{artist} - {title}" if artist else title
             display = truncate_for_display(display, CHOICE_NAME_MAX)
@@ -1367,7 +1368,7 @@ class Music(ResponseMixin, commands.Cog):
 
         # Update bot presence with current song
         title, artist = queue.get_current_display()
-        await self.bot.update_presence(title=title, artist=artist)
+        await self.bot.update_presence(title=title, artist=display_artist(artist))
 
         await self.bot.panel_manager.notify(guild_id)
 

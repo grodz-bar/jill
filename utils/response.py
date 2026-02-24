@@ -85,6 +85,26 @@ def truncate_for_display(text: str, max_length: int) -> str:
     return text[:max_length - 3] + "..."
 
 
+# Generic/placeholder artist names that provide no value in display contexts.
+# Still extracted and used internally (metadata, search index, /np detail view).
+GENERIC_ARTISTS = {
+    "various artists", "various", "va", "v/a", "v.a.",
+    "unknown artist", "unknown", "no artist",
+}
+
+
+def display_artist(artist: str | None) -> str | None:
+    """Return None if artist is generic/placeholder, otherwise return as-is.
+
+    Generic names like "Various Artists" clutter casual display (panel, queue,
+    autocomplete) without adding value. The /np command should NOT use this
+    — it shows full metadata detail where even generic names are informative.
+    """
+    if artist and artist.strip().lower() in GENERIC_ARTISTS:
+        return None
+    return artist
+
+
 def format_playlists_page(
     items: list, page_num: int, total: int, *,
     current_name: str | None, color: int

@@ -27,6 +27,7 @@ from ui.views import PaginationView
 from utils.permissions import require_command_enabled, require_permission
 from utils.response import (
     ResponseMixin,
+    display_artist,
     escape_markdown,
     format_playlists_page,
     truncate_for_display,
@@ -208,7 +209,7 @@ class Queue(ResponseMixin, commands.Cog):
         unique_artists = set()
         for track in display_items:
             _, artist = queue_obj.get_track_display(track)
-            unique_artists.add(artist)
+            unique_artists.add(display_artist(artist))
 
         if unique_artists == {None}:
             artist_mode = "none"
@@ -229,6 +230,7 @@ class Queue(ResponseMixin, commands.Cog):
             start_num = page_num * display_size + 1
             for i, track in enumerate(items):
                 track_title_raw, track_artist = queue_obj.get_track_display(track)
+                track_artist = display_artist(track_artist)
                 track_num = start_num + i
                 is_current = track == queue_obj.current
 

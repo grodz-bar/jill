@@ -41,7 +41,7 @@ import asyncio
 import discord
 from typing import Callable
 
-from utils.response import escape_markdown, truncate_for_display, SELECT_LABEL_MAX
+from utils.response import display_artist, escape_markdown, truncate_for_display, SELECT_LABEL_MAX
 
 # Track fire-and-forget cleanup tasks to prevent GC warnings
 _cleanup_tasks: set[asyncio.Task] = set()
@@ -193,7 +193,8 @@ class SearchSelectionView(AutoDeleteView):
         options = []
         for i, (track, _) in enumerate(tracks[:25]):
             label = truncate_for_display(track['title'], SELECT_LABEL_MAX)
-            description = truncate_for_display(track['artist'] or 'unknown', SELECT_LABEL_MAX)
+            artist = display_artist(track.get('artist'))
+            description = truncate_for_display(artist, SELECT_LABEL_MAX) if artist else None
             options.append(discord.SelectOption(
                 label=label,
                 description=description,

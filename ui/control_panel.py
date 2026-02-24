@@ -35,6 +35,7 @@ from ui.views import AutoDeleteView, PaginationView
 from utils.filters import FILTER_LABEL, FILTER_PRESETS, PRESET_NAMES, get_filter
 from utils.holidays import get_active_holiday
 from utils.response import (
+    display_artist,
     escape_markdown,
     format_playlists_page,
     truncate_for_display,
@@ -1048,9 +1049,10 @@ class ControlPanelLayout(discord.ui.LayoutView):
         if not album and queue.display_playlist_name:
             album = queue.display_playlist_name
 
-        # Always try to get artist
+        # Always try to get artist (filter generic names like "Various Artists")
         if queue.current:
             _, artist = queue.get_current_display()
+            artist = display_artist(artist)
 
         # Escape for Discord markdown display
         if album:

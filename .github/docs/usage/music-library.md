@@ -29,7 +29,7 @@ music/
         └── ...
 ```
 
-Jill scans folders up to 5 levels deep. If you use subfolders (like Disc 1, Disc 2), each subfolder plays through before the next. Within each subfolder, tracks are sorted by metadata track number, with filename as fallback.
+Jill scans folders up to 5 levels deep. Tracks group by album artist and album, then play in disc and track number order (filename as fallback). Subfolders like Disc 1 and Disc 2 each play through before the next.
 
 > [!IMPORTANT]
 > If you don't need playlists, just put files directly in `music/` with **no** subfolders. If you **do** have playlists (subfolders), any files ***not*** inside one will be ignored.
@@ -68,7 +68,7 @@ mklink /d "music/rock" "C:\Users\You\Music\Rock"
 
 ### Metadata
 
-Jill reads **title**, **album artist**, **album**, and **track number** from your files' metadata. No title? She'll use the filename. She uses the **album artist** tag (not the track/contributing artist) for sorting and display. If your artist isn't showing, make sure your files have the album artist tag set.
+Jill reads **title**, **album artist**, **album**, **disc number**, and **track number** from your files' metadata. No title? She'll use the filename. She uses the **album artist** tag (not the track/contributing artist) for sorting and display. If your artist isn't showing, make sure your files have the album artist tag set.
 
 ### Duplicates
 

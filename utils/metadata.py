@@ -17,7 +17,7 @@
 
 """Metadata extraction using Mutagen.
 
-Extracts title, album artist, album, and track number from audio files.
+Extracts title, album artist, album, disc number, and track number from audio files.
 Uses album artist only (not track/contributing artist) for sorting and display.
 Supports multiple tag formats (ID3, Vorbis, MP4, etc.) via Mutagen.
 
@@ -60,14 +60,15 @@ def extract_metadata_sync(filepath: Path) -> dict:
     Falls back to filename if metadata is missing or unreadable.
 
     Returns:
-        Dict with keys: filename, title, artist, album, track.
-        title defaults to filename stem; artist/album may be None; track defaults to 0.
+        Dict with keys: filename, title, artist, album, disc, track.
+        title defaults to filename stem; artist/album may be None; disc/track default to 0.
     """
     result = {
         "filename": filepath.name,
         "title": filepath.stem,
         "artist": None,
         "album": None,
+        "disc": 0,
         "track": 0
     }
 
@@ -123,6 +124,27 @@ def extract_metadata_sync(filepath: Path) -> dict:
                     pass
 
         result["track"] = track_num
+
+        # Disc number
+        disc_str = _get_first(audio, "discnumber") or _get_first(audio, "TPOS")
+        disc_num = 0
+
+        if disc_str:
+            try:
+                disc_num = int(str(disc_str).split('/')[0])
+            except (ValueError, TypeError):
+                pass
+
+        # MP4/M4A uses disk tag with tuple format [(disc, total)]
+        if disc_num == 0:
+            disk = audio.get("disk")
+            if disk and isinstance(disk, list) and disk:
+                try:
+                    disc_num = int(disk[0][0])
+                except (TypeError, IndexError, ValueError):
+                    pass
+
+        result["disc"] = disc_num
 
     except MutagenError as e:
         logger.warning(f"error reading metadata from {filepath.name}: {e}")
@@ -214,6 +236,7 @@ async def extract_metadata(filepath: Path, timeout: float = 15.0) -> dict:
             "title": filepath.stem,
             "artist": None,
             "album": None,
+            "disc": 0,
             "track": 0
         }
 
@@ -225,6 +248,7 @@ def _make_fallback(audio_file: Path, file_id: str) -> dict:
         'title': audio_file.stem.lower(),
         'artist': None,
         'album': None,
+        'disc': 0,
         'track': 0,
         'file_id': file_id
     }
@@ -302,7 +326,7 @@ async def scan_playlist_metadata(
 
     Returns:
         Tuple of (metadata_list, new_count, filtered_paths, duplicate_names):
-        - metadata_list: List of metadata dicts sorted by (subfolder, artist, album, track number, filename)
+        - metadata_list: List of metadata dicts sorted by (subfolder, artist, album, disc number, track number, filename)
         - new_count: Number of new non-duplicate files added to playlist
         - filtered_paths: File paths after duplicate removal
         - duplicate_names: Filenames that were skipped as duplicates
@@ -377,11 +401,12 @@ async def scan_playlist_metadata(
         seen_keys.add(dup_key)
         metadata.append(info)
 
-    # Sort by subfolder (natural), artist, album, track number (untagged last), filename (natural)
+    # Sort by subfolder (natural), artist, album, disc, track number (untagged last), filename (natural)
     metadata.sort(key=lambda m: (
         _natural_sort_key(str(Path(m.get('rel_path', m.get('filename', ''))).parent)),
         (0, _natural_sort_key(m['artist'])) if m.get('artist') else (1,),
         (0, _natural_sort_key(m['album'])) if m.get('album') else (1,),
+        (0, m.get('disc', 0)) if m.get('disc', 0) > 0 else (1, 0),
         (0, m.get('track', 0)) if m.get('track', 0) > 0 else (1, 0),
         _natural_sort_key(m.get('filename', ''))
     ))

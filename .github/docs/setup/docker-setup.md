@@ -88,10 +88,14 @@ docker compose logs -f jill  # Watch for: "time to mix drinks and change lives"
 
 | Task | Command |
 |------|---------|
+| Start Jill | `docker compose up -d` |
 | View logs | `docker compose logs -f jill` |
+| View Lavalink logs | `docker compose logs -f lavalink` |
 | Restart Jill | `docker compose restart jill` |
 | Stop everything | `docker compose down` |
 | Update to latest | `docker compose pull && docker compose up -d` |
+
+> Run these from the same folder as your `docker-compose.yml`.
 
 ---
 

@@ -159,8 +159,14 @@ def _get_first(audio, key: str) -> str | None:
         if value is None:
             return None
         if isinstance(value, list):
-            return str(value[0]) if value else None
-        return str(value)
+            raw = str(value[0]) if value else None
+        else:
+            raw = str(value)
+        if raw is None:
+            return None
+        # Collapse control chars to spaces, strip — whitespace-only → None
+        cleaned = re.sub(r'[\x00-\x1f\x7f]+', ' ', raw).strip()
+        return cleaned or None
     except Exception:
         # Corrupt tag value, encoding error, str() conversion failure - treat as missing
         return None

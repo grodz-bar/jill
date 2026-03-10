@@ -16,7 +16,7 @@ Your local music library, on tap in Discord.
 
 ### Features
 
-- **Control panel** - just like a real CD player
+- **Control panel** - think classic CD player
 - **Your music** - your folders, your playlists
 - **Fast search** - browse your songs by typing
 - **Clean bar** - messages disappear on their own

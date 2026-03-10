@@ -223,7 +223,7 @@ Restart Jill to check if Lavalink comes up:
 ./START-jill-linux.sh
 ```
 
-If it says "lavalink ready", the issue is elsewhere. If it fails or times out, check `lavalink/logs/` for errors.
+If it says "lavalink ready", the issue is elsewhere. If it fails or times out, check `lavalink/lavalink-startup.log` for errors.
 
 </details>
 

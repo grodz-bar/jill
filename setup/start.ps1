@@ -316,7 +316,7 @@ if ($lavalinkStatus -eq "ready") {
         Write-Host "[+] lavalink ready" -ForegroundColor Cyan
     } else {
         Write-Host "[x] lavalink failed to start within $LavalinkTimeout seconds" -ForegroundColor Red
-        Write-Host "    check lavalink\logs\ for details."
+        Write-Host "    run manually to see error: cd lavalink && java -jar Lavalink.jar"
         Stop-LavalinkIfStarted
         exit 1
     }

@@ -3,7 +3,7 @@
 ### Quick Fixes
 
 1. **Restart Jill** - Fixes most transient issues
-2. **Check the logs** - `docker-compose logs jill` or terminal output
+2. **Check the logs** - See [Logs](#logs) below for Docker, Linux, and Windows
 3. **Verify your token** - No quotes, correct value
 4. **Run `/rescan`** - After adding or removing music
 
@@ -46,8 +46,7 @@
   - Check host setting: `lavalink` (Docker) or `127.0.0.1` (native)
   - Check ports 2333/2334 aren't in use
 
-- **Lavalink keeps restarting**: Check logs for Java errors (need 17+), YAML syntax errors, or out of memory.
-  > To see Lavalink errors directly: `cd lavalink && java -jar Lavalink.jar`
+- **Lavalink keeps restarting**: Check the [Logs](#logs) section below for platform-specific Jill and Lavalink log access. Look for Java errors, YAML syntax errors, or out-of-memory messages.
 
 - **Lavalink disconnected**: Jill reconnects automatically once Lavalink is back up. If she seems stuck, press any playback button to nudge her.
   > Jill can't restart Lavalink on her own. If you're not sure how to fix it, try restarting Jill - the start script should bring Lavalink back too.
@@ -127,7 +126,7 @@
 
 ### Docker
 
-- **Container won't start**: Check `docker-compose logs jill`, verify token in docker-compose.yml, ensure Docker daemon is running.
+- **Container won't start**: Check `docker compose logs jill`, verify token in docker-compose.yml, ensure Docker daemon is running.
 
 - **Permission denied on volumes**: Jill defaults to user 1000:1000. Check your IDs with `id -u` and `id -g`, then set PUID/PGID in docker-compose.yml to match. Or: `chmod -R 755 music/ config/ data/`
 
@@ -140,6 +139,21 @@
 ---
 
 ### Logs
+
+How to view Jill and Lavalink logs:
+
+**Docker**
+- Jill: `docker compose logs -f jill`
+- Lavalink: `docker compose logs -f lavalink`
+
+**Linux**
+- Jill (manual start): watch the terminal running `./START-jill-linux.sh`
+- Jill (systemd service): `journalctl -u jill -f`
+- Lavalink: `tail -f lavalink/lavalink-startup.log`
+
+**Windows**
+- Jill: keep the `START-jill-win.bat` window open and read the output there
+- Lavalink: open Command Prompt in the Jill folder and run `cd lavalink && java -jar Lavalink.jar`
 
 Set log level for more detail:
 

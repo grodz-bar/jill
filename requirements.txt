@@ -3,7 +3,7 @@ loguru==0.7.3
 # Temporary DAVE/Lavalink 4.2+ workaround until Mafic ships channelId support.
 # Roll back to an official Mafic release once upstream includes PR #133 equivalent.
 mafic @ https://github.com/ArtiArtem8/mafic/archive/b1079d54597240e3e7984914df58500f74f62e9f.tar.gz
-aiohttp==3.13.3
+aiohttp==3.14.0
 mutagen==1.47.0
 pyyaml==6.0.3
 rapidfuzz==3.14.3
